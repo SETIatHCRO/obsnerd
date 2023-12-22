@@ -25,6 +25,7 @@ def convert(filename, output_file=None, split=4096):
     with open('metadata.yaml', 'r') as fp:
         meta = yaml.safe_load(fp)
 
+    print(f"Writing file {output_file}")
     with h5py.File(output_file, 'w') as fp:
         dset = fp.create_dataset('data', data=data)
         for key, val in meta.items():
