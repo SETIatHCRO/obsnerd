@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 from ATATools import ata_control
 import argparse
 import atexit
-from datetime import datetime
+import metadata
 
 
 ap = argparse.ArgumentParser()
@@ -19,28 +19,23 @@ ants = ['1a', '1f', '5c']  # List of antennas that we want to use (the USRPs can
 # cfreq = 1680
 # az, el = (121.958, 23.603)
 
-fplog = open('onlog.log', 'a')
 
 if args.cmd == 'start':
     ata_control.move_ant_group(ants, 'none', 'atagr')
-    print(f"{datetime.now()} -- start {', '.join(ants)}", file=fplog)
+    metadata.onlog(f"start {', '.join(ants)}")
 elif args.cmd == 'end':
     atexit.register(ata_control.move_ant_group, ants, 'atagr', 'none')
     atexit.register(ata_control.park_antennas, ants)
-    print(f"{datetime.now()} -- end {', '.join(ants)}", file=fplog)
+    metadata.onlog(f"end {', '.join(ants)}")
 elif args.cmd == 'freq':
     ata_control.set_freq(args.freq, [ants[0]], lo='d')
     ata_control.autotune([ants[0]])
     att = 20  # Attenuation in dB
     ata_control.rf_switch_thread(ants)
     ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in ants], [[att, att] for ant in ants])
-    with open('metadata.yaml', 'w') as fp:
-        print(f"fcen: {args.freq}", file=fp)
-    print(f"{datetime.now()} -- freq {args.freq}", file=fplog)
+    metadata.onlog(f"fcen: {args.freq}")
 elif args.cmd == 'move':
     ata_control.set_az_el([ants[0]], args.az, args.el)
-    print(f"{datetime.now()} -- az {args.az}, el {args.el}", file=fplog)
+    metadata.onlog(f"az: {args.az}, el: {args.el}")
 elif args.cmd == 'note':
-    print(f"{datetime.now()} -- Note: {args.note}", file=fplog)
-
-fplog.close()
+    metadata.onlog(f"note: {args.note}")

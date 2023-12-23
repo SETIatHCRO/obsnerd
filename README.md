@@ -4,7 +4,7 @@ Using S.O.P.P. pick a satellite and a frequency
  - for initial testing, GOES-16 as a geostationary at around 1680 MHz at az/el -> 121.958/23.603 is a good start (these are the defaults)
  - ideally however we want to point in front of an LEO and measure it passing through
 
-Add to the _top_ of the "Observing" file
+
 `./obsnerd.py start` to get the antenna into the desired group
 `./obsnerd.py freq -f 1680` to set the frequency
 `./nrdz_nofiles.py` to get the spectrum analyzer going without writing files
