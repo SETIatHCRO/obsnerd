@@ -20,7 +20,7 @@ def get_latest(param):
         for line in fp:
             if param in line:
                 data = [x.strip() for x in line.split('--')]
-            metadata[data[0]] = data[1]
+                metadata[data[0]] = data[1]
     ts = sorted(metadata)
     return metadata[ts[-1]]
 
