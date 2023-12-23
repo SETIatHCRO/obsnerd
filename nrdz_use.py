@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
 #
@@ -172,7 +172,7 @@ class nrdz(gr.top_block, Qt.QWidget):
         self.blocks_null_sink_0 = blocks.null_sink(gr.sizeof_gr_complex*1)
         self.blocks_nlog10_ff_0 = blocks.nlog10_ff(10, nfft, 0)
         self.blocks_integrate_xx_0 = blocks.integrate_ff((int(0.2*samp_rate/nfft)), nfft)
-        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*nfft, '/home/ddeboer/nrdz', False)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*nfft, 'nrdz', False)
         self.blocks_file_sink_0.set_unbuffered(False)
         self.blocks_complex_to_mag_squared_0 = blocks.complex_to_mag_squared(nfft)
 
