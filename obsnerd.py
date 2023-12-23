@@ -28,12 +28,12 @@ elif args.cmd == 'end':
     atexit.register(ata_control.park_antennas, ants)
     metadata.onlog(f"end {', '.join(ants)}")
 elif args.cmd == 'freq':
+    metadata.onlog(f"fcen: {args.freq}")
     ata_control.set_freq(args.freq, [ants[0]], lo='d')
     ata_control.autotune([ants[0]])
     att = 20  # Attenuation in dB
     ata_control.rf_switch_thread(ants)
     ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in ants], [[att, att] for ant in ants])
-    metadata.onlog(f"fcen: {args.freq}")
 elif args.cmd == 'move':
     ata_control.set_az_el([ants[0]], args.az, args.el)
     metadata.onlog(f"az: {args.az}, el: {args.el}")
