@@ -1,6 +1,6 @@
 Initial observing recipe
 
-When you are ready to go for the session claim the antennas:
+When you are ready to go for the session claim the antennas (if this fails, run './obsnerd.py end' first):
 ./obsnerd.py start <INITIALS HERE>
 
 Use S.O.P.P. to pick a satellite and a frequency:
@@ -37,4 +37,16 @@ We'll want to capture what you've learned (TBD), but for now add to the obslog:
 If you want to keep it, move the hdf5 file somewhere (TBD).
 
 When you are done, release the antennas:
+./obsnerd.py end
+
+================COMMANDS ONLY==================
+./obsnerd.py start DDB
+./obsnerd.py note 'GOES 16 test'
+./obsnerd.py freq 1680
+./obsnerd.py move 121.958,23.603
+./nrdz_use.py
+<END OBS X>
+./f2h5.py geos16_231223_1414.h5
+./view_file goes16_231223_1414.h5
+./obsnerd.py note 'interesting stuff'
 ./obsnerd.py end
