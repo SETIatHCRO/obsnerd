@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import requests
 from html.parser import HTMLParser
 from os import path
