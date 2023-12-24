@@ -6,21 +6,20 @@ import metadata
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument('cmd', help="Action [start, move, freq, end, note]", choices=['start', 'freq', 'move', 'end', 'note'])
+ap.add_argument('cmd', help="Action [start, freq,  move, end, note]", choices=['start', 'freq', 'move', 'end', 'note'])
 ap.add_argument('payload', help="Argument for command.", nargs='?', default=None)
 args = ap.parse_args()
 
 ants=['1a', '1f', '5c']
 defaults = argparse.Namespace(az=121.958, el=23.603, freq=1680.0)
 
-# GOES-16
-# cfreq = 1680
-# az, el = (121.958, 23.603)
-
 
 if args.cmd == 'start':
-    ata_control.move_ant_group(ants, 'none', 'atagr')
-    metadata.onlog(f"start: {', '.join(ants)}")
+    if args.payload is None:
+        print("Please include your name or initials.")
+    else:
+        ata_control.move_ant_group(ants, 'none', 'atagr')
+        metadata.onlog(f"session start: {args.payload}")
 elif args.cmd == 'end':
     atexit.register(ata_control.move_ant_group, ants, 'atagr', 'none')
     atexit.register(ata_control.park_antennas, ants)

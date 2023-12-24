@@ -9,6 +9,8 @@ from astropy.time import Time
 Convert the gnuradio-companion spectrum file to hdf5
 """
 
+RAW_FILENAME = 'nrdz'
+
 def convert(filename, output_file=None, split=4096):
     data = np.fromfile(filename, dtype=float)
     sdata = []
@@ -22,6 +24,9 @@ def convert(filename, output_file=None, split=4096):
             output_file = f"{filename}.h5"
         else:
             output_file = f"{'.'.join(fsplit[:-1])}.h5"
+    else:
+        if not output_file.endswith('h5'):
+            output_file = f"{output_file}.h5"
     with open('metadata.yaml', 'r') as fp:
         meta = yaml.safe_load(fp)
 
@@ -39,7 +44,6 @@ def convert(filename, output_file=None, split=4096):
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument('fn', help='Name of spectrum file')
-    ap.add_argument('-o', '--output_file', help="Name of output file", default=None)
+    ap.add_argument('output_file', help="Name of output file")
     args = ap.parse_args()
-    convert(args.fn, args.output_file)
+    convert(RAW_FILENAME, args.output_file)
