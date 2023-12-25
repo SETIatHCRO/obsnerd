@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 from astropy.time import Time
-import numpy as np
 
 
 class Data:
@@ -65,9 +64,8 @@ class Data:
         plt.xlabel('MHz')
         plt.title(self.tstart.datetime.strftime('%Y-%m-%d'))
 
-    def plot(self, **kwargs):
+    def spectra(self, **kwargs):
         """Make a 2-D plot of the spectra."""
-
         if 'log' not in kwargs:
             kwargs['log'] = False
 
@@ -77,6 +75,24 @@ class Data:
             else:
                 plt.plot(data)
 
+    def series(self, **kwargs):
+        self.plot_max = 0.0
+        dt = (self.tstop.datetime - self.tstart.datetime) / len(self.data[:,0])
+        t = []
+        this_t = self.tstart.datetime
+        while this_t < self.tstop.datetime:
+            t.append(this_t)
+            this_t += dt
+        if 'log' not in kwargs:
+            kwargs['log'] = False
+        for i in range(len(self.data[:,0])):
+            plt.plot(t, self.data[:,i])
+            if np.max(self.data[:, i]) > self.plot_max:
+                self.plot_max = np.max(self.data[:, i])
+
+    def expected(self, ts):
+        ts = Time(ts)
+        plt.plot([ts.datetime, ts.datetime], [0, self.plot_max], color='k', lw=3)
 
 if __name__ == '__main__':
     import argparse
