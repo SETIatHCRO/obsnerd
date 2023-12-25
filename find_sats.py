@@ -18,9 +18,12 @@ from sopp.frequency_filter.frequency_filter import FrequencyFilter
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from tabulate import tabulate
+import mplcursors
 
 
-def main(starttime, stoptime, offsettime, frequency, bandwidth, ftype='horizon', search_for=False, tle_file='./satellites.tle'):
+
+def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0, 360],
+         el_limit=0.0, ftype='horizon', search_for=False, tle_file='./satellites.tle'):
     # Facility
     facility = Facility(
         Coordinates(
@@ -119,41 +122,45 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth, ftype='horizon',
     for i, window in enumerate(interference_events, start=1):
         if search_for and search_for not in window.satellite.name:
             continue
-        fndctr += 1
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
         az, el, tae = [], [], []
         table_data = []
         for pos in window.positions:
+            if pos.position.altitude < el_limit:
+                continue
+            if pos.position.azimuth < az_limit[0] or pos.position.azimuth > az_limit[1]:
+                continue
             az.append(pos.position.azimuth)
             el.append(pos.position.altitude)
             tae.append(pos.time)
             if pos.time > offsettime and len(table_data) < 10:
                 table_row = [pos.time.isoformat(), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
-
-        #plt.plot(az, el, label=window.satellite.name)
-        plt.subplot(211)
-        plt.plot(tae, az)
-        plt.subplot(212)
-        plt.plot(tae, el)
-
-        print(f'Satellite interference event #{i}:')
-        print(f'Satellite: {window.satellite.name}')
-        print(tabulate(table_data))
-        # print(f'Satellite enters view: {window.overhead_time.begin} at '
-        #       f'{window.positions[0].position.azimuth:.2f}')
-        # print(f'Satellite leaves view: {window.overhead_time.end} at '
-        #       f'{window.positions[-1].position.azimuth:.2f}')
-        # print(f'Satellite maximum altitude: {max_alt.position.altitude:.2f}')
-        # print('__________________________________________________\n')
+        if len(table_data):
+            fndctr += 1
+            #plt.plot(az, el, label=window.satellite.name)
+            plt.subplot(211)
+            plt.plot(tae, az, label=window.satellite.name)
+            plt.subplot(212)
+            plt.plot(tae, el, label=window.satellite.name)
+            print(f'Satellite interference event #{i}:')
+            print(f'Satellite: {window.satellite.name}')
+            print(tabulate(table_data))
+            # print(f'Satellite enters view: {window.overhead_time.begin} at '
+            #       f'{window.positions[0].position.azimuth:.2f}')
+            # print(f'Satellite leaves view: {window.overhead_time.end} at '
+            #       f'{window.positions[-1].position.azimuth:.2f}')
+            # print(f'Satellite maximum altitude: {max_alt.position.altitude:.2f}')
+            # print('__________________________________________________\n')
+    print(f"Found {fndctr} entries")
     plt.subplot(211)
     plt.ylabel('Azimuth')
     plt.grid()
     plt.subplot(212)
     plt.ylabel('Elevation')
     plt.grid()
+    mplcursors.cursor().connect("add", lambda sel: sel.annotation.set_text(sel.artist.get_label()))
     plt.show()
-    print(f"Found {fndctr} entries")
 
 if __name__ == '__main__':
     import argparse
@@ -164,6 +171,8 @@ if __name__ == '__main__':
     ap.add_argument('-b', '--bandwidth', help="Bandwidth in MHz [20]", type=float, default=20.0)
     ap.add_argument('-s', '--search', help="String to search for", default=False)
     ap.add_argument('-o', '--offset', help="Number of minutes offset to get positions [10.0]", type=float, default=10.0)
+    ap.add_argument('-e', '--el_limit', help="Lower horizon elevation [20.0]", type=float, default=20.0)
+    ap.add_argument('-a', '--az_limit', help="Azimuth range [0,360]", default='0,360')
     ap.add_argument('--tle_file', help='Name of tle file', default='tle/active.tle')
     ap.add_argument('--ftype', help='search horizon or beam', choices=['horizon', 'beam'], default='horizon')
     args = ap.parse_args()
@@ -171,12 +180,15 @@ if __name__ == '__main__':
         args.start_time = datetime.now()
     stop_time = args.start_time + timedelta(minutes=args.duration)
     offset_time = args.start_time + timedelta(minutes=args.offset)
+    az_limit = [float(x) for x in args.az_limit.split(',')]
 
     main(starttime=args.start_time,
          stoptime=stop_time,
          offsettime=offset_time,
          frequency=args.frequency,
          bandwidth=args.bandwidth,
+         az_limit = az_limit,
+         el_limit = args.el_limit,
          ftype=args.ftype,
          search_for=args.search,
          tle_file=args.tle_file)
