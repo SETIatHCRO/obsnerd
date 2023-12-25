@@ -4,11 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 from astropy.time import Time
+from datetime import timedelta
+from copy import copy
 
 
 class Data:
     def __init__(self, fn):
         self.filename = fn
+        self.name, self.datetime = self._parse_fn()
         with h5py.File(fn, 'r') as fp:
             self.data = np.array(fp['data'])
             self.jdstart = np.float64(fp['tstart'])  # jd
@@ -19,6 +22,19 @@ class Data:
         self.tstop = Time(self.jdstop, format='jd')
         self.fmin = self.fcen - self.bw / 2.0
         self.fmax = self.fcen + self.bw / 2.0
+
+    def _parse_fn(self):
+        pfn = self.filename.split('_')
+        if len(pfn) == 3:
+            _date = f"20{pfn[1][:2]}-{pfn[1][2:4]}-{pfn[1][4:6]}"
+            _x = pfn[2].split('.')[0]
+            _time = f"{_x[:2]}:{_x[2:4]}"
+            if len(_x) == 6:
+                _time += f":{_x[4:6]}"
+            _datetime = f"{_date}T{_time}"
+        else:
+            _datetime = None
+        return pfn[0], _datetime
 
     def header(self):
         """Print information about the data."""
@@ -76,33 +92,41 @@ class Data:
                 plt.plot(data)
 
     def series(self, **kwargs):
+        if 'log' not in kwargs:
+            kwargs['log'] = False
+        if 'tz' not in kwargs:
+            kwargs['tz'] = 8.0
         self.plot_max = 0.0
         dt = (self.tstop.datetime - self.tstart.datetime) / len(self.data[:,0])
         t = []
         this_t = self.tstart.datetime
-        while this_t < self.tstop.datetime:
+        for i in range(len(self.data[:, 0])):
             t.append(this_t)
             this_t += dt
-        if 'log' not in kwargs:
-            kwargs['log'] = False
+
         for i in range(len(self.data[:,0])):
             plt.plot(t, self.data[:,i])
-            if np.max(self.data[:, i]) > self.plot_max:
-                self.plot_max = np.max(self.data[:, i])
+            this_max = np.max(self.data[:, i])
+            if this_max > self.plot_max:
+                self.plot_max = copy(this_max)
+        if self.datetime is not None:
+            self.expected(self.datetime, kwargs['tz'])
 
-    def expected(self, ts):
-        ts = Time(ts)
-        plt.plot([ts.datetime, ts.datetime], [0, self.plot_max], color='k', lw=3)
+    def expected(self, ts, tz_offset=0.0):
+        ts = Time(ts).datetime + timedelta(hours=tz_offset)
+        plt.plot([ts, ts], [0, self.plot_max], color='k', lw=3)
 
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('fn', help="Name of hdf5 datafile")
+    ap.add_argument('-p', '--plot_type', help='wf, series, spectra [wf]', choices=['wf', 'series', 'spectra'], default='wf')
     ap.add_argument('-x', '--xticks', help="Number of xticks in waterfall [10]", type=int, default=10)
     ap.add_argument('-y', '--yticks', help="Number of yticks to use in waterfall [4]", type=int, default=4)
     ap.add_argument('-c', '--colorbar', help="Flag to use colorbar [True]", type=bool, default=True)
     ap.add_argument('-l', '--log', help="Flag to take log10 of data [True]", type=bool, default=True)
+    ap.add_argument('--tz', help="Timezone offset in hours [8]", type=float, default=8.0)
     args = ap.parse_args()
     obs = Data(args.fn)
-    obs.wf(**vars(args))
+    getattr(obs, args.plot_type)(**vars(args))
     plt.show()
