@@ -28,16 +28,17 @@ If you have recorded data, you should convert the raw nrdz datafile to HDF5 sett
 
 To look at the data, you can use:
 ./view_file.py nav72_231224_180136.h5 -p [wf/series/spectra]
-the options are
+the -p options are
     wf - waterfall
     series - all time series, which also plots a line at the time specified in the filename
     spectra - all spectra
+if you want log use -l
 
 The goal is to find the satellite frequency and crossing time, for which the series option is probably best.
 
 To look around the whole datafile, the waterfall is good where you can zoom around the datafile to find the time and frequency.  
 view_file.py is pretty rudimentary, so if you zoom in you'll likely need to add y and/or x ticks
-./view_file.py nav72_231224_180136.h5 -y 20
+./view_file.py nav72_231224_180136.h5 -y 20 -l
 
 Add the results to
 https://docs.google.com/spreadsheets/d/1z4b35RkIdoUa2pU_zBnD5AoqiXg8NwgIvBci6oa-Tmo/edit#gid=0

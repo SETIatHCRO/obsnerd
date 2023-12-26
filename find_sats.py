@@ -125,7 +125,7 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
         az, el, tae = [], [], []
         table_data = []
-        for pos in window.positions:
+        for j, pos in enumerate(window.positions):
             if pos.position.altitude < el_limit:
                 continue
             if pos.position.azimuth < az_limit[0] or pos.position.azimuth > az_limit[1]:
@@ -133,7 +133,7 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             az.append(pos.position.azimuth)
             el.append(pos.position.altitude)
             tae.append(pos.time)
-            if pos.time > offsettime and len(table_data) < 10:
+            if pos.time > offsettime and len(table_data) < 10 and not (j % 30):
                 table_row = [pos.time.isoformat(), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
         if len(table_data):

@@ -90,6 +90,8 @@ class Data:
                 plt.plot(np.log10(data))
             else:
                 plt.plot(data)
+        plt.grid()
+        plt.xlabel('MHz')
 
     def series(self, **kwargs):
         if 'log' not in kwargs:
@@ -97,6 +99,7 @@ class Data:
         if 'tz' not in kwargs:
             kwargs['tz'] = 8.0
         self.plot_max = 0.0
+        self.plot_min = 1E20
         dt = (self.tstop.datetime - self.tstart.datetime) / len(self.data[:,0])
         t = []
         this_t = self.tstart.datetime
@@ -105,16 +108,26 @@ class Data:
             this_t += dt
 
         for i in range(len(self.data[:,0])):
-            plt.plot(t, self.data[:,i])
-            this_max = np.max(self.data[:, i])
+            if kwargs['log']:
+                data = np.log10(self.data[:, i])
+            else:
+                data = self.data[:, i]
+            plt.plot(t, data)
+            this_max = np.max(data)
+            this_min = np.min(data)
             if this_max > self.plot_max:
                 self.plot_max = copy(this_max)
+            if this_min < self.plot_min:
+                self.plot_min = copy(this_min)
         if self.datetime is not None:
             self.expected(self.datetime, kwargs['tz'])
+        plt.grid()
+        plt.xlabel('UTC')
+        
 
     def expected(self, ts, tz_offset=0.0):
         ts = Time(ts).datetime + timedelta(hours=tz_offset)
-        plt.plot([ts, ts], [0, self.plot_max], color='k', lw=3)
+        plt.plot([ts, ts], [self.plot_min, self.plot_max], color='k', lw=3)
 
 if __name__ == '__main__':
     import argparse
@@ -123,8 +136,8 @@ if __name__ == '__main__':
     ap.add_argument('-p', '--plot_type', help='wf, series, spectra [wf]', choices=['wf', 'series', 'spectra'], default='wf')
     ap.add_argument('-x', '--xticks', help="Number of xticks in waterfall [10]", type=int, default=10)
     ap.add_argument('-y', '--yticks', help="Number of yticks to use in waterfall [4]", type=int, default=4)
-    ap.add_argument('-c', '--colorbar', help="Flag to use colorbar [True]", type=bool, default=True)
-    ap.add_argument('-l', '--log', help="Flag to take log10 of data [True]", type=bool, default=True)
+    ap.add_argument('-c', '--colorbar', help="Flag to hide colorbar", action='store_false')
+    ap.add_argument('-l', '--log', help="Flag to take log10 of data", action='store_true')
     ap.add_argument('--tz', help="Timezone offset in hours [8]", type=float, default=8.0)
     args = ap.parse_args()
     obs = Data(args.fn)
