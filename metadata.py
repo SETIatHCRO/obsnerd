@@ -1,5 +1,7 @@
 from datetime import datetime
-
+"""
+This writes out datetime as UTC
+"""
 
 ONLOG_FILENAME = 'onlog.log'
 META_FILENAME = 'metadata.yaml'
