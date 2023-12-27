@@ -166,10 +166,13 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             fndctr += 1
             #plt.plot(az, el, label=window.satellite.name)
+            plt.figure(1)
             plt.subplot(211)
             plt.plot(tae, az, label=window.satellite.name)
             plt.subplot(212)
             plt.plot(tae, el, label=window.satellite.name)
+            plt.figure(2)
+            plt.plot(az, el)
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
@@ -181,6 +184,7 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             # print('__________________________________________________\n')
     ps4 = f" and {search_for}" if search_for else ""
     print(f"Found {fndctr} entries for {orbit_type}{ps4}")
+    plt.figure(1)
     plt.subplot(211)
     plt.ylabel('Azimuth')
     plt.grid()
@@ -188,6 +192,10 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
     plt.ylabel('Elevation')
     plt.grid()
     mplcursors.cursor().connect("add", lambda sel: sel.annotation.set_text(sel.artist.get_label()))
+    plt.figure(2)
+    plt.xlabel('Az [deg]')
+    plt.ylabel('El [deg]')
+    plt.grid()
     plt.show()
 
 if __name__ == '__main__':
