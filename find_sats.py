@@ -21,9 +21,26 @@ from tabulate import tabulate
 import mplcursors
 
 
+def find_orbit_type(mmdps):
+    """
+    Parameter
+    ---------
+    mmdps : float
+        Mean motion in degrees/sec
+    """
+    orbits_per_day = mmdps * 240.0
+    if orbits_per_day < 0.85:
+        return 'other'
+    if orbits_per_day < 1.5:
+        return 'geo'
+    if orbits_per_day < 5.0:
+        return 'meo'
+    return 'leo'
+
 
 def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0, 360],
-         el_limit=0.0, ftype='horizon', search_for=False, tle_file='./satellites.tle'):
+         el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all',
+         tle_file='./satellites.tle', timezone=-8.0):
     # Facility
     facility = Facility(
         Coordinates(
@@ -122,9 +139,16 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
     for i, window in enumerate(interference_events, start=1):
         if search_for and search_for not in window.satellite.name:
             continue
+        this_orbit = find_orbit_type(window.satellite.tle_information.mean_motion.value)
+        if orbit_type == 'all':
+            pass
+        elif orbit_type != this_orbit:
+            continue
+
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
         az, el, tae = [], [], []
         table_data = []
+
         for j, pos in enumerate(window.positions):
             if pos.position.altitude < el_limit:
                 continue
@@ -134,9 +158,12 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             el.append(pos.position.altitude)
             tae.append(pos.time)
             if pos.time > offsettime and len(table_data) < 10 and not (j % 30):
-                table_row = [pos.time.isoformat(), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
+                local_time = pos.time + timedelta(hours=timezone)
+                table_row = [local_time.isoformat(), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
         if len(table_data):
+            print('Frequency information:  ', window.satellite.frequency)
+            print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             fndctr += 1
             #plt.plot(az, el, label=window.satellite.name)
             plt.subplot(211)
@@ -152,7 +179,8 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             #       f'{window.positions[-1].position.azimuth:.2f}')
             # print(f'Satellite maximum altitude: {max_alt.position.altitude:.2f}')
             # print('__________________________________________________\n')
-    print(f"Found {fndctr} entries")
+    ps4 = f" and {search_for}" if search_for else ""
+    print(f"Found {fndctr} entries for {orbit_type}{ps4}")
     plt.subplot(211)
     plt.ylabel('Azimuth')
     plt.grid()
@@ -170,14 +198,19 @@ if __name__ == '__main__':
     ap.add_argument('-f', '--frequency', help='Frequency to search in MHz', type=float, default=1575.0)
     ap.add_argument('-b', '--bandwidth', help="Bandwidth in MHz [20]", type=float, default=20.0)
     ap.add_argument('-s', '--search', help="String to search for", default=False)
-    ap.add_argument('-o', '--offset', help="Number of minutes offset to get positions [10.0]", type=float, default=10.0)
+    ap.add_argument('-o', '--orbit', help='Orbit type: (all, geo, meo, leo) [all]', choices=['all', 'geo', 'meo', 'leo'], default='all')
     ap.add_argument('-e', '--el_limit', help="Lower horizon elevation [20.0]", type=float, default=20.0)
     ap.add_argument('-a', '--az_limit', help="Azimuth range [0,360]", default='0,360')
+    ap.add_argument('--offset', help="Number of minutes offset to get positions [10.0]", type=float, default=10.0)
+    ap.add_argument('--tz', help='Time zone (hours offset from UTC) [-8]', type=float, default=-8.0)
     ap.add_argument('--tle_file', help='Name of tle file', default='tle/active.tle')
     ap.add_argument('--ftype', help='search horizon or beam', choices=['horizon', 'beam'], default='horizon')
     args = ap.parse_args()
     if args.start_time is None:
         args.start_time = datetime.now()
+    else:
+        args.start_time = datetime.strptime(args.start_time, '%Y-%m-%dT%H:%M') + timedelta(microseconds=1)
+    args.start_time -= timedelta(hours=args.tz)  # Convert _to_ UTC
     stop_time = args.start_time + timedelta(minutes=args.duration)
     offset_time = args.start_time + timedelta(minutes=args.offset)
     az_limit = [float(x) for x in args.az_limit.split(',')]
@@ -191,4 +224,6 @@ if __name__ == '__main__':
          el_limit = args.el_limit,
          ftype=args.ftype,
          search_for=args.search,
-         tle_file=args.tle_file)
+         orbit_type=args.orbit,
+         tle_file=args.tle_file,
+         timezone=args.tz)
