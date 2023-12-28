@@ -34,12 +34,30 @@ class Data:
             self.jdstop = np.float64(fp['tstop'])  # jd
             self.fcen = np.float64(fp['fcen'])  # MHz
             self.bw = np.float64(fp['bw'])  # MHz
-            self.decimation = np.float64(fp['decimation'])
-            self.nfft = np.float64(fp['nfft'])
+            try:
+                self.decimation = np.float64(fp['decimation'])
+                self.nfft = np.float64(fp['nfft'])
+                self.int_time = self.decimation /self.bw * self.nfft
+            except KeyError:
+                self.decimation = None
+                self.nfft = None
+                self.int_time = None
         self.tstart = Time(self.jdstart, format='jd')
         self.tstop = Time(self.jdstop, format='jd')
         self.fmin = self.fcen - self.bw / 2.0
         self.fmax = self.fcen + self.bw / 2.0
+        df = (self.fmax - self.fmin) / len(self.data[0])
+        self.freq = []
+        this_f = self.fmin + 0.0
+        for i in range(len(self.data[0])):
+            self.freq.append(this_f)
+            this_f += df
+        dt = (self.tstop.datetime - self.tstart.datetime) / len(self.data[:,0])
+        self.t = []
+        this_t = self.tstart.datetime + timedelta(hours=self.timezone)
+        for i in range(len(self.data[:, 0])):
+            self.t.append(this_t)
+            this_t += dt
 
     def _parse_fn(self):
         pfn = self.filename.split('_')
@@ -102,18 +120,11 @@ class Data:
         defaults = {'log': False, 'dB': False}
         kwargs = proc_plot_kwargs(kwargs, defaults)
 
-        df = (self.fmax - self.fmin) / len(self.data[0])
-        f = []
-        this_f = self.fmin + 0.0
-        for i in range(len(self.data[0])):
-            f.append(this_f)
-            this_f += df
-
         for data in self.data:
             if kwargs['log']:
-                plt.plot(f, kwargs['mult'] * np.log10(data))
+                plt.plot(self.freq, kwargs['mult'] * np.log10(data))
             else:
-                plt.plot(f, data)
+                plt.plot(self.freq, data)
         plt.grid()
         plt.xlabel('MHz')
         plt.ylabel(kwargs['ylabel'])
@@ -124,19 +135,13 @@ class Data:
 
         self.plot_max = 0.0
         self.plot_min = 1E20
-        dt = (self.tstop.datetime - self.tstart.datetime) / len(self.data[:,0])
-        t = []
-        this_t = self.tstart.datetime + timedelta(hours=self.timezone)
-        for i in range(len(self.data[:, 0])):
-            t.append(this_t)
-            this_t += dt
 
         for i in range(len(self.data[:,0])):
             if kwargs['log']:
                 data = np.log10(self.data[:, i])
             else:
                 data = self.data[:, i]
-            plt.plot(t, data)
+            plt.plot(self.t, data)
             this_max = np.max(data)
             this_min = np.min(data)
             if this_max > self.plot_max:
@@ -145,6 +150,16 @@ class Data:
                 self.plot_min = copy(this_min)
         if self.datetime is not None:
             self.expected(self.datetime, kwargs['tz'])
+        if kwargs['freq'] is not None:
+            import beamfit
+            ifg = int((float(kwargs['freq']) - self.freq[0]) / (self.freq[1] - self.freq[0]))
+            plt.plot(self.t, self.data[:, ifg], lw=4, color='k')
+            coeff, data_fit = beamfit.fit_it(self.data[:, ifg], max(self.data[:, ifg]), len(self.data[:, ifg]) / 2.0, len(self.data[:, ifg])/4.0 )
+            plt.plot(self.t, data_fit, '--', color='w')
+            ctrt = int(coeff[1])
+            rngt = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
+            print(f"Found: {self.t[ctrt]}")
+            print(f"Width:  {self.t[rngt[1]] - self.t[rngt[0]]}")
         plt.grid()
         plt.xlabel(f"UTC{'+' if self.timezone>0 else '-'}{abs(self.timezone):.0f}")
         plt.ylabel(kwargs['ylabel'])
@@ -161,6 +176,7 @@ if __name__ == '__main__':
     ap.add_argument('-x', '--xticks', help="Number of xticks in waterfall [10]", type=int, default=10)
     ap.add_argument('-y', '--yticks', help="Number of yticks to use in waterfall [4]", type=int, default=4)
     ap.add_argument('-c', '--colorbar', help="Flag to hide colorbar", action='store_false')
+    ap.add_argument('-f', '--freq', help='Frequency to use for fitting beam crossing', default=None)
     ap.add_argument('-l', '--log', help="Flag to take log10 of data", action='store_true')
     ap.add_argument('-d', '--dB', help="Flag to convert to dB", action='store_true')
     ap.add_argument('--tz', help="Timezone offset to UTC in hours [-8.0]", type=float, default=-8.0)
