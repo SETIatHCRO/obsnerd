@@ -1,5 +1,7 @@
 Initial observing recipe
 
+cd into the obsnerd directory
+
 When you are ready to go for the session, claim the antennas (if this fails, run './obsnerd.py end' first):
 ./obsnerd.py start <INITIALS HERE>
 
