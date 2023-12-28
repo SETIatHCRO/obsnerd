@@ -34,6 +34,8 @@ class Data:
             self.jdstop = np.float64(fp['tstop'])  # jd
             self.fcen = np.float64(fp['fcen'])  # MHz
             self.bw = np.float64(fp['bw'])  # MHz
+            self.decimation = np.float64(fp['decimation'])
+            self.nfft = np.float64(fp['nfft'])
         self.tstart = Time(self.jdstart, format='jd')
         self.tstop = Time(self.jdstop, format='jd')
         self.fmin = self.fcen - self.bw / 2.0

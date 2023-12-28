@@ -27,11 +27,13 @@ def get_latest(param):
     return metadata[ts[-1]]
 
 
-def start(samp_rate):
+def start(samp_rate, decimation, nfft):
     with open(META_FILENAME, 'w') as fp:
         print(f"tstart: {datetime.now()}", file=fp)
         print(get_latest('fcen'), file=fp)
         print(f"bw: {samp_rate / 1E6}", file=fp)
+        print(f"decimation: {decimation}", file=fp)
+        print(f"nfft: {nfft}", file=fp)
     onlog(['tstart', f"bw: {samp_rate}"])
 
 

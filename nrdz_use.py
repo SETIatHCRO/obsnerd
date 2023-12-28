@@ -164,6 +164,7 @@ class nrdz(gr.top_block, Qt.QWidget):
             self.qtgui_vector_sink_f_0.set_line_color(i, colors[i])
             self.qtgui_vector_sink_f_0.set_line_alpha(i, alphas[i])
 
+        self.decimation = int(0.2*samp_rate/nfft)
         self._qtgui_vector_sink_f_0_win = sip.wrapinstance(self.qtgui_vector_sink_f_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_vector_sink_f_0_win)
         self.fft_vxx_0 = fft.fft_vcc(nfft, True, window.blackmanharris(nfft), True, 4)
@@ -171,7 +172,7 @@ class nrdz(gr.top_block, Qt.QWidget):
         self.blocks_stream_to_vector_0 = blocks.stream_to_vector(gr.sizeof_gr_complex*1, nfft)
         self.blocks_null_sink_0 = blocks.null_sink(gr.sizeof_gr_complex*1)
         self.blocks_nlog10_ff_0 = blocks.nlog10_ff(10, nfft, 0)
-        self.blocks_integrate_xx_0 = blocks.integrate_ff((int(0.2*samp_rate/nfft)), nfft)
+        self.blocks_integrate_xx_0 = blocks.integrate_ff(self.decimation, nfft)
         self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*nfft, 'nrdz', False)
         self.blocks_file_sink_0.set_unbuffered(False)
         self.blocks_complex_to_mag_squared_0 = blocks.complex_to_mag_squared(nfft)
@@ -282,7 +283,7 @@ def main(top_block_cls=nrdz, options=None):
     tb = top_block_cls(gaindB=options.gaindB, samp_rate=options.samp_rate, src_name=options.src_name)
     snippets_main_after_init(tb)
     tb.start()
-    metadata.start(tb.samp_rate)
+    metadata.start(tb.samp_rate, tb.decimation, tb.nfft)
     tb.show()
 
     def sig_handler(sig=None, frame=None):
