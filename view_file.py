@@ -155,17 +155,14 @@ class Data:
         
 
     def _parse_fn(self):
-        pfn = self.filename.split('_')
-        if len(pfn) == 3:
-            _date = f"20{pfn[1][:2]}-{pfn[1][2:4]}-{pfn[1][4:6]}"
-            _x = pfn[2].split('.')[0]
-            _time = f"{_x[:2]}:{_x[2:4]}"
-            if len(_x) == 6:
-                _time += f":{_x[4:6]}"
+        X = self.filename.split('_')
+        if len(X) == 3:
+            _date = '20' + '-'.join( [X[1][i:i+2] for i in range(0, len(X[1]), 2)])
+            _time = ':'.join([X[2][i:i+2] for i in range(0, len(X[2].split('.')[0]), 2)])
             _datetime = Time(f"{_date}T{_time}").datetime
         else:
             _datetime = None
-        return pfn[0], _datetime
+        return X[0], _datetime
 
     def header(self):
         """Print information about the data."""
@@ -215,13 +212,13 @@ class Data:
         if kwargs['freq'] is not None:
             frange = self.f_info.index(kwargs['freq'])
         else:
-            frange = list(range(self.f_info.length))
-        fslice = slice(frange[0], frange[-1]+1)
+            frange = [0, self.f_info.length-1]
+        fslice = slice(frange[0], frange[1] + 1)
         if kwargs['time'] is not None:
             trange = self.t_info.index(kwargs['time'])
         else:
-            trange = list(range(self.t_info.length))
-        tslice = slice(trange[0], trange[-1]+1)
+            trange = [0, self.t_info.length - 1]
+        tslice = slice(trange[0], trange[1] + 1)
 
         return fslice, tslice
 
@@ -260,7 +257,11 @@ class Data:
         plt.xlabel(self.t_info.label)
         plt.ylabel(kwargs['_ylabel'])                
 
+        if kwargs['freq'] is not None:
+            print("---Results---")
+        N = 10
         if self.datetime is not None and (self.datetime>=self.t[tslice.start] and self.datetime<=self.t[tslice.stop-1]):
+            print(f"{'Expected:':{N}s}{self.datetime.isoformat()}")
             plt.plot([self.datetime, self.datetime], [0.0, plt.axis()[3]], '--', lw=3, color='k')
         if kwargs['freq'] is not None:
             import beamfit
@@ -273,15 +274,16 @@ class Data:
             fit_range = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
             plt.plot(self.t[tslice], data_fit, '--', lw=2, color='w')
             plt.plot([self.t[fit_time], self.t[fit_time]], [0, max(avespec[tslice])], '--', lw=3, color='k')
-            print(f"Found: {self.t[fit_time]}  --  offset: {self.datetime-self.t[fit_time]}")
-            print(f"Width:  {self.t[fit_range[1]] - self.t[fit_range[0]]}")
+            print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
+            if self.datetime is not None:
+                  offset = self.datetime-self.t[fit_time]
+                  print(f"{'Offset:':{N}s}{offset}  ({offset.total_seconds():.2f} sec)")
+            width = self.t[fit_range[1]] - self.t[fit_range[0]]
+            print(f"{'Width:':{N}s}{width}  ({width.total_seconds():.2f} sec)")
         plt.grid()
         plt.xlabel(self.t_info.label)
         plt.ylabel(kwargs['_ylabel'])
 
-    #def expected():
-        # ts = Time(ts).datetime
-    #    plt.plot([ts, ts], [self.plot_min, self.plot_max], color='k', lw=3)
 
 if __name__ == '__main__':
     import argparse
