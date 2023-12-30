@@ -173,6 +173,7 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             plt.plot(tae, el, label=window.satellite.name)
             plt.figure(2)
             plt.plot(az, el)
+            plt.plot(az[0], el[0], 'ko')
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
