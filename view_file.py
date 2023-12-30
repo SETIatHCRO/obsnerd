@@ -42,6 +42,13 @@ def proc_plot_kwargs(kwargs, defaults, time_fmt='%Y-%m-%dT%H:%M:%S'):
     return kwargs
 
 
+def _fmt_data(data, plog, pmult=1.0):
+    if plog:
+        return pmult * np.log10(data)
+    else:
+        return data
+
+
 class Axis:
     """
     Class handling the Axis definitions, conversions, etc.
@@ -230,11 +237,8 @@ class Data:
         trange = range(tslice.start, tslice.stop)
 
         for i in trange:
-            data = self.data[i][fslice]
-            if kwargs['log']:
-                plt.plot(self.freq[fslice], kwargs['_mult'] * np.log10(data))
-            else:
-                plt.plot(self.freq[fslice], data)
+            data = _fmt_data(self.data[i][fslice], kwargs['log'], kwargs['mult'])
+            plt.plot(self.freq[fslice], data)
         plt.grid()
         plt.xlabel(self.f_info.label)
         plt.ylabel(kwargs['_ylabel'])
@@ -248,11 +252,8 @@ class Data:
         trange = range(tslice.start, tslice.stop)
 
         for i in frange:
-            data = self.data[trange, i]
-            if kwargs['log']:
-                plt.plot(self.t[tslice],  kwargs['_mult'] * np.log10(data))
-            else:
-                plt.plot(self.t[tslice], data)
+            data = _fmt_data(self.data[trange, i], kwargs['log'], kwargs['_mult'])
+            plt.plot(self.t[tslice], data)
         plt.grid()
         plt.xlabel(self.t_info.label)
         plt.ylabel(kwargs['_ylabel'])                
@@ -260,20 +261,23 @@ class Data:
         if kwargs['freq'] is not None:
             print("---Results---")
         N = 10
+        yaxlim = [plt.axis()[2], plt.axis()[3]]
         if self.datetime is not None and (self.datetime>=self.t[tslice.start] and self.datetime<=self.t[tslice.stop-1]):
             print(f"{'Expected:':{N}s}{self.datetime.isoformat()}")
-            plt.plot([self.datetime, self.datetime], [0.0, plt.axis()[3]], '--', lw=3, color='k')
+            plt.plot([self.datetime, self.datetime], yaxlim, '--', lw=3, color='k')
         if kwargs['freq'] is not None:
             import beamfit
             avespec = np.zeros(self.t_info.length, dtype=float)
             for i in frange:
                 avespec += self.data[:, i] / len(frange)
-            plt.plot(self.t[tslice], avespec[tslice], lw=5, color='k')
+            data = _fmt_data(avespec, kwargs['log'], kwargs['_mult'])
+            plt.plot(self.t[tslice], data[tslice], lw=5, color='k')
             coeff, data_fit = beamfit.fit_it(avespec[tslice], max(avespec[tslice]), len(avespec[tslice]) / 2.0, len(avespec[tslice])/4.0 )
             fit_time = int(coeff[1]) + tslice.start
             fit_range = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
-            plt.plot(self.t[tslice], data_fit, '--', lw=2, color='w')
-            plt.plot([self.t[fit_time], self.t[fit_time]], [0, max(avespec[tslice])], '--', lw=3, color='k')
+            data = _fmt_data(data_fit, kwargs['log'], kwargs['_mult'])
+            plt.plot(self.t[tslice], data, '--', lw=2, color='w')
+            plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=3, color='k')
             print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
             if self.datetime is not None:
                   offset = self.datetime-self.t[fit_time]
