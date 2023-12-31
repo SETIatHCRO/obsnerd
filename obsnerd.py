@@ -40,21 +40,19 @@ elif args.cmd == 'move':
     if args.payload is None:
         x, y = defaults.x, defaults.y
     elif ',' in args.payload:
-        try:
-            x, y = [float(_v) for _v in args.payload.split(',')]
-        except ValueError:
-            x = args.payload
+        x, y = [float(_v) for _v in args.payload.split(',')]
     else:
-        print(f"Invalid move argument - need coords")
-        x = None
-    if x is not None:
-        if args.coord_type == 'azel':
-            ata_control.set_az_el([ants[0]], x, y)
-            metadata.onlog(f"az: {x}, el: {y}")
-        elif args.coord_type == 'radec':
-            ata_control.track_source(radec=[x, y])
-        elif args.coord_type == 'source':
-            ata_control.track_source(source_name=x)
+        x = args.payload
+
+    if args.coord_type == 'azel':
+        ata_control.set_az_el([ants[0]], x, y)
+        metadata.onlog(f"az: {x}, el: {y}")
+    elif args.coord_type == 'radec':
+        source = ata_control.track_source([ants[0]], radec=[x, y])
+        metadata.onlog(f"ra: {x}, dec: {y}")
+    elif args.coord_type == 'source':
+        source = ata_control.track_source([ants[0]], source=x)
+        metadata.onlog(f"source {x}")
 elif args.cmd == 'note':
     if args.payload is None:
         print("Need to include a note.")
