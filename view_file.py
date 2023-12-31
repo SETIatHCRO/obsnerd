@@ -258,32 +258,32 @@ class Data:
         plt.xlabel(self.t_info.label)
         plt.ylabel(kwargs['_ylabel'])                
 
-        if kwargs['freq'] is not None:
-            print("---Results---")
-        N = 10
+        results_prefix = '--Results--\n' if kwargs['beamfit'] else ''
         yaxlim = [plt.axis()[2], plt.axis()[3]]
-        if self.datetime is not None and (self.datetime>=self.t[tslice.start] and self.datetime<=self.t[tslice.stop-1]):
-            print(f"{'Expected:':{N}s}{self.datetime.isoformat()}")
-            plt.plot([self.datetime, self.datetime], yaxlim, '--', lw=3, color='k')
-        if kwargs['freq'] is not None:
+        N = 10
+        if self.datetime is not None:
+            print(f"{results_prefix}{'Expected:':{N}s}{self.datetime.isoformat()}")
+            if self.datetime>=self.t[tslice.start] and self.datetime<=self.t[tslice.stop-1]:  
+                plt.plot([self.datetime, self.datetime], yaxlim, '--', lw=2, color='k')
+        if kwargs['beamfit']:
             import beamfit
-            avespec = np.zeros(self.t_info.length, dtype=float)
+            power = np.zeros(self.t_info.length, dtype=float)
             for i in frange:
-                avespec += self.data[:, i] / len(frange)
-            data = _fmt_data(avespec, kwargs['log'], kwargs['_mult'])
-            plt.plot(self.t[tslice], data[tslice], lw=5, color='k')
-            coeff, data_fit = beamfit.fit_it(avespec[tslice], max(avespec[tslice]), len(avespec[tslice]) / 2.0, len(avespec[tslice])/4.0 )
+                power += self.data[:, i] / len(frange)
+            data = _fmt_data(power, kwargs['log'], kwargs['_mult'])
+            plt.plot(self.t[tslice], data[tslice], lw=4, color='k')
+            coeff, data_fit = beamfit.gaussian(power[tslice], max(power[tslice]), len(power[tslice]) / 2.0, len(power[tslice])/4.0 )
             fit_time = int(coeff[1]) + tslice.start
             fit_range = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
             data = _fmt_data(data_fit, kwargs['log'], kwargs['_mult'])
             plt.plot(self.t[tslice], data, '--', lw=2, color='w')
-            plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=3, color='k')
+            plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=2, color='k')
             print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
             if self.datetime is not None:
-                  offset = self.datetime-self.t[fit_time]
-                  print(f"{'Offset:':{N}s}{offset}  ({offset.total_seconds():.2f} sec)")
+                  offset = self.t[fit_time] - self.datetime
+                  print(f"{'Offset:':{N}s}{offset.total_seconds():.1f} sec")
             width = self.t[fit_range[1]] - self.t[fit_range[0]]
-            print(f"{'Width:':{N}s}{width}  ({width.total_seconds():.2f} sec)")
+            print(f"{'Width:':{N}s}{width.total_seconds():.1f} sec")
         plt.grid()
         plt.xlabel(self.t_info.label)
         plt.ylabel(kwargs['_ylabel'])
@@ -297,6 +297,7 @@ if __name__ == '__main__':
     ap.add_argument('-x', '--xticks', help="Number of xticks in waterfall [10]", type=int, default=10)
     ap.add_argument('-y', '--yticks', help="Number of yticks to use in waterfall [4]", type=int, default=4)
     ap.add_argument('-c', '--colorbar', help="Flag to hide colorbar", action='store_false')
+    ap.add_argument('-b', '--beamfit', help='Flag to fit for the beam', action='store_true')
     ap.add_argument('-f', '--freq', help='Frequency [range] to use.', default=None)
     ap.add_argument('-t', '--time', help='Time [range] to use.', default=None)
     ap.add_argument('-l', '--log', help="Flag to take log10 of data", action='store_true')
