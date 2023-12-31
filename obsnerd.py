@@ -8,10 +8,14 @@ import metadata
 ap = argparse.ArgumentParser()
 ap.add_argument('cmd', help="Action [start, freq,  move, end, note]", choices=['start', 'freq', 'move', 'end', 'note'])
 ap.add_argument('payload', help="Argument for command.", nargs='?', default=None)
+ap.add_argument('-c', '--coord-type', dest='coord_type', help="Coordinate type: azel/radec,source [azel]",
+                choices=['azel', 'radec', 'source'], default='azel')
 args = ap.parse_args()
 
 ants=['1a', '1f', '5c']
-defaults = argparse.Namespace(az=121.958, el=23.603, freq=1680.0)
+defaults = argparse.Namespace(az=121.958, el=23.603, freq=1680.0, source_name='goes16',
+                              x=121.958, y=23.603,
+                              ra=23.39077787, dec=58.8077786056, note='radec is for casa')
 
 
 if args.cmd == 'start':
@@ -34,15 +38,23 @@ elif args.cmd == 'freq':
     ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in ants], [[att, att] for ant in ants])
 elif args.cmd == 'move':
     if args.payload is None:
-        az, el = defaults.az, defaults.el
+        x, y = defaults.x, defaults.y
     elif ',' in args.payload:
-        az, el = [float(x) for x in args.payload.split(',')]
+        try:
+            x, y = [float(_v) for _v in args.payload.split(',')]
+        except ValueError:
+            x = args.payload
     else:
-        print(f"Invalid move argument - need az,el")
-        az = None
-    if az is not None:
-        ata_control.set_az_el([ants[0]], az, el)
-        metadata.onlog(f"az: {az}, el: {el}")
+        print(f"Invalid move argument - need coords")
+        x = None
+    if x is not None:
+        if args.coord_type == 'azel':
+            ata_control.set_az_el([ants[0]], x, y)
+            metadata.onlog(f"az: {x}, el: {y}")
+        elif args.coord_type == 'radec':
+            ata_control.track_source(radec=[x, y])
+        elif args.coord_type == 'source':
+            ata_control.track_source(source_name=x)
 elif args.cmd == 'note':
     if args.payload is None:
         print("Need to include a note.")
