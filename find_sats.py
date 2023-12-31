@@ -21,6 +21,9 @@ from tabulate import tabulate
 import mplcursors
 
 
+VERBOSE = False
+
+
 def find_orbit_type(mmdps):
     """
     Parameter
@@ -165,24 +168,25 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             print('Frequency information:  ', window.satellite.frequency)
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             fndctr += 1
-            #plt.plot(az, el, label=window.satellite.name)
-            plt.figure(1)
-            plt.subplot(211)
-            plt.plot(tae, az, label=window.satellite.name)
-            plt.subplot(212)
-            plt.plot(tae, el, label=window.satellite.name)
-            plt.figure(2)
+            plt.figure('Trajectory')
             plt.plot(az, el)
             plt.plot(az[0], el[0], 'ko')
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
-            # print(f'Satellite enters view: {window.overhead_time.begin} at '
-            #       f'{window.positions[0].position.azimuth:.2f}')
-            # print(f'Satellite leaves view: {window.overhead_time.end} at '
-            #       f'{window.positions[-1].position.azimuth:.2f}')
-            # print(f'Satellite maximum altitude: {max_alt.position.altitude:.2f}')
-            # print('__________________________________________________\n')
+            if VERBOSE:
+                print(f'Satellite enters view: {window.overhead_time.begin} at '
+                      f'{window.positions[0].position.azimuth:.2f}')
+                print(f'Satellite leaves view: {window.overhead_time.end} at '
+                      f'{window.positions[-1].position.azimuth:.2f}')
+                print(f'Satellite maximum altitude: {max_alt.position.altitude:.2f}')
+                print('__________________________________________________\n')
+                plt.plot(az, el, label=window.satellite.name)
+                plt.figure('TIME')
+                plt.subplot(211)
+                plt.plot(tae, az, label=window.satellite.name)
+                plt.subplot(212)
+                plt.plot(tae, el, label=window.satellite.name)
     ps4 = f" and {search_for}" if search_for else ""
     print(f"Found {fndctr} entries for {orbit_type}{ps4}")
     plt.figure(1)
