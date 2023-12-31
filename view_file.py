@@ -237,7 +237,7 @@ class Data:
         trange = range(tslice.start, tslice.stop)
 
         for i in trange:
-            data = _fmt_data(self.data[i][fslice], kwargs['log'], kwargs['mult'])
+            data = _fmt_data(self.data[i][fslice], kwargs['log'], kwargs['_mult'])
             plt.plot(self.freq[fslice], data)
         plt.grid()
         plt.xlabel(self.f_info.label)
