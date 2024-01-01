@@ -1,68 +1,64 @@
 #!/usr/bin/python3
 from ATATools import ata_control
-import argparse
 import atexit
 import metadata
 
 
 class CommandHandler:
-    def __init__(self, cmd, payload, coord_type, ants=['1a', '1f', '5c']):
-        self.cmd = cmd
+    def __init__(self, payload=None, coord_type=None, ants=['1a', '1f', '5c']):
         self.payload = payload
         self.coord_type = coord_type
         self.ants = ants
         self.use_ants = [ants[0]]  # Hard-coded for now
     
     def start(self, initials=None):
-        initials = self.payload if initials is None else initials
+        self.initials = self.payload if initials is None else initials
         if initials is None:
             print("Please include your name or initials.")
         else:
             ata_control.move_ant_group(self.ants, 'none', 'atagr')
-            metadata.onlog(f"session start: {self.payload}")
+            metadata.onlog(f"session start: {self.initials}")
 
     def end(self):
         atexit.register(ata_control.move_ant_group, self.ants, 'atagr', 'none')
-        atexit.register(ata_control.park_antennas, self.ants)
+        atexit.register(ata_control.park_antennas, self.use_ants)
         metadata.onlog(f"end: {', '.join(self.ants)}")
 
-    def freq(self, freq=None):
-        freq = float(self.payload) if freq is None else freq
-        metadata.onlog(f"fcen: {freq}")
-        ata_control.set_freq(freq, self.use_ants, lo='d')
+    def freq(self, freq=None, att=20):
+        self.freq = float(self.payload) if freq is None else freq
+        self.att = att
+        metadata.onlog(f"fcen: {self.freq}")
+        ata_control.set_freq(self.freq, self.use_ants, lo='d')
         ata_control.autotune(self.use_ants)
-        att = 20  # Attenuation in dB
         ata_control.rf_switch_thread(self.ants)
-        ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ants], [[att, att] for ant in self.ants])
+        ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ants], [[self.att, self.att] for ant in self.ants])
 
     def move(self, location=None, coord_type=None):
-        location = self.payload if location is None else location
-        coord_type = self.coord_type if coord_type is None else coord_type
+        self.location = self.payload if location is None else location
+        self.coord_type = self.coord_type if coord_type is None else coord_type
 
-        if ',' in location:
-            x, y = [float(_v) for _v in location.split(',')]
-        else:
-            x = location
+        if ',' in self.location:
+            x, y = [float(_v) for _v in self.location.split(',')]
 
-        if coord_type == 'azel':
+        if self.coord_type == 'azel':
             ata_control.set_az_el(self.use_ants, x, y)
             metadata.onlog(f"az: {x}, el: {y}")
-        elif coord_type == 'radec':
+        elif self.coord_type == 'radec':
             source = ata_control.track_source(self.use_ants, radec=[x, y])
             metadata.onlog(f"ra: {x}, dec: {y}")
-        elif coord_type == 'source':
-            source = ata_control.track_source(self.use_ants, source=x)
-            metadata.onlog(f"source {x}")
-        elif coord_type == 'traj':
+        elif self.coord_type == 'source':
+            source = ata_control.track_source(self.use_ants, source=self.location)
+            metadata.onlog(f"source {self.location}")
+        elif self.coord_type == 'traj':
             print("MAKE THIS ONE WORK")
-            # metadata.onlog(f"trajectory {x}")
+            # metadata.onlog(f"trajectory {self.location}")
 
     def note(self, notation=None):
-        notation = self.payload if notation is None else notation
-        if self.payload is None:
+        self.notation = self.payload if notation is None else notation
+        if self.notation is None:
             print("Need to include a note.")
         else:
-            metadata.onlog(f"note: {notation}")
+            metadata.onlog(f"note: {self.notation}")
 
 
 # if args.cmd == 'start':
@@ -111,6 +107,7 @@ class CommandHandler:
 
 
 if __name__ == '__main__':
+    import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('cmd', help="Action [start, freq,  move, end, note]", choices=['start', 'freq', 'move', 'end', 'note'])
     ap.add_argument('payload', help="Argument for command.", nargs='?', default=None)
@@ -118,5 +115,5 @@ if __name__ == '__main__':
                     choices=['azel', 'radec', 'source', 'traj'], default='azel')
     args = ap.parse_args()
 
-    session = CommandHandler(cmd=args.cmd, payload=args.payload, coord_type=args.coord_type)
+    session = CommandHandler(payload=args.payload, coord_type=args.coord_type)
     getattr(session, args.cmd)()
