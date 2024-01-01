@@ -50,8 +50,9 @@ class CommandHandler:
             source = ata_control.track_source(self.use_ants, source=self.location)
             metadata.onlog(f"source {self.location}")
         elif self.coord_type == 'traj':
-            print("MAKE THIS ONE WORK")
-            # metadata.onlog(f"trajectory {self.location}")
+            ephem = ata_control.upload_ephemeris(self.location)
+            ata_control.track_ephemeris(ephem, self.use_ants, wait=True)
+            metadata.onlog(f"trajectory {self.location}")
 
     def note(self, notation=None):
         self.notation = self.payload if notation is None else notation

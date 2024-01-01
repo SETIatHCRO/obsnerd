@@ -3,6 +3,7 @@ import numpy as np
 import h5py
 import yaml
 from astropy.time import Time
+import metadata
 
 
 """
@@ -39,7 +40,7 @@ def convert(filename, output_file=None, split=4096):
             print(key, val)
             # mset = fp.create_dataset(key, shape=(), dtype=float, data=val)
             mset = fp.create_dataset(key, data=val)
-
+    metadata.onlog(f"Writing {output_file}")
 
 if __name__ == '__main__':
     import argparse
