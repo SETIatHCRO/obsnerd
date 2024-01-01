@@ -18,10 +18,7 @@ from sopp.frequency_filter.frequency_filter import FrequencyFilter
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from tabulate import tabulate
-import mplcursors
 
-
-VERBOSE = False
 
 
 def find_orbit_type(mmdps):
@@ -174,30 +171,8 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
-            if VERBOSE:
-                print(f'Satellite enters view: {window.overhead_time.begin} at '
-                      f'{window.positions[0].position.azimuth:.2f}')
-                print(f'Satellite leaves view: {window.overhead_time.end} at '
-                      f'{window.positions[-1].position.azimuth:.2f}')
-                print(f'Satellite maximum altitude: {max_alt.position.altitude:.2f}')
-                print('__________________________________________________\n')
-                plt.plot(az, el, label=window.satellite.name)
-                plt.figure('TIME')
-                plt.subplot(211)
-                plt.plot(tae, az, label=window.satellite.name)
-                plt.subplot(212)
-                plt.plot(tae, el, label=window.satellite.name)
     ps4 = f" and {search_for}" if search_for else ""
     print(f"Found {fndctr} entries for {orbit_type}{ps4}")
-    if VERBOSE:
-        plt.figure('TIME')
-        plt.subplot(211)
-        plt.ylabel('Azimuth')
-        plt.grid()
-        plt.subplot(212)
-        plt.ylabel('Elevation')
-        plt.grid()
-        mplcursors.cursor().connect("add", lambda sel: sel.annotation.set_text(sel.artist.get_label()))
     plt.figure('Trajectory')
     plt.xlabel('Az [deg]')
     plt.ylabel('El [deg]')
