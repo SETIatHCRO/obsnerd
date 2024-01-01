@@ -13,7 +13,7 @@ class CommandHandler:
     
     def start(self, initials=None):
         self.initials = self.payload if initials is None else initials
-        if initials is None:
+        if self.initials is None:
             print("Please include your name or initials.")
         else:
             ata_control.move_ant_group(self.group_ants, 'none', 'atagr')
