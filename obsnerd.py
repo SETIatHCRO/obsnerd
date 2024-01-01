@@ -5,24 +5,24 @@ import metadata
 
 
 class CommandHandler:
-    def __init__(self, payload=None, coord_type=None, ants=['1a', '1f', '5c']):
+    def __init__(self, payload=None, coord_type=None, group_ants=['1a', '1f', '5c'], use_ants=['1a']):
         self.payload = payload
         self.coord_type = coord_type
-        self.ants = ants
-        self.use_ants = [ants[0]]  # Hard-coded for now
+        self.group_ants = group_ants
+        self.use_ants = use_ants
     
     def start(self, initials=None):
         self.initials = self.payload if initials is None else initials
         if initials is None:
             print("Please include your name or initials.")
         else:
-            ata_control.move_ant_group(self.ants, 'none', 'atagr')
-            metadata.onlog(f"session start: {self.initials}")
+            ata_control.move_ant_group(self.group_ants, 'none', 'atagr')
+            metadata.onlog(f"session start: {self.initials} -- {', '.join(self.use_ants)} / {', '.join(self.group_ants)}")
 
     def end(self):
-        atexit.register(ata_control.move_ant_group, self.ants, 'atagr', 'none')
+        atexit.register(ata_control.move_ant_group, self.group_ants, 'atagr', 'none')
         atexit.register(ata_control.park_antennas, self.use_ants)
-        metadata.onlog(f"end: {', '.join(self.ants)}")
+        metadata.onlog(f"end: {', '.join(self.use_ants)} / {', '.join(self.group_ants)}")
 
     def freq(self, freq=None, att=20):
         self.freq = float(self.payload) if freq is None else freq
@@ -30,8 +30,8 @@ class CommandHandler:
         metadata.onlog(f"fcen: {self.freq}")
         ata_control.set_freq(self.freq, self.use_ants, lo='d')
         ata_control.autotune(self.use_ants)
-        ata_control.rf_switch_thread(self.ants)
-        ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ants], [[self.att, self.att] for ant in self.ants])
+        ata_control.rf_switch_thread(self.use_ants)
+        ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.use_ants], [[self.att, self.att] for ant in self.use_ants])
 
     def move(self, location=None, coord_type=None):
         self.location = self.payload if location is None else location
