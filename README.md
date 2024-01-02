@@ -51,12 +51,19 @@ When you are done, release the antennas:
 ./obsnerd.py end
 
 ================COMMANDS ONLY==================
+./updatetle.py
 ./obsnerd.py start DDB
+... loop for multiple satellites
 ./obsnerd.py note 'NAVSTAR 72:  expected 2023-12-24T18:01:35.7'
 ./obsnerd.py freq 1575
 ./obsnerd.py move 238.275,51.614
 ./nrdz_use.py
 <END OBS X>
 ./f2h5.py nav72_231224_180136.h5
-./view_file nav72_231224_180136.h5 -p series
+... end loop
 ./obsnerd.py end
+
+...analyze
+./view_file nav72_231224_180136.h5 -p series -d
+...etc
+...update googlesheet

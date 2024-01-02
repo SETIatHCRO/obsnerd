@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime, time
 
-
+EPHEM_FILENAME = 'track.ephem'
 hcro = EarthLocation(lat=40.8178049*u.deg, lon=-121.4695413*u.deg, height=986*u.m)
 
 
@@ -25,6 +25,15 @@ class Track:
     def add(self, **kwargs):
         for key, value in kwargs.items():
             getattr(self, key).append(value)
+
+    def trajectory_file(self, filename='track.ephem'):
+        print(f"Writing trajectory:  {filename}")
+        tai = np.array(self.timestamp, dtype=int)
+        az = np.array(self.az, dtype=float)
+        el = np.array(self.el, dtype=float)
+        ir = np.zeros(len(tai)) + 1E-10
+        ephem = ((np.array([tai, az, el, ir], dtype=object)))
+        self.ephemtxt = np.savetxt(filename, ephem.T, fmt='%i  %.5f  %.5f  %.10E')
 
 
 
@@ -77,22 +86,20 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
     track_times = start_time + np.arange(0.0, time_to_track * 60.0, tstep) * u.second
     lstep = lstep*u.deg  #deg/sec
 
-    print(f"Writing {filename}")
-    ts = time.mktime(start_time.datetime.timetuple())
+    ts = time.mktime(start_time.datetime.timetuple()) + 37.0
     this_track = Track()
     dtns = int(tstep * 1E9)
-    with open(filename, 'w') as fp:
-        for i in range(len(track_times)):
-            this_l = starting_l*u.deg  + i*lstep
-            if this_l > 360.0*u.deg:
-                this_l = this_l - 360.0*u.deg
-            gal = SkyCoord(frame='galactic', l=this_l, b=b2use)
-            radec = gal.transform_to('icrs')
-            azel = radec.transform_to(AltAz(obstime=track_times[i], location=hcro))
-            this_ts = int(ts*1E9) + i*dtns
-            this_track.add(timestamp=this_ts, obstime=track_times[i].datetime, az=azel.az.value, el=azel.alt.value,
-                           ra=radec.ra.value, dec=radec.dec.value, l=this_l.value, b=b2use.value)
-            print(f"{this_ts},{azel.az.value},{azel.alt.value}", file=fp)
+    for i in range(len(track_times)):
+        this_l = starting_l*u.deg  + i*lstep
+        if this_l > 360.0*u.deg:
+            this_l = this_l - 360.0*u.deg
+        gal = SkyCoord(frame='galactic', l=this_l, b=b2use)
+        radec = gal.transform_to('icrs')
+        azel = radec.transform_to(AltAz(obstime=track_times[i], location=hcro))
+        this_ts = int(ts*1E9) + i*dtns
+        this_track.add(timestamp=this_ts, obstime=track_times[i].datetime, az=azel.az.value, el=azel.alt.value,
+                        ra=radec.ra.value, dec=radec.dec.value, l=this_l.value, b=b2use.value)
+    this_track.trajectory_file(EPHEM_FILENAME)
     plt.plot(this_track.az, this_track.el, '.', lw=4, label='azel-track')
     plt.grid()
     plt.legend()
