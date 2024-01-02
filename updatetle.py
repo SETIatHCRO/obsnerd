@@ -53,20 +53,17 @@ def updatetle(base_path, base_url):
                             print(line, file=fp)
                 print("{}:  {}".format(outfile, tlefiles[lll]), file=master)
 
-def update_meta():
-    metadata.add_datetimestamp('tle')
+def update_log():
     metadata.onlog('Updating TLEs')
 
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument('-m', '--meta_update_only', help="Flag to only update the meta timestamp", action='store_true')
     ap.add_argument('--base-url', dest='base_url', help="Base url for tles",
                     default='http://celestrak.org/NORAD/elements/')
     ap.add_argument('--base-path', dest='base_path', help="Base path for tles",
                     default='./tle')
     args = ap.parse_args()
-    if not args.meta_update_only:
-        updatetle(base_path=args.base_path, base_url=args.base_url)
-    update_meta()
+    updatetle(base_path=args.base_path, base_url=args.base_url)
+    update_log()
 
