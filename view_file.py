@@ -245,7 +245,7 @@ class Data:
 
     def series(self, **kwargs):
         """Make a 2-D plot of the time series."""
-        defaults = {'log': False, 'dB': False}
+        defaults = {'log': False, 'dB': False, 'tot': False}
         kwargs = proc_plot_kwargs(kwargs, defaults)
         fslice, tslice = self._get_ft_slices(kwargs)
         frange = range(fslice.start, fslice.stop)
@@ -265,13 +265,19 @@ class Data:
             print(f"{results_prefix}{'Expected:':{N}s}{self.filename_datetime.isoformat()}")
             if self.filename_datetime>=self.t[tslice.start] and self.filename_datetime<=self.t[tslice.stop-1]:  
                 plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
-        if kwargs['beamfit']:
-            import beamfit
+        if kwargs['beamfit'] or kwargs['tot']:
+            if kwargs['beamfit']:
+                norm4now = len(frange)
+            else:
+                norm4now = 30.0  # ad hoc for now
+                print("NEEDTOGETTHEPOWERNORM!!!!")
             power = np.zeros(self.t_info.length, dtype=float)
             for i in frange:
-                power += self.data[:, i] / len(frange)
+                power += self.data[:, i] /  norm4now
             data = _fmt_data(power, kwargs['log'], kwargs['_mult'])
             plt.plot(self.t[tslice], data[tslice], lw=4, color='k')
+        if kwargs['beamfit']:
+            import beamfit
             coeff, data_fit = beamfit.gaussian(power[tslice], max(power[tslice]), len(power[tslice]) / 2.0, len(power[tslice])/4.0 )
             fit_time = int(coeff[1]) + tslice.start
             fit_range = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
@@ -302,6 +308,7 @@ if __name__ == '__main__':
     ap.add_argument('-t', '--time', help='Time [range] to use.', default=None)
     ap.add_argument('-l', '--log', help="Flag to take log10 of data", action='store_true')
     ap.add_argument('-d', '--dB', help="Flag to convert to dB", action='store_true')
+    ap.add_argument('--tot', help="Show total power (for series)", action='store_true')
     ap.add_argument('--tz', help="Timezone offset to UTC in hours [-8.0]", type=float, default=-8.0)
     args = ap.parse_args()
     obs = Data(args.fn, args.tz)
