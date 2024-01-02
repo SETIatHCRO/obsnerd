@@ -38,6 +38,16 @@ def start(samp_rate, decimation, nfft):
 
 
 def stop():
-    with open(META_FILENAME, 'a') as fp:
-        print(f"tstop: {datetime.now()}", file=fp)
+    add_datetimestamp('tstop')
     onlog('tstop')
+
+
+def add_value(**kwargs):
+    with open(META_FILENAME, 'a') as fp:
+        for key, val in kwargs.items():
+            print(f"{key}: {val}", file=fp)
+
+
+def add_datetimestamp(kw):
+    with open(META_FILENAME, 'a') as fp:
+        print(f"{kw}: {datetime.now()}", file=fp)

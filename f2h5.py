@@ -35,7 +35,7 @@ def convert(filename, output_file=None, split=4096):
     with h5py.File(output_file, 'w') as fp:
         dset = fp.create_dataset('data', data=data)
         for key, val in meta.items():
-            if key in ['tstart', 'tstop']:
+            if key in ['tstart', 'tstop', 'tle']:
                 val = Time(val, format='datetime').jd
             print(key, val)
             # mset = fp.create_dataset(key, shape=(), dtype=float, data=val)

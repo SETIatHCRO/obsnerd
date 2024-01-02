@@ -3,6 +3,7 @@ import requests
 from html.parser import HTMLParser
 from os import path
 import argparse
+import metadata
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--base-url', dest='base_url', help="Base url for tles",
@@ -50,7 +51,8 @@ def updatetle(base_path, base_url):
                     for line in sat:
                         print(line, file=fp)
                 print("{}:  {}".format(outfile, tlefiles[lll]), file=master)
-
+    metadata.add_datetimestamp('tle')
+    metadata.onlog('Updating TLEs')
 
 if __name__ == '__main__':
     updatetle(base_path=args.base_path, base_url=args.base_url)

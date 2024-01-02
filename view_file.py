@@ -132,7 +132,7 @@ class Data:
     def __init__(self, fn, timezone=-8.0):
         self.filename = fn
         self.timezone = timezone
-        self.name, self.datetime = self._parse_fn()  # Parse time out of filename (hopefully)
+        self.name, self.filename_datetime = self._parse_fn()  # Parse time out of filename (hopefully)
         with h5py.File(fn, 'r') as fp:
             self.data = np.array(fp['data'])
             self.jdstart = np.float64(fp['tstart'])  # jd
@@ -142,11 +142,17 @@ class Data:
             try:
                 self.decimation = np.float64(fp['decimation'])
                 self.nfft = np.float64(fp['nfft'])
-                self.int_time = self.decimation /self.bw * self.nfft
+                self.int_time = self.decimation /self.bw * self.nfft                
             except KeyError:
                 self.decimation = None
                 self.nfft = None
                 self.int_time = None
+            try:
+                self.tle_update_jd = np.float64(fp['tle'])  # jd
+                self.tle_update = Time(self.tle_update, format='jd')
+            except KeyError:
+                self.tle_update_jd = None
+                self.tle_update = None
         # Set time axis
         self.tstart = Time(self.jdstart, format='jd')
         self.tstop = Time(self.jdstop, format='jd')
@@ -159,7 +165,6 @@ class Data:
         self.f_info = Axis(self.fmin, self.fmax, len(self.data[0]), 'MHz')
         self.freq = self.f_info.array()
         print(self.f_info)
-        
 
     def _parse_fn(self):
         X = self.filename.split('_')
@@ -261,10 +266,10 @@ class Data:
         results_prefix = '--Results--\n' if kwargs['beamfit'] else ''
         yaxlim = [plt.axis()[2], plt.axis()[3]]
         N = 10
-        if self.datetime is not None:
-            print(f"{results_prefix}{'Expected:':{N}s}{self.datetime.isoformat()}")
-            if self.datetime>=self.t[tslice.start] and self.datetime<=self.t[tslice.stop-1]:  
-                plt.plot([self.datetime, self.datetime], yaxlim, '--', lw=2, color='k')
+        if self.filename_datetime is not None:
+            print(f"{results_prefix}{'Expected:':{N}s}{self.filename_datetime.isoformat()}")
+            if self.filename_datetime>=self.t[tslice.start] and self.filename_datetime<=self.t[tslice.stop-1]:  
+                plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
         if kwargs['beamfit']:
             import beamfit
             power = np.zeros(self.t_info.length, dtype=float)
@@ -279,8 +284,8 @@ class Data:
             plt.plot(self.t[tslice], data, '--', lw=2, color='w')
             plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=2, color='k')
             print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
-            if self.datetime is not None:
-                  offset = self.t[fit_time] - self.datetime
+            if self.filename_datetime is not None:
+                  offset = self.t[fit_time] - self.filename_datetime
                   print(f"{'Offset:':{N}s}{offset.total_seconds():.1f} sec")
             width = self.t[fit_range[1]] - self.t[fit_range[0]]
             print(f"{'Width:':{N}s}{width.total_seconds():.1f} sec")
