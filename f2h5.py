@@ -12,7 +12,15 @@ Convert the gnuradio-companion spectrum file to hdf5
 
 RAW_FILENAME = 'nrdz'
 
+class HDF5HeaderInfo:
+    def __init__(self):
+        self.data = 'data'
+        self.float64s = ['tstart', 'tstop', 'fcen', 'bw', 'decimation', 'nfft', 'tle']
+        self.from_datetime = ['tstart', 'tstop', 'tle']
+
+
 def convert(filename, output_file=None, split=4096):
+    h5 = HDF5HeaderInfo()
     data = np.fromfile(filename, dtype=float)
     sdata = []
     for i in range(len(data) // split):
@@ -33,9 +41,9 @@ def convert(filename, output_file=None, split=4096):
 
     print(f"Writing file {output_file}")
     with h5py.File(output_file, 'w') as fp:
-        dset = fp.create_dataset('data', data=data)
+        dset = fp.create_dataset(h5.data, data=data)
         for key, val in meta.items():
-            if key in ['tstart', 'tstop', 'tle']:
+            if key in h5.from_datetime:
                 val = Time(val, format='datetime').jd
             print(key, val)
             # mset = fp.create_dataset(key, shape=(), dtype=float, data=val)

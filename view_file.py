@@ -6,6 +6,7 @@ import h5py
 from astropy.time import Time
 from datetime import timedelta, datetime
 from copy import copy
+from f2h5 import HDF5HeaderInfo
 
 
 def proc_plot_kwargs(kwargs, defaults, time_fmt='%Y-%m-%dT%H:%M:%S'):
@@ -133,29 +134,17 @@ class Data:
         self.filename = fn
         self.timezone = timezone
         self.name, self.filename_datetime = self._parse_fn()  # Parse time out of filename (hopefully)
+        self.h5 = HDF5HeaderInfo()
         with h5py.File(fn, 'r') as fp:
-            self.data = np.array(fp['data'])
-            self.jdstart = np.float64(fp['tstart'])  # jd
-            self.jdstop = np.float64(fp['tstop'])  # jd
-            self.fcen = np.float64(fp['fcen'])  # MHz
-            self.bw = np.float64(fp['bw'])  # MHz
-            try:
-                self.decimation = np.float64(fp['decimation'])
-                self.nfft = np.float64(fp['nfft'])
-                self.int_time = self.decimation /self.bw * self.nfft                
-            except KeyError:
-                self.decimation = None
-                self.nfft = None
-                self.int_time = None
-            try:
-                self.tle_update_jd = np.float64(fp['tle'])  # jd
-                self.tle_update = Time(self.tle_update, format='jd')
-            except KeyError:
-                self.tle_update_jd = None
-                self.tle_update = None
+            self.data = np.array(fp[self.h5.data])
+            for param in self.h5.float64s:
+                if param in fp:
+                    setattr(self, param, np.float64(fp[param]))
+                else:
+                    setattr(self, param, None)
         # Set time axis
-        self.tstart = Time(self.jdstart, format='jd')
-        self.tstop = Time(self.jdstop, format='jd')
+        self.tstart = Time(self.tstart, format='jd')
+        self.tstop = Time(self.tstop, format='jd')
         self.t_info = Axis(self.tstart.datetime, self.tstop.datetime, len(self.data[:, 0]), 'UTC')
         self.t = self.t_info.array(self.timezone)
         print(self.t_info)
@@ -165,6 +154,10 @@ class Data:
         self.f_info = Axis(self.fmin, self.fmax, len(self.data[0]), 'MHz')
         self.freq = self.f_info.array()
         print(self.f_info)
+        # Other info
+        missing_data = self.decimation is None or self.bw is None or self.nfft is None
+        self.int_time = None if missing_data else (self.decimation / self.bw) * self.nfft
+        self.tle = None if self.tle is None else Time(self.tle, format='jd')
 
     def _parse_fn(self):
         X = self.filename.split('_')
@@ -176,14 +169,14 @@ class Data:
             _datetime = None
         return X[0], _datetime
 
-    def header(self):
+    def show_metadata(self):
         """Print information about the data."""
 
         print(f"Filename: {self.filename}")
         print(f"Data shape: {np.shape(self.data)}")
-        print(f"Start: UTC {self.tstart.datetime} (jd={self.jdstart})")
+        print(f"Start: UTC {self.tstart.datetime} (jd={self.tstart.jd})")
         print(f"\tLocal: {self.tstart.datetime + timedelta(hours=self.timezone)}")
-        print(f"Stop: UTC {self.tstop.datetime} (jd={self.jdstop})")
+        print(f"Stop: UTC {self.tstop.datetime} (jd={self.tstop.jd})")
         print(f"\tLocal: {self.tstop.datetime + timedelta(hours=self.timezone)}")
         print(f"Freq:  {self.fmin:.2f} - {self.fmax:.2f} MHz  (cf = {self.fcen}, bw = {self.bw} MHz)")
 
@@ -211,7 +204,7 @@ class Data:
             plt.colorbar()
 
         plt.xticks(np.linspace(0, len(self.data[0]), num_xticks), [f"{x:.2f}" for x in np.linspace(self.fmin, self.fmax, num_xticks)])
-        jds = np.linspace(self.jdstart, self.jdstop, num_yticks)
+        jds = np.linspace(self.tstart.jd, self.tstop.jd, num_yticks)
         apt = Time(jds, format='jd')
         yticks = [(x + timedelta(hours=self.timezone)).strftime("%H:%M:%S") for x in apt.datetime]
         plt.yticks(np.linspace(0, len(self.data), num_yticks), yticks)
