@@ -158,6 +158,8 @@ class Data:
         missing_data = self.decimation is None or self.bw is None or self.nfft is None
         self.int_time = None if missing_data else (self.decimation / self.bw) * self.nfft
         self.tle = None if self.tle is None else Time(self.tle, format='jd')
+        if self.tle is not None:
+            print(f"Updated TLEs: {self.tle}")
 
     def _parse_fn(self):
         X = self.filename.split('_')
