@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import astropy.units as u
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.time import Time

@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/env python
 from sopp.utilities import read_datetime_string_as_utc
 from sopp.satellites_loader.satellites_loader_from_files import \
     SatellitesLoaderFromFiles
