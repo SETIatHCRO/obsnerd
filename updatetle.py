@@ -2,15 +2,7 @@
 import requests
 from html.parser import HTMLParser
 from os import path
-import argparse
 import metadata
-
-ap = argparse.ArgumentParser()
-ap.add_argument('--base-url', dest='base_url', help="Base url for tles",
-                default='http://www.celestrak.com/NORAD/elements/')
-ap.add_argument('--base-path', dest='base_path', help="Base path for tles",
-                default='./tle')
-args = ap.parse_args()
 
 
 class DataParser(HTMLParser):
@@ -45,15 +37,36 @@ def updatetle(base_path, base_url):
             if useThis:
                 a = lll.split('.')
                 outfile = a[0]+'.tle'
-                print('Reading %s:  %s' % (lll, tlefiles[lll]))
-                sat = requests.get(path.join(base_url, lll)).text.splitlines()
-                with open(path.join(base_path, outfile), 'w') as fp:
-                    for line in sat:
-                        print(line, file=fp)
+                print(f'Reading {lll}:  {tlefiles[lll]}')
+                sat = requests.get(path.join(base_url, lll))
+                if sat.status_code == 404:
+                    print(f"Normal request not working for {lll}", end=' -- ')
+                    new_url = base_url + f"gp.php?GROUP={lll.split('.txt')[0]}&FORMAT=tle"
+                    print(f"Trying {new_url}", end=' -- ')
+                    sat = requests.get(new_url)
+                    print(sat.status_code)
+
+                if sat.status_code == 200:
+                    sat_text = sat.text.splitlines()
+                    with open(path.join(base_path, outfile), 'w') as fp:
+                        for line in sat_text:
+                            print(line, file=fp)
                 print("{}:  {}".format(outfile, tlefiles[lll]), file=master)
+
+def update_meta():
     metadata.add_datetimestamp('tle')
     metadata.onlog('Updating TLEs')
 
 if __name__ == '__main__':
-    updatetle(base_path=args.base_path, base_url=args.base_url)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-m', '--meta_update_only', help="Flag to only update the meta timestamp", action='store_true')
+    ap.add_argument('--base-url', dest='base_url', help="Base url for tles",
+                    default='http://celestrak.org/NORAD/elements/')
+    ap.add_argument('--base-path', dest='base_path', help="Base path for tles",
+                    default='./tle')
+    args = ap.parse_args()
+    if not args.meta_update_only:
+        updatetle(base_path=args.base_path, base_url=args.base_url)
+    update_meta()
 
