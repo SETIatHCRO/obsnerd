@@ -78,10 +78,10 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
     plt.plot(radec.ra.value[above_horizon], radec.dec.value[above_horizon], '.', label='radec-init')
     plt.plot(azel.az.value[above_horizon], azel.alt.value[above_horizon], '.', label='azel-init')
 
-    print(f"UTC {start_time}")
-    print(f"Start at l = {starting_l}, b={gal.b.value[start_horizon]}") 
-    print(f"         RA={radec.ra.value[start_horizon]}, Dec={radec.dec.value[start_horizon]}")
-    print(f"         Az={azel.az.value[start_horizon]}, El={azel.alt.value[start_horizon]}")
+    print(f"Start at: {start_time} UTC")
+    print(f"\tl = {starting_l}, b={gal.b.value[start_horizon]}") 
+    print(f"\tRA={radec.ra.value[start_horizon]}, Dec={radec.dec.value[start_horizon]}")
+    print(f"\tAz={azel.az.value[start_horizon]}, El={azel.alt.value[start_horizon]}")
 
     track_times = start_time + np.arange(0.0, time_to_track * 60.0, tstep) * u.second
     lstep = lstep*u.deg  #deg/sec
@@ -100,6 +100,10 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
         this_track.add(timestamp=this_ts, obstime=track_times[i].datetime, az=azel.az.value, el=azel.alt.value,
                         ra=radec.ra.value, dec=radec.dec.value, l=this_l.value, b=b2use.value)
     this_track.trajectory_file(EPHEM_FILENAME)
+    print(f"End at: {this_track.obstime[-1]} UTC")
+    print(f"\tl={this_track.l[-1]}, b={this_track.b[-1]}")
+    print(f"\tRA={this_track.ra[-1]}, Dec={this_track.dec[-1]}")
+    print(f"\tAz={this_track.az[-1]}, El={this_track.el[-1]}")
     plt.plot(this_track.az, this_track.el, '.', lw=4, label='azel-track')
     plt.grid()
     plt.legend()
@@ -112,13 +116,13 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument('-s', '--start_time', help="Time to start checking ['now+10' min]", default='now+10')
+    ap.add_argument('-s', '--start_time', help="Time to start checking ['now+5' min]", default='now+5')
     ap.add_argument('-b', '--b2use', help='Galactic latitude to use [0.0 deg]', type=float, default=0.0)
     ap.add_argument('-e', '--el_starting', help='Elevation to start at [30.0 deg]', type=float, default=30.0)
-    ap.add_argument('-t', '--time_to_track', help='Length of track [20.0 min]', type=float, default=20.0)
+    ap.add_argument('-t', '--time_to_track', help='Length of track [20.0 min]', type=float, default=10.0)
     ap.add_argument('-l', '--lstep', help="Galactic longitude step in trajectory [0.1 deg/sec]", type=float, default=0.1)
     ap.add_argument('--tstep', help="Time step in trajectory [1 sec]", type=float, default=1.0)
-    ap.add_argument('--tz', help="Hours from UTC [-8.0 hours]", type=float, default=-8.0)
+    ap.add_argument('--tz', help="Hours from UTC [0.0 hours]", type=float, default=0.0)
     args = ap.parse_args()
 
     if args.start_time.startswith('now'):
