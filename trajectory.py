@@ -41,6 +41,7 @@ class Track:
         if filename is not None:
             with open(filename, 'w') as fp:
                 print(self, file=fp)
+            print(f"Writing log: {filename}")
 
     def ephem_file(self, filename=EPHEM_FILENAME):
         print(f"Writing ephemerides:  {filename}")
@@ -52,7 +53,7 @@ class Track:
         self.ephemtxt = np.savetxt(filename, ephem.T, fmt='%i  %.5f  %.5f  %.10E')
 
     def full_file(self, filename=TRAJECTORY_FILENAME):
-        print(F"Writing full trajectory to {filename}")
+        print(F"Writing full trajectory: {filename}")
         np.savez_compressed(filename, obstime=self.obstime, az=self.az, el=self.el, ra=self.ra, dec=self.dec, l=self.l, b=self.b, allow_pickle=True)
 
 def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_track=20.0, lstep=0.1, tstep=1.0, tz=-8.0):
