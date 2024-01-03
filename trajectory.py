@@ -102,7 +102,7 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
     import time
     ts = time.mktime(start_time.datetime.timetuple()) + 37.0
     print(ts)
-    ts = start_time.unix_tai.value
+    ts = start_time.unix_tai
     print(ts)
     this_track = Track()
     dtns = int(tstep * 1E9)
