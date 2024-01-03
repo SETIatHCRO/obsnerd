@@ -273,6 +273,7 @@ class Data:
         plt.xlabel(self.t_info.label)
         plt.ylabel(kwargs['_ylabel'])
 
+    
         results_prefix = '--Results--\n' if kwargs['beamfit'] else ''
         yaxlim = [plt.axis()[2], plt.axis()[3]]
         N = 10
