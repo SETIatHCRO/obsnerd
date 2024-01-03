@@ -272,8 +272,11 @@ class Data:
         t_initial = self.traj['obstime'][0]
         l_initial = self.traj['l'][0]
         dldt = (self.traj['l'][-1] - l_initial) / (self.traj['obstime'][-1] - t_initial).total_seconds()
+        print(f"Starting:  l={l_initial},  t={t_initial}")
+        print(f"dl/dt = {dldt}")
         self.l = []
         for this_time in self.t:
+            this_time = this_time - timedelta(hours = -8)
             self.l.append(l_initial + dldt * (this_time - t_initial).total_seconds())
         plt.figure(f"Galaxy @ b = {self.traj['b'][0]}")
         plt.plot(self.l, 10.0*np.log10(self.power))
