@@ -25,11 +25,11 @@ class Track:
 
     def __repr__(self):
         s = ''
-        for i, b in zip([0, -1], ['Start at:', 'End at:']):
-            s += f"{b} {self.obstime[i]} UTC\n"
-            s += f"\tl={self.l[i]}, b={self.b[i]}\n"
-            s += f"\tRA={self.ra[i]}, Dec={self.dec[i]}\n"
-            s += f"\tAz={self.az[i]}, El={self.el[i]}\n"
+        for i, lbl in zip([0, -1], ['Start at:', 'End at:']):
+            s += f"{lbl} {self.obstime[i]} UTC\n"
+            s += f"\tl={self.l[i]:.3f}, b={self.b[i]:.3f}\n"
+            s += f"\tRA={self.ra[i]:.3f}, Dec={self.dec[i]:.3f}\n"
+            s += f"\tAz={self.az[i]:.3f}, El={self.el[i]:.3f}\n"
         return s
 
     def add(self, **kwargs):
