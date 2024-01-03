@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import datetime, time
 
 EPHEM_FILENAME = 'track.ephem'
+TRAJECTORY_FILENAME = 'track'
 hcro = EarthLocation(lat=40.8178049*u.deg, lon=-121.4695413*u.deg, height=986*u.m)
 
 
@@ -26,8 +27,8 @@ class Track:
         for key, value in kwargs.items():
             getattr(self, key).append(value)
 
-    def trajectory_file(self, filename='track.ephem'):
-        print(f"Writing trajectory:  {filename}")
+    def ephem_file(self, filename=EPHEM_FILENAME):
+        print(f"Writing ephemerides:  {filename}")
         tai = np.array(self.timestamp, dtype=int)
         az = np.array(self.az, dtype=float)
         el = np.array(self.el, dtype=float)
@@ -35,7 +36,9 @@ class Track:
         ephem = ((np.array([tai, az, el, ir], dtype=object)))
         self.ephemtxt = np.savetxt(filename, ephem.T, fmt='%i  %.5f  %.5f  %.10E')
 
-
+    def full_file(self, filename=TRAJECTORY_FILENAME):
+        print(F"Writing full trajectory to {filename}")
+        np.savez_compressed(filename, obstime=self.obstime, az=self.az, el=self.el, ra=self.ra, dec=self.dec, l=self.l, b=self.b, allow_pickle=True)
 
 def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_track=20.0, lstep=0.1, tstep=1.0, tz=-8.0):
     """
@@ -57,7 +60,6 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
         Hours from UTC
 
     """
-    filename = 'track.trk'
     tz = tz * u.hour
     start_time = Time(start_time) - tz
 
@@ -99,11 +101,14 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
         this_ts = int(ts*1E9) + i*dtns
         this_track.add(timestamp=this_ts, obstime=track_times[i].datetime, az=azel.az.value, el=azel.alt.value,
                         ra=radec.ra.value, dec=radec.dec.value, l=this_l.value, b=b2use.value)
-    this_track.trajectory_file(EPHEM_FILENAME)
+
     print(f"End at: {this_track.obstime[-1]} UTC")
     print(f"\tl={this_track.l[-1]}, b={this_track.b[-1]}")
     print(f"\tRA={this_track.ra[-1]}, Dec={this_track.dec[-1]}")
     print(f"\tAz={this_track.az[-1]}, El={this_track.el[-1]}")
+    this_track.ephem_file(EPHEM_FILENAME)
+    this_track.full_file(TRAJECTORY_FILENAME)
+
     plt.plot(this_track.az, this_track.el, '.', lw=4, label='azel-track')
     plt.grid()
     plt.legend()

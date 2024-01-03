@@ -9,7 +9,7 @@ from copy import copy
 from f2h5 import HDF5HeaderInfo
 
 
-def proc_plot_kwargs(kwargs, defaults, time_fmt='%Y-%m-%dT%H:%M:%S'):
+def proc_kwargs(kwargs, defaults, time_fmt='%Y-%m-%dT%H:%M:%S'):
     """
     Process all of the keywords with provided defaults.
 
@@ -32,11 +32,13 @@ def proc_plot_kwargs(kwargs, defaults, time_fmt='%Y-%m-%dT%H:%M:%S'):
     else:
         kwargs['dB'] = False
     if 'freq' in kwargs and kwargs['freq'] is not None:
-        kwargs['freq'] = [float(x) for x in kwargs['freq'].split(',')]
+        if isinstance(kwargs['freq'], str):
+            kwargs['freq'] = [float(x) for x in kwargs['freq'].split(',')]
     else:
         kwargs['freq'] = None
     if 'time' in kwargs and kwargs['time'] is not None:
-        kwargs['time'] = [datetime.strptime(x, time_fmt) for x in kwargs['time'].split(",")]
+        if isinstance(kwargs['time'], str):
+            kwargs['time'] = [datetime.strptime(x, time_fmt) for x in kwargs['time'].split(",")]
     else:
         kwargs['time'] = None
 
@@ -122,7 +124,9 @@ class Axis:
         return arr
             
     def index(self, value):
-        if isinstance(value, list):
+        if value is None:
+            inds = [0, self.length-1]
+        elif isinstance(value, list):
             inds = [int( (x - self.start) / self.step) for x in value]
         else:
             inds = int( (value - self.start) / self.step)
@@ -193,7 +197,7 @@ class Data:
 
         """
         defaults = {'log': True, 'dB': False, 'colorbar': True, 'xticks': 12, 'yticks': 6}
-        kwargs = proc_plot_kwargs(kwargs, defaults)
+        kwargs = proc_kwargs(kwargs, defaults)
 
         num_xticks = kwargs['xticks']
         num_yticks = kwargs['yticks']
@@ -216,73 +220,77 @@ class Data:
         plt.tight_layout()
 
     def _get_ft_slices(self, kwargs):
-        if kwargs['freq'] is not None:
-            frange = self.f_info.index(kwargs['freq'])
-        else:
-            frange = [0, self.f_info.length-1]
-        fslice = slice(frange[0], frange[1] + 1)
-        if kwargs['time'] is not None:
-            trange = self.t_info.index(kwargs['time'])
-        else:
-            trange = [0, self.t_info.length - 1]
-        tslice = slice(trange[0], trange[1] + 1)
-
-        return fslice, tslice
+        inds = self.f_info.index(kwargs['freq'])
+        self.fslice = slice(inds[0], inds[-1] + 1)
+        self.frange = range(self.fslice.start, self.fslice.stop)
+        inds = self.t_info.index(kwargs['time'])
+        self.tslice = slice(inds[0], inds[-1] + 1)
+        self.trange = range(self.tslice.start, self.tslice.stop)
 
     def spectra(self, **kwargs):
         """Make a 2-D plot of the spectra."""
-        defaults = {'log': False, 'dB': False}
-        kwargs = proc_plot_kwargs(kwargs, defaults)
-        fslice, tslice = self._get_ft_slices(kwargs)
-        trange = range(tslice.start, tslice.stop)
+        defaults = {'log': False, 'dB': False, 'freq': None, 'time': None}
+        kwargs = proc_kwargs(kwargs, defaults)
+        self._get_ft_slices(kwargs)
 
-        for i in trange:
-            data = _fmt_data(self.data[i][fslice], kwargs['log'], kwargs['_mult'])
-            plt.plot(self.freq[fslice], data)
+        for i in self.trange:
+            data = _fmt_data(self.data[i][self.fslice], kwargs['log'], kwargs['_mult'])
+            plt.plot(self.freq[self.fslice], data)
         plt.grid()
         plt.xlabel(self.f_info.label)
         plt.ylabel(kwargs['_ylabel'])
 
+    def make_power(self, **kwargs):
+        """
+        Need to appropriately normalize for bandwidth
+        """
+        defaults = {'norm': 'Total', 'freq': None, 'time': None}
+        kwargs = proc_kwargs(kwargs, defaults)
+        self._get_ft_slices(kwargs)
+        self.power = np.zeros(self.t_info.length, dtype=float)
+        for i in self.frange:
+            self.power += self.data[:, i]
+        if kwargs['norm'] == '/bin':
+            self.power /= len(self.frange)
+        elif kwargs['norm'] == '/full':
+            self.power /= (self.freq[self.frange[0]] - self.freq[self.frange[-1]])
+
+    def load_trajectory(self, filename='track.npz'):
+        print(f"Loading {filename} to self.traj")
+        self.traj = np.load(filename, allow_pickle=True)
+        print("Need to make the trajectory track values and the data times match.")
+
     def series(self, **kwargs):
         """Make a 2-D plot of the time series."""
-        defaults = {'log': False, 'dB': False, 'tot': False}
-        kwargs = proc_plot_kwargs(kwargs, defaults)
-        fslice, tslice = self._get_ft_slices(kwargs)
-        frange = range(fslice.start, fslice.stop)
-        trange = range(tslice.start, tslice.stop)
+        defaults = {'log': False, 'dB': False, 'total_power': False, 'freq': None, 'time': None}
+        kwargs = proc_kwargs(kwargs, defaults)
+        self._get_ft_slices(kwargs)
 
-        for i in frange:
-            data = _fmt_data(self.data[trange, i], kwargs['log'], kwargs['_mult'])
-            plt.plot(self.t[tslice], data)
+        for i in self.frange:
+            data = _fmt_data(self.data[self.trange, i], kwargs['log'], kwargs['_mult'])
+            plt.plot(self.t[self.tslice], data)               
         plt.grid()
         plt.xlabel(self.t_info.label)
-        plt.ylabel(kwargs['_ylabel'])                
+        plt.ylabel(kwargs['_ylabel'])
 
         results_prefix = '--Results--\n' if kwargs['beamfit'] else ''
         yaxlim = [plt.axis()[2], plt.axis()[3]]
         N = 10
         if self.filename_datetime is not None:
             print(f"{results_prefix}{'Expected:':{N}s}{self.filename_datetime.isoformat()}")
-            if self.filename_datetime>=self.t[tslice.start] and self.filename_datetime<=self.t[tslice.stop-1]:  
+            if self.filename_datetime>=self.t[self.tslice.start] and self.filename_datetime<=self.t[self.tslice.stop-1]:  
                 plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
-        if kwargs['beamfit'] or kwargs['tot']:
-            if kwargs['beamfit']:
-                norm4now = len(frange)
-            else:
-                norm4now = 30.0  # ad hoc for now
-                print("NEEDTOGETTHEPOWERNORM!!!!")
-            power = np.zeros(self.t_info.length, dtype=float)
-            for i in frange:
-                power += self.data[:, i] /  norm4now
-            data = _fmt_data(power, kwargs['log'], kwargs['_mult'])
-            plt.plot(self.t[tslice], data[tslice], lw=4, color='k')
+        if kwargs['beamfit'] or kwargs['total_power']:
+            self.make_power(**kwargs)
+            data = _fmt_data(self.power, kwargs['log'], kwargs['_mult'])
+            plt.plot(self.t[self.tslice], data[self.tslice], lw=4, color='k')
         if kwargs['beamfit']:
             import beamfit
-            coeff, data_fit = beamfit.gaussian(power[tslice], max(power[tslice]), len(power[tslice]) / 2.0, len(power[tslice])/4.0 )
-            fit_time = int(coeff[1]) + tslice.start
+            coeff, data_fit = beamfit.gaussian(self.power[self.tslice], max(self.power[self.tslice]), len(self.trange) / 2.0, len(self.trange)/4.0 )
+            fit_time = int(coeff[1]) + self.tslice.start
             fit_range = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
             data = _fmt_data(data_fit, kwargs['log'], kwargs['_mult'])
-            plt.plot(self.t[tslice], data, '--', lw=2, color='w')
+            plt.plot(self.t[self.tslice], data, '--', lw=2, color='w')
             plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=2, color='k')
             print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
             if self.filename_datetime is not None:
@@ -290,9 +298,7 @@ class Data:
                   print(f"{'Offset:':{N}s}{offset.total_seconds():.1f} sec")
             width = self.t[fit_range[1]] - self.t[fit_range[0]]
             print(f"{'Width:':{N}s}{width.total_seconds():.1f} sec")
-        plt.grid()
-        plt.xlabel(self.t_info.label)
-        plt.ylabel(kwargs['_ylabel'])
+
 
 
 if __name__ == '__main__':
@@ -308,7 +314,8 @@ if __name__ == '__main__':
     ap.add_argument('-t', '--time', help='Time [range] to use.', default=None)
     ap.add_argument('-l', '--log', help="Flag to take log10 of data", action='store_true')
     ap.add_argument('-d', '--dB', help="Flag to convert to dB", action='store_true')
-    ap.add_argument('--tot', help="Show total power (for series)", action='store_true')
+    ap.add_argument('-P', '--total_power', help="Show total power (for series)", action='store_true')
+    ap.add_argument('-n', '--norm', help="Norm to apply for total power ([Total], /bin, /full)", choices=['Total', '/bin', '/full'], default='Total')
     ap.add_argument('--tz', help="Timezone offset to UTC in hours [-8.0]", type=float, default=-8.0)
     args = ap.parse_args()
     obs = Data(args.fn, args.tz)
