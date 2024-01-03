@@ -9,55 +9,66 @@ from copy import copy
 from f2h5 import HDF5HeaderInfo
 
 
-def proc_kwargs(kwargs, defaults, time_fmt=['%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']):
-    """
-    Process all of the keywords with provided defaults.
+class StateVariable:
+    time_formats = ['%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+    def __init__(self, kwargs={}, defaults={}):
+        self.update(kwargs, defaults)
 
-    """
-    # Copy over defaults if not present
-    for key, val in defaults.items():
-        if key not in kwargs:
-            kwargs[key] = val
+    def __repr__(self):
+        from tabulate import tabulate
+        table = []
+        for a in dir(self):
+            if a.startswith('__') or a == 'update':
+                continue
+            else:
+                val = str(getattr(self, a))
+                if len(val) > 50:
+                    val = val[:50] + '...'
+                table.append([a, val])
+        return tabulate(table, headers=['Variable', 'Value'])
 
-    if 'tz' not in kwargs:
-        kwargs['tz'] = 0.0
-    if 'log' in kwargs and kwargs['log']:
-        kwargs['_ylabel'] = 'log'
-        kwargs['_mult'] = 1.0
-    else:
-        kwargs['log'] = False
-        kwargs['_ylabel'] = 'linear'
-        kwargs['_mult'] = 1.0
-    if  'dB' in kwargs and kwargs['dB']:
-        kwargs['_mult'] = 10.0
-        kwargs['log'] = True
-        kwargs['_ylabel'] = 'dB'
-    else:
-        kwargs['dB'] = False
-    if 'freq' in kwargs and kwargs['freq'] is not None:
-        if isinstance(kwargs['freq'], str):
-            kwargs['freq'] = [float(x) for x in kwargs['freq'].split(',')]
-    else:
-        kwargs['freq'] = None
-    if 'time' in kwargs and kwargs['time'] is not None:
-        if isinstance(kwargs['time'], str):
-            for this_time_fmt in time_fmt:
-                try:
-                    kwargs['time'] = [datetime.strptime(x, this_time_fmt) for x in kwargs['time'].split(",")]
-                    break
-                except ValueError:
-                    continue
-    else:
-        kwargs['time'] = None
+    def update(self, kwargs={}, defaults={}):
+        """
+        Process all of the keywords with provided defaults.
+        """
+        # Copy over defaults if not present
+        for key, val in defaults.items():
+            if key not in kwargs:
+                kwargs[key] = val
 
-    return kwargs
+        if 'tz' not in kwargs:
+            kwargs['tz'] = 0.0
+        if 'log' in kwargs and kwargs['log']:
+            kwargs['_ylabel'] = 'log'
+            kwargs['_mult'] = 1.0
+        else:
+            kwargs['log'] = False
+            kwargs['_ylabel'] = 'linear'
+            kwargs['_mult'] = 1.0
+        if  'dB' in kwargs and kwargs['dB']:
+            kwargs['_mult'] = 10.0
+            kwargs['log'] = True
+            kwargs['_ylabel'] = 'dB'
+        else:
+            kwargs['dB'] = False
+        if 'freq' in kwargs and kwargs['freq'] is not None:
+            if isinstance(kwargs['freq'], str):
+                kwargs['freq'] = [float(x) for x in kwargs['freq'].split(',')]
+        else:
+            kwargs['freq'] = None
+        if 'time' in kwargs and kwargs['time'] is not None:
+            if isinstance(kwargs['time'], str):
+                for this_time_fmt in self.time_formats:
+                    try:
+                        kwargs['time'] = [datetime.strptime(x, this_time_fmt) for x in kwargs['time'].split(",")]
+                        break
+                    except ValueError:
+                        continue
+        else:
+            kwargs['time'] = None
 
-
-def _fmt_data(data, plog, pmult=1.0):
-    if plog:
-        return pmult * np.log10(data)
-    else:
-        return data
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class Axis:
@@ -172,7 +183,7 @@ class Data:
         self.tle = None if self.tle is None else Time(self.tle, format='jd')
         if self.tle is not None:
             print(f"Updated TLEs: {self.tle.datetime}")
-        self.tz = 0.0
+        self.sv = StateVariable(defaults={'tz': 0.0})
 
     def _parse_fn(self):
         X = self.filename.split('_')
@@ -183,6 +194,12 @@ class Data:
         else:
             _datetime = None
         return X[0], _datetime
+
+    def _fmt_data(self, data):
+        if self.sv.log:
+            return self.sv._mult * np.log10(data)
+        else:
+            return data
 
     def show_metadata(self):
         """Print information about the data."""
@@ -206,64 +223,56 @@ class Data:
 
         """
         defaults = {'log': True, 'dB': False, 'colorbar': True, 'xticks': 12, 'yticks': 6}
-        kwargs = proc_kwargs(kwargs, defaults)
-        self.tz = kwargs['tz']
+        self.sv.update(kwargs, defaults)
 
-        num_xticks = kwargs['xticks']
-        num_yticks = kwargs['yticks']
-
-        if kwargs['log']:
-            plt.imshow(kwargs['_mult'] * np.log10(self.data))
-        else:
-            plt.imshow(self.data)
-        if kwargs['colorbar']:
+        plt.imshow(self._fmt_data(self.data))
+        if self.sv.colorbar:
             plt.colorbar()
 
-        plt.xticks(np.linspace(0, len(self.data[0]), num_xticks), [f"{x:.2f}" for x in np.linspace(self.fmin, self.fmax, num_xticks)])
-        jds = np.linspace(self.tstart.jd, self.tstop.jd, num_yticks)
+        plt.xticks(np.linspace(0, len(self.data[0]), self.sv.xticks), [f"{x:.2f}" for x in np.linspace(self.fmin, self.fmax, self.sv.xticks)])
+        jds = np.linspace(self.tstart.jd, self.tstop.jd, self.sv.yticks)
         apt = Time(jds, format='jd')
         yticks = [(x + timedelta(hours=self.timezone)).strftime("%H:%M:%S") for x in apt.datetime]
-        plt.yticks(np.linspace(0, len(self.data), num_yticks), yticks)
+        plt.yticks(np.linspace(0, len(self.data), self.sv.yticks), yticks)
         plt.xlabel(self.f_info.label)
         plt.ylabel(self.t_info.label)
         plt.title(f"{self.t_info.unit}:  {self.t_info.start.strftime('%Y-%m-%d')}")
         plt.tight_layout()
 
-    def _get_ft_slices(self, kwargs):
-        inds = self.f_info.index(kwargs['freq'])
+    def _get_ft_slices(self):
+        inds = self.f_info.index(self.sv.freq)
         self.fslice = slice(inds[0], inds[-1] + 1)
         self.frange = range(self.fslice.start, self.fslice.stop)
-        inds = self.t_info.index(kwargs['time'])
+        inds = self.t_info.index(self.sv.time)
         self.tslice = slice(inds[0], inds[-1] + 1)
         self.trange = range(self.tslice.start, self.tslice.stop)
 
     def spectra(self, **kwargs):
         """Make a 2-D plot of the spectra."""
         defaults = {'log': False, 'dB': False, 'freq': None, 'time': None}
-        kwargs = proc_kwargs(kwargs, defaults)
-        self._get_ft_slices(kwargs)
+        self.sv.update(kwargs, defaults)
+        self._get_ft_slices()
 
         for i in self.trange:
-            data = _fmt_data(self.data[i][self.fslice], kwargs['log'], kwargs['_mult'])
-            plt.plot(self.freq[self.fslice], data)
+            plt.plot(self.freq[self.fslice], self._fmt_data(self.data[i][self.fslice]))
         plt.grid()
         plt.xlabel(self.f_info.label)
-        plt.ylabel(kwargs['_ylabel'])
+        plt.ylabel(self.sv._ylabel)
 
     def make_power(self, **kwargs):
         """
         Get integrated power for each timestep
 
         """
-        defaults = {'norm': 'Total', 'freq': None, 'time': None}
-        kwargs = proc_kwargs(kwargs, defaults)
-        self._get_ft_slices(kwargs)
+        defaults = {'norm': '/bin', 'freq': None, 'time': None}
+        self.sv.update(kwargs, defaults)
+        self._get_ft_slices()
         self.power = np.zeros(self.t_info.length, dtype=float)
         for i in self.frange:
             self.power += self.data[:, i]
-        if kwargs['norm'] == '/bin':
+        if self.sv.norm == '/bin':
             self.power /= len(self.frange)
-        elif kwargs['norm'] == '/full':
+        elif self.sv.norm == '/full':
             self.power /= (self.freq[self.frange[0]] - self.freq[self.frange[-1]])
 
     def load_trajectory(self, filename='track.npz'):
@@ -287,35 +296,33 @@ class Data:
     def series(self, **kwargs):
         """Make a 2-D plot of the time series."""
         defaults = {'log': False, 'dB': False, 'total_power': False, 'freq': None, 'time': None}
-        kwargs = proc_kwargs(kwargs, defaults)
-        self._get_ft_slices(kwargs)
+        self.sv.update(kwargs, defaults)
+        self._get_ft_slices()
 
         for i in self.frange:
-            data = _fmt_data(self.data[self.trange, i], kwargs['log'], kwargs['_mult'])
-            plt.plot(self.t[self.tslice], data)               
+            plt.plot(self.t[self.tslice], self._fmt_data(self.data[self.trange, i]))               
         plt.grid()
         plt.xlabel(self.t_info.label)
-        plt.ylabel(kwargs['_ylabel'])
+        plt.ylabel(self.sv._ylabel)
 
         # Do extra fitting stuff below
-        results_prefix = '--Results--\n' if kwargs['beamfit'] else ''
-        yaxlim = [plt.axis()[2], plt.axis()[3]]
         N = 10
+        results_prefix = '--Results--\n' if self.sv.beamfit else ''
+        if self.sv.beamfit or self.sv.total_power:
+            self.make_power(**kwargs)
+            plt.plot(self.t[self.tslice], self._fmt_data(self.power[self.tslice]), lw=4, color='k')
+        yaxlim = [plt.axis()[2], plt.axis()[3]]
         if self.filename_datetime is not None:
             print(f"{results_prefix}{'Expected:':{N}s}{self.filename_datetime.isoformat()}")
             if self.filename_datetime>=self.t[self.tslice.start] and self.filename_datetime<=self.t[self.tslice.stop-1]:  
                 plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
-        if kwargs['beamfit'] or kwargs['total_power']:
-            self.make_power(**kwargs)
-            data = _fmt_data(self.power, kwargs['log'], kwargs['_mult'])
-            plt.plot(self.t[self.tslice], data[self.tslice], lw=4, color='k')
-        if kwargs['beamfit']:
+
+        if self.sv.beamfit:
             import beamfit
             coeff, data_fit = beamfit.gaussian(self.power[self.tslice], max(self.power[self.tslice]), len(self.trange) / 2.0, len(self.trange)/4.0 )
             fit_time = int(coeff[1]) + self.tslice.start
             fit_range = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
-            data = _fmt_data(data_fit, kwargs['log'], kwargs['_mult'])
-            plt.plot(self.t[self.tslice], data, '--', lw=2, color='w')
+            plt.plot(self.t[self.tslice], self._fmt_data(data_fit), '--', lw=2, color='w')
             plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=2, color='k')
             print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
             if self.filename_datetime is not None:
@@ -340,7 +347,7 @@ if __name__ == '__main__':
     ap.add_argument('-l', '--log', help="Flag to take log10 of data", action='store_true')
     ap.add_argument('-d', '--dB', help="Flag to convert to dB", action='store_true')
     ap.add_argument('-P', '--total_power', help="Show total power (for series)", action='store_true')
-    ap.add_argument('-n', '--norm', help="Norm to apply for total power ([Total], /bin, /full)", choices=['Total', '/bin', '/full'], default='Total')
+    ap.add_argument('-n', '--norm', help="Norm to apply for total power (Total, [/bin], /full)", choices=['Total', '/bin', '/full'], default='/bin')
     ap.add_argument('--tz', help="Timezone offset to UTC in hours [-8.0]", type=float, default=-8.0)
     args = ap.parse_args()
     obs = Data(args.fn, args.tz)
