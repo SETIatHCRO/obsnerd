@@ -5,7 +5,7 @@ import metadata
 
 
 class CommandHandler:
-    def __init__(self, payload=None, coord_type=None, group_ants=['1a', '1f', '5c'], use_ants=['1a']):
+    def __init__(self, payload=None, coord_type=None, group_ants=['1a'], use_ants=['1a']):
         self.payload = payload
         self.coord_type = coord_type
         self.group_ants = group_ants
