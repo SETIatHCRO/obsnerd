@@ -124,7 +124,7 @@ if __name__ == '__main__':
     ap.add_argument('-s', '--start_time', help="Time to start checking ['now+5' min]", default='now+5')
     ap.add_argument('-b', '--b2use', help='Galactic latitude to use [0.0 deg]', type=float, default=0.0)
     ap.add_argument('-e', '--el_starting', help='Elevation to start at [30.0 deg]', type=float, default=30.0)
-    ap.add_argument('-t', '--time_to_track', help='Length of track [20.0 min]', type=float, default=10.0)
+    ap.add_argument('-t', '--time_to_track', help='Length of track [10.0 min]', type=float, default=10.0)
     ap.add_argument('-l', '--lstep', help="Galactic longitude step in trajectory [0.1 deg/sec]", type=float, default=0.1)
     ap.add_argument('--tstep', help="Time step in trajectory [1 sec]", type=float, default=1.0)
     ap.add_argument('--tz', help="Hours from UTC [0.0 hours]", type=float, default=0.0)

@@ -9,15 +9,18 @@ from copy import copy
 from f2h5 import HDF5HeaderInfo
 
 
-def proc_kwargs(kwargs, defaults, time_fmt='%Y-%m-%dT%H:%M:%S'):
+def proc_kwargs(kwargs, defaults, time_fmt=['%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']):
     """
     Process all of the keywords with provided defaults.
 
     """
+    # Copy over defaults if not present
     for key, val in defaults.items():
         if key not in kwargs:
             kwargs[key] = val
-    
+
+    if 'tz' not in kwargs:
+        kwargs['tz'] = 0.0
     if 'log' in kwargs and kwargs['log']:
         kwargs['_ylabel'] = 'log'
         kwargs['_mult'] = 1.0
@@ -38,7 +41,12 @@ def proc_kwargs(kwargs, defaults, time_fmt='%Y-%m-%dT%H:%M:%S'):
         kwargs['freq'] = None
     if 'time' in kwargs and kwargs['time'] is not None:
         if isinstance(kwargs['time'], str):
-            kwargs['time'] = [datetime.strptime(x, time_fmt) for x in kwargs['time'].split(",")]
+            for this_time_fmt in time_fmt:
+                try:
+                    kwargs['time'] = [datetime.strptime(x, this_time_fmt) for x in kwargs['time'].split(",")]
+                    break
+                except ValueError:
+                    continue
     else:
         kwargs['time'] = None
 
@@ -164,6 +172,7 @@ class Data:
         self.tle = None if self.tle is None else Time(self.tle, format='jd')
         if self.tle is not None:
             print(f"Updated TLEs: {self.tle.datetime}")
+        self.tz = 0.0
 
     def _parse_fn(self):
         X = self.filename.split('_')
@@ -198,6 +207,7 @@ class Data:
         """
         defaults = {'log': True, 'dB': False, 'colorbar': True, 'xticks': 12, 'yticks': 6}
         kwargs = proc_kwargs(kwargs, defaults)
+        self.tz = kwargs['tz']
 
         num_xticks = kwargs['xticks']
         num_yticks = kwargs['yticks']
@@ -242,7 +252,8 @@ class Data:
 
     def make_power(self, **kwargs):
         """
-        Need to appropriately normalize for bandwidth
+        Get integrated power for each timestep
+
         """
         defaults = {'norm': 'Total', 'freq': None, 'time': None}
         kwargs = proc_kwargs(kwargs, defaults)
@@ -258,7 +269,17 @@ class Data:
     def load_trajectory(self, filename='track.npz'):
         print(f"Loading {filename} to self.traj")
         self.traj = np.load(filename, allow_pickle=True)
-        print("Need to make the trajectory track values and the data times match.")
+        t_initial = self.traj['obstime'][0]
+        l_initial = self.traj['l'][0]
+        dldt = (self.traj['l'][-1] - l_initial) / (self.traj['obstime'][-1] - t_initial).total_seconds()
+        self.l = []
+        for this_time in self.t:
+            self.l.append(l_initial + dldt * (this_time - t_initial).total_seconds())
+        plt.figure(f"Galaxy @ b = {self.traj['b'][0]}")
+        plt.plot(self.l, 10.0*np.log10(self.power))
+        plt.grid()
+        plt.xlabel(' l [deg]')
+        plt.ylabel('dB')
 
     def series(self, **kwargs):
         """Make a 2-D plot of the time series."""
@@ -273,7 +294,7 @@ class Data:
         plt.xlabel(self.t_info.label)
         plt.ylabel(kwargs['_ylabel'])
 
-    
+        # Do extra fitting stuff below
         results_prefix = '--Results--\n' if kwargs['beamfit'] else ''
         yaxlim = [plt.axis()[2], plt.axis()[3]]
         N = 10
