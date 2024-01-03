@@ -9,8 +9,8 @@ import datetime, time
 
 EPHEM_FILENAME = 'track.ephem'
 TRAJECTORY_FILENAME = 'track'
+TRACK_LOG_FILENAME = 'track.log'
 hcro = EarthLocation(lat=40.8178049*u.deg, lon=-121.4695413*u.deg, height=986*u.m)
-
 
 class Track:
     def __init__(self, timestamp=[], obstime=[], az=[], el=[], ra=[], dec=[], l=[], b=[]):
@@ -23,9 +23,22 @@ class Track:
         self.l = l
         self.b = b
 
+    def __repr__(self):
+        for i, b in zip([0, -1], ['Start at:', 'End at:']):
+            s = f"{b} {self.obstime[i]} UTC"
+            s += f"\tl={self.l[i]}, b={self.b[i]}"
+            s += f"\tRA={self.ra[i]}, Dec={self.dec[i]}"
+            s += f"\tAz={self.az[i]}, El={self.el[i]}"
+
     def add(self, **kwargs):
         for key, value in kwargs.items():
             getattr(self, key).append(value)
+
+    def log_track(self, filename=TRACK_LOG_FILENAME):
+        print(self)
+        if filename is not None:
+            with open(filename, 'w') as fp:
+                print(self, file=fp)
 
     def ephem_file(self, filename=EPHEM_FILENAME):
         print(f"Writing ephemerides:  {filename}")
@@ -80,11 +93,6 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
     plt.plot(radec.ra.value[above_horizon], radec.dec.value[above_horizon], '.', label='radec-init')
     plt.plot(azel.az.value[above_horizon], azel.alt.value[above_horizon], '.', label='azel-init')
 
-    print(f"Start at: {start_time} UTC")
-    print(f"\tl = {starting_l}, b={gal.b.value[start_horizon]}") 
-    print(f"\tRA={radec.ra.value[start_horizon]}, Dec={radec.dec.value[start_horizon]}")
-    print(f"\tAz={azel.az.value[start_horizon]}, El={azel.alt.value[start_horizon]}")
-
     track_times = start_time + np.arange(0.0, time_to_track * 60.0, tstep) * u.second
     lstep = lstep*u.deg  #deg/sec
 
@@ -102,10 +110,7 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
         this_track.add(timestamp=this_ts, obstime=track_times[i].datetime, az=azel.az.value, el=azel.alt.value,
                         ra=radec.ra.value, dec=radec.dec.value, l=this_l.value, b=b2use.value)
 
-    print(f"End at: {this_track.obstime[-1]} UTC")
-    print(f"\tl={this_track.l[-1]}, b={this_track.b[-1]}")
-    print(f"\tRA={this_track.ra[-1]}, Dec={this_track.dec[-1]}")
-    print(f"\tAz={this_track.az[-1]}, El={this_track.el[-1]}")
+    this_track.log_track(TRACK_LOG_FILENAME)
     this_track.ephem_file(EPHEM_FILENAME)
     this_track.full_file(TRAJECTORY_FILENAME)
 
