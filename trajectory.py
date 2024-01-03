@@ -99,11 +99,7 @@ def main(start_time='2023-12-31 23:59:59', b2use=0.0, el_starting=30.0, time_to_
     track_times = start_time + np.arange(0.0, time_to_track * 60.0, tstep) * u.second
     lstep = lstep*u.deg  #deg/sec
 
-    import time
-    ts = time.mktime(start_time.datetime.timetuple()) + 37.0
-    print(ts)
     ts = start_time.unix_tai
-    print(ts)
     this_track = Track()
     dtns = int(tstep * 1E9)
     for i in range(len(track_times)):
