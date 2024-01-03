@@ -29,6 +29,7 @@ class Track:
             s += f"\tl={self.l[i]}, b={self.b[i]}"
             s += f"\tRA={self.ra[i]}, Dec={self.dec[i]}"
             s += f"\tAz={self.az[i]}, El={self.el[i]}"
+        return s
 
     def add(self, **kwargs):
         for key, value in kwargs.items():
