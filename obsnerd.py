@@ -56,7 +56,8 @@ class CommandHandler:
             try:
                 with open('track.log', 'r') as fp:
                     for line in fp:
-                        metadata.onlog(line.strip())
+                        if len(line) > 2:
+                            metadata.onlog(line.strip())
             except FileNotFoundError:
                 pass
     
