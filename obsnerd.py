@@ -53,6 +53,13 @@ class CommandHandler:
             ephem = ata_control.upload_ephemeris(self.location)
             ata_control.track_ephemeris(ephem, self.use_ants, wait=True)
             metadata.onlog(f"trajectory {self.location}")
+            try:
+                with open('track.log', 'r') as fp:
+                    for line in fp:
+                        metadata.onlog(line.strip())
+            except FileNotFoundError:
+                pass
+    
 
     def note(self, notation=None):
         self.notation = self.payload if notation is None else notation
