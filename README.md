@@ -40,7 +40,7 @@ The goal is to find the satellite frequency and crossing time, for which the ser
 
 To look around the whole datafile, the waterfall is good where you can zoom around the datafile to find the time and frequency.  
 view_file.py is pretty rudimentary, so if you zoom in you'll likely need to add y and/or x ticks
-./view_file.py nav72_231224_180136.h5 -y 20 -l
+./view_file.py nav72_231224_180136.h5 -y 20 -d
 
 Add the results to
 https://docs.google.com/spreadsheets/d/1z4b35RkIdoUa2pU_zBnD5AoqiXg8NwgIvBci6oa-Tmo/edit#gid=0
@@ -49,6 +49,8 @@ If you want to keep it, move the hdf5 file somewhere (TBD).
 
 When you are done, release the antennas:
 ./obsnerd.py end
+
+Offline, make a .txt file for each .5h file and add the information from the onlog.log and the googlesheet, and then describe the RFI in the field.
 
 ================COMMANDS ONLY==================
 ./updatetle.py
@@ -67,3 +69,4 @@ When you are done, release the antennas:
 ./view_file nav72_231224_180136.h5 -p series -d
 ...etc
 ...update googlesheet
+...make .txt file (nav72_231224_180136.txt)
