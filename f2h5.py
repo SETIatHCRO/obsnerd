@@ -4,6 +4,7 @@ import h5py
 import yaml
 from astropy.time import Time
 import metadata
+from datetime import datetime, timedelta
 
 
 """
@@ -11,6 +12,30 @@ Convert the gnuradio-companion spectrum file to hdf5
 """
 
 RAW_FILENAME = 'nrdz'
+
+TIME_FORMATS = ['%Y-%m-%dT%H:%M:%S', '%y-%m-%dT%H:%M:%S',
+                '%Y-%m-%d %H:%M:%S', '%y-%m-%d %H:%M:%S',
+                '%Y/%m/%dT%H:%M:%S', '%y/%m/%dT%H:%M:%S',
+                '%Y/%m/%d %H:%M:%S', '%y/%m/%d %H:%M:%S',
+                '%d/%m/%YT%H:%M:%S', '%d/%m/%yT%H:%M:%S',
+                '%d/%m/%Y %H:%M:%S', '%d/%m/%y %H:%M:%S',
+                '%Y%m%dT%H%M%S', '%y%m%dT%H%M%S',
+                '%Y%m%d %H%M%S', '%y%m%d %H%M%S',
+                '%Y%m%d_%H%M%S', '%y%m%d_%H%M%S'
+                ]
+def make_filename(**kwargs):
+    if kwargs['date'] is None:
+        return kwargs['output_file']
+    if 'tz' not in kwargs:
+        kwargs['tz'] = 0.0
+
+    for this_tf in TIME_FORMATS:
+        try:
+            this_dt = datetime.strptime(kwargs['date'], this_tf) + timedelta(hours=kwargs['tz'])
+            break
+        except ValueError:
+            continue
+    return f"{kwargs['output_file']}_{this_dt.strftime('%y%m%d_%H%M%S')}.h5"
 
 class HDF5HeaderInfo:
     def __init__(self):
@@ -54,5 +79,11 @@ if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('output_file', help="Name of output file")
+    ap.add_argument('-d', '--date', help="Optional date if you wish to have it generate the filename, in which case the 'output_file' is the prefix",
+                    default=None)
+    ap.add_argument('--tz', help="Timezone to add.", type=float, default=0.0)
     args = ap.parse_args()
-    convert(RAW_FILENAME, args.output_file)
+
+    fn = make_filename(**vars(args))
+
+    convert(RAW_FILENAME, fn)
