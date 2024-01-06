@@ -1,4 +1,5 @@
 from datetime import datetime
+import yaml
 """
 This writes out datetime as UTC
 """
@@ -37,8 +38,19 @@ def get_latest_value(param):
     ts = sorted(metadata)
     return metadata[ts[-1]]
 
+def get_meta():
+    with open('metadata.yaml', 'r') as fp:
+        return yaml.safe_load(fp)
 
 def start(samp_rate, decimation, nfft):
+    data = {
+        'tstart': datetime.now().isoformat(),
+        'fcen': get_latest_value('fcen').split(':')[-1].strip(),
+        'bw': samp_rate / 1E6,
+        'decimation': decimation,
+        'nfft': nfft,
+        'tle': get_latest_timestamp('TLEs')
+    }
     with open(META_FILENAME, 'w') as fp:
         print(f"tstart: {datetime.now()}", file=fp)
         print(get_latest_value('fcen'), file=fp)

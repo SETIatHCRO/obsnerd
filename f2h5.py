@@ -42,17 +42,29 @@ def make_filename(**kwargs):
 class HDF5HeaderInfo:
     def __init__(self):
         self.data = 'data'
-        self.float64s = ['tstart', 'tstop', 'fcen', 'bw', 'decimation', 'nfft', 'tle']
-        self.from_datetime = ['tstart', 'tstop', 'tle']
+        self.float64s = ['tstart', 'tstop', 'fcen', 'bw', 'decimation', 'nfft', 'tle', 'expected']
+        self.from_datetime = ['tstart', 'tstop', 'tle', 'expected']
+        self.from_str = ['source']
 
+
+def test_str():
+    with h5py.File('foo.h5', 'w') as data:
+        data['foo'] = 'abc' #['abc', 'def', 'ghi']
+        # data['foo'].attrs['bar'] = ['abc', 'def', 'ghi']    
+
+    with h5py.File('foo.h5', 'r') as data:
+        a = data['foo'].asstr()[...]
+        # b = data['foo'].attrs['bar'][...]    
+
+    return a
 
 def convert(input_file, output_file=None, split=4096):
     h5 = HDF5HeaderInfo()
-    data = np.fromfile(input_file, dtype=float)
-    sdata = []
-    for i in range(len(data) // split):
-        sdata.append(list(data[i*split: (i+1)*split]))
-    data = np.array(sdata)
+    # data = np.fromfile(input_file, dtype=float)
+    # sdata = []
+    # for i in range(len(data) // split):
+    #     sdata.append(list(data[i*split: (i+1)*split]))
+    # data = np.array(sdata)
 
     if output_file is None:
         fsplit = input_file.split('.')
@@ -63,18 +75,19 @@ def convert(input_file, output_file=None, split=4096):
     else:
         if not output_file.endswith('h5'):
             output_file = f"{output_file}.h5"
-    with open('metadata.yaml', 'r') as fp:
-        meta = yaml.safe_load(fp)
+    meta = metadata.get_meta()
 
     print(f"Writing file {output_file}")
     with h5py.File(output_file, 'w') as fp:
-        dset = fp.create_dataset(h5.data, data=data)
+        # dset = fp.create_dataset(h5.data, data=data)
         for key, val in meta.items():
             if key in h5.from_datetime:
                 val = Time(val, format='datetime').jd
+            # if key in h5.from_str:
+            fp[key] = val
             print(key, val)
             # mset = fp.create_dataset(key, shape=(), dtype=float, data=val)
-            mset = fp.create_dataset(key, data=val)
+            # mset = fp.create_dataset(key, data=val)
     metadata.onlog(f"Writing {output_file}")
 
 if __name__ == '__main__':
