@@ -27,9 +27,11 @@ When you are done with the observation, use the 'X' in the corner to stop the US
 
 If you have recorded data, you should convert the raw nrdz datafile to HDF5 setting a useful output filename: <satname>_YYMMDD_HHMMSS.h5
 ./f2h5.py nav72_231224_180136.h5
+Note that f2h5 will also make the filename if you give the prefix and date (in many forgiving formats) e.g.
+./f2h5.py nav72 -d 2023-12-24T18:01:36
 
 To look at the data, you can use:
-./view_file.py nav72_231224_180136.h5 -p [wf/series/spectra]
+./onview.py nav72_231224_180136.h5 -p [wf/series/spectra]
 the -p options are
     wf - waterfall
     series - all time series, which also plots a line at the time specified in the filename
@@ -39,8 +41,8 @@ if you want log use -l
 The goal is to find the satellite frequency and crossing time, for which the series option is probably best.
 
 To look around the whole datafile, the waterfall is good where you can zoom around the datafile to find the time and frequency.  
-view_file.py is pretty rudimentary, so if you zoom in you'll likely need to add y and/or x ticks
-./view_file.py nav72_231224_180136.h5 -y 20 -d
+onview.py is pretty rudimentary, so if you zoom in you'll likely need to add y and/or x ticks
+./onview.py nav72_231224_180136.h5 -y 20 -d
 
 Add the results to
 https://docs.google.com/spreadsheets/d/1z4b35RkIdoUa2pU_zBnD5AoqiXg8NwgIvBci6oa-Tmo/edit#gid=0
@@ -61,12 +63,12 @@ Offline, make a .txt file for each .5h file and add the information from the onl
 ./obsnerd.py move 238.275,51.614
 ./nrdz_use.py
 <END OBS X>
-./f2h5.py nav72_231224_180136.h5
+./f2h5.py nav72 -d 231224_180136
 ... end loop
 ./obsnerd.py end
 
 ...analyze
-./view_file nav72_231224_180136.h5 -p series -d
+./onview nav72_231224_180136.h5 -p series -d
 ...etc
 ...update googlesheet
 ...make .txt file (nav72_231224_180136.txt)
