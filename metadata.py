@@ -84,7 +84,8 @@ def add_value(initialize=False, **kwargs):
     if initialize:
         meta = kwargs
     else:
-        meta = get_meta().update(kwargs)
+        meta = get_meta()
+        meta.update(kwargs)
     with open(META_FILENAME, 'w') as fp:
         yaml.dump(meta, fp)
 
