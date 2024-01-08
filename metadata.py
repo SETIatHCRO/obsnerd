@@ -44,6 +44,8 @@ def get_latest_value(param, parse=False):
                 data = [x.strip() for x in line.split('--')]
                 metadata[data[0]] = data[indentry]
     ts = sorted(metadata)
+    if not len(ts):
+        return None
     val = metadata[ts[-1]]
     if parse:
         val = val.split(parse)[-1].strip()
