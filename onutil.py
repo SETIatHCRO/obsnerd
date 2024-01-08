@@ -19,10 +19,10 @@ def make_datetime(**kwargs):
             break
         else:
             continue
-    print("ONUTIL22")
-    print(this_datetime)
     if not isinstance(this_datetime, (str, datetime)):
         return None
+    print("ONUTIL22")
+    print(this_datetime, type(this_datetime))
     timezone = 0.0
     for p in ['timezone', 'tz']:
         try:
