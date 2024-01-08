@@ -1,5 +1,6 @@
 from datetime import datetime
 import yaml
+import onutil
 
 
 ONLOG_FILENAME = 'onlog.log'
@@ -55,7 +56,11 @@ def get_latest_value(param, parse=False):
 # Metadata functions
 def get_meta():
     with open(META_FILENAME, 'r') as fp:
-        return yaml.safe_load(fp)
+        meta = yaml.safe_load(fp)
+    for key, val in meta.items():
+        tval = onutil.make_datetime(date=val)
+        if isinstance(tval, datetime):
+            meta.update({key: tval})
 
 
 def start(samp_rate, decimation, nfft):
