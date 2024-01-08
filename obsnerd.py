@@ -45,7 +45,7 @@ class CommandHandler:
         if ',' in self.location:
             x, y = [float(_v) for _v in self.location.split(',')]
 
-        metadata.onlog(f'move to: {coord_type}')
+        metadata.onlog(f'move to: {self.coord_type}')
         if self.coord_type == 'azel':
             ata_control.set_az_el(self.use_ants, x, y)
             metadata.onlog(f"azel: {x},{y}")
@@ -83,7 +83,6 @@ class CommandHandler:
             print(f"Using current as date: {self.datestamp}")
         else:
             self.datestamp = onutil.make_datetime(date=self.datestamp)
-            print(self.datestamp, type(self.datestamp))
         metadata.onlog([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
 
 
