@@ -67,7 +67,7 @@ def start(samp_rate, decimation, nfft):
         'nfft': nfft,
         'tle': get_latest_value('TLEs', parse='timestamp'),
         'source': get_latest_value('source', parse=':'),
-        'expected': get_latest_value('expected', parse=':'),
+        'expected': get_latest_value('expected', parse=' '),
         'move': move,
         'move_data': move_data
     }
