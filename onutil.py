@@ -14,10 +14,10 @@ TIME_FORMATS = ['%Y-%m-%dT%H:%M:%S', '%y-%m-%dT%H:%M:%S',
 def make_datetime(**kwargs):
     this_datetime = None
     for p in ['date', 'time', 'datetime', 'datestamp', 'timestamp']:
-        try:
+        if p in kwargs:
             this_datetime = kwargs[p]
             break
-        except KeyError:
+        else:
             continue
     if not isinstance(this_datetime, str):
         return None

@@ -14,15 +14,24 @@ RAW_FILENAME = 'nrdz'
 
 
 def make_filename(**kwargs):
+    print("1")
+    print(kwargs)
     if kwargs['tag'] == 'meta':
         meta = metadata.get_meta()
         kwargs['tag'] = meta['source']
         kwargs['date'] = meta['expected']
+    print("2")
+    print(kwargs)
     if kwargs['date'] is None:
         return kwargs['tag']
+    print("3")
+    print(kwargs)
     if 'timezone' not in kwargs:
         kwargs['timezone'] = 0.0
+    print("4")
+    print(kwargs)
     this_dt = onutil.make_datetime(**kwargs)
+    print(this_dt)
 
     return f"{kwargs['tag']}_{this_dt.strftime('%y%m%d_%H%M%S')}.h5"
 
