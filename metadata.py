@@ -69,7 +69,7 @@ def start(samp_rate, decimation, nfft):
     move_data = get_latest_value(move, parse=':')
     data = {
         'tstart': datetime.now().isoformat(),
-        'fcen': get_latest_value('fcen', parse=':'),
+        'fcen': float(get_latest_value('fcen', parse=':')),
         'bw': samp_rate / 1E6,
         'decimation': decimation,
         'nfft': nfft,
@@ -95,7 +95,7 @@ def add_value(initialize=False, **kwargs):
         meta = get_meta()
         meta.update(kwargs)
     with open(META_FILENAME, 'w') as fp:
-        yaml.dump(meta, fp)
+        yaml.safe_dump(meta, fp)
 
 
 def add_datetimestamp(kw):

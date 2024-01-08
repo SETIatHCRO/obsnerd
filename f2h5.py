@@ -60,11 +60,10 @@ def convert(input_file, output_file=None, split=4096):
         for key, val in meta.items():
             if key in h5.from_datetime:
                 val = Time(val, format='datetime').jd
-            # if key in h5.from_str:
-            fp[key] = val
-            print(key, val)
             # mset = fp.create_dataset(key, shape=(), dtype=float, data=val)
             # mset = fp.create_dataset(key, data=val)
+            fp[key] = val
+            print(f"\t{key}:  {val}")
     metadata.onlog(f"Writing {output_file}")
 
 if __name__ == '__main__':
