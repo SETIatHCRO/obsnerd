@@ -93,6 +93,4 @@ def add_value(initialize=False, **kwargs):
 
 
 def add_datetimestamp(kw):
-    meta = get_meta().update({kw: datetime.now().isoformat()})
-    with open(META_FILENAME, 'w') as fp:
-        yaml.dump(meta, fp)
+    add_value(**{kw: datetime.now().isoformat()})
