@@ -15,8 +15,8 @@ Use S.O.P.P. to pick a satellite and a frequency:
 Note, there are two gnuradio companion scripts:  nrdz_use.py and nrdz_nofiles.py
 If you don't want to record the data, use the nrdz_nofiles.py option and skip the file conversion/viewing steps below. 
 
-After you've chosen the target satellite and frequency set the frequency and move the antenna (and add a note):
-./obsnerd.py note 'NAVSTAR 72:  expected 2023-12-24T18:01:35.7'
+After you've chosen the target satellite and frequency set the frequency, move the antenna and add the source information
+./obsnerd.py source nav72  2023-12-24T18:01:36
 ./obsnerd.py freq 1575
 ./obsnerd.py move 238.275,51.614
 
@@ -58,7 +58,7 @@ Offline, make a .txt file for each .5h file and add the information from the onl
 ./updatetle.py
 ./obsnerd.py start DDB
 ... loop for multiple satellites
-./obsnerd.py note 'NAVSTAR 72:  expected 2023-12-24T18:01:35.7'
+./obsnerd.py source nav72 2023-12-24T18:01:36
 ./obsnerd.py freq 1575
 ./obsnerd.py move 238.275,51.614
 ./nrdz_use.py
