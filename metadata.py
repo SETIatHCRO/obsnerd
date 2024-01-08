@@ -61,6 +61,7 @@ def get_meta():
         tval = onutil.make_datetime(date=val)
         if isinstance(tval, datetime):
             meta.update({key: tval})
+    return meta
 
 
 def start(samp_rate, decimation, nfft):
