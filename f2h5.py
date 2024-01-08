@@ -18,10 +18,12 @@ def make_filename(**kwargs):
     print(kwargs)
     if kwargs['tag'] == 'meta':
         meta = metadata.get_meta()
+        print("1.5")
+        print(meta)
         kwargs['tag'] = meta['source']
         kwargs['date'] = meta['expected']
-    print("2")
-    print(kwargs)
+        print("2")
+        print(kwargs)
     if kwargs['date'] is None:
         return kwargs['tag']
     print("3")
