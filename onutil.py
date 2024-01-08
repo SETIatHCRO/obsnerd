@@ -39,5 +39,9 @@ def make_datetime(**kwargs):
             this_dt = datetime.strptime(this_datetime, this_tf) + timedelta(hours=timezone)
             break
         except ValueError:
-            continue
+            try:
+                this_dt = datetime.strptime(this_datetime, this_tf+'.%f') + timedelta(hours=timezone)
+                break
+            except ValueError:
+                continue
     return this_dt
