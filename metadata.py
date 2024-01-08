@@ -59,9 +59,7 @@ def get_meta():
         meta = yaml.safe_load(fp)
     for key, val in meta.items():
         tval = onutil.make_datetime(date=val)
-        print(f"METADATA62:  {key}: {val}")
         if isinstance(tval, datetime):
-            print("DTDTDT", tval)
             meta.update({key: tval})
     return meta
 
