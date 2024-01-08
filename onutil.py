@@ -19,7 +19,7 @@ def make_datetime(**kwargs):
             break
         except KeyError:
             continue
-    if this_datetime is None:
+    if not isinstance(this_datetime, str):
         return None
     timezone = 0.0
     for p in ['timezone', 'tz']:
