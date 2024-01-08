@@ -165,6 +165,10 @@ class Data:
                     setattr(self, param, np.float64(fp[param]))
                 else:
                     setattr(self, param, None)
+            for param in self.h5.strings:
+                if param in fp:
+                    setattr(self, param, fp[param].asstr()[...])
+        print(self.source)
         # Set time axis
         self.tstart = Time(self.tstart, format='jd')
         self.tstop = Time(self.tstop, format='jd')
