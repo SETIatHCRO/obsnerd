@@ -22,7 +22,7 @@ def make_filename(**kwargs):
         return kwargs['tag']
     if 'timezone' not in kwargs:
         kwargs['timezone'] = 0.0
-    this_dt = onutil.make_datetime(**kwargs)
+    this_dt = onutil.make_datetime(date=kwargs['date'], timezone=kwargs['timezone'])
 
     return f"{kwargs['tag']}_{this_dt.strftime('%y%m%d_%H%M%S')}.h5"
 
@@ -56,7 +56,7 @@ def convert(input_file, output_file=None, split=4096):
 
     print(f"Writing file {output_file}")
     with h5py.File(output_file, 'w') as fp:
-        dset = fp.create_dataset(h5.data, data=data)
+        _ = fp.create_dataset(h5.data, data=data)
         for key, val in meta.items():
             if key in h5.from_datetime:
                 val = Time(val, format='datetime').jd

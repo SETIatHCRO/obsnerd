@@ -191,7 +191,7 @@ if __name__ == '__main__':
     ap.add_argument('-e', '--el_limit', help="Lower horizon elevation [20.0]", type=float, default=20.0)
     ap.add_argument('-a', '--az_limit', help="Azimuth range [0,360]", default='0,360')
     ap.add_argument('--offset', help="Number of minutes offset to get positions [10.0]", type=float, default=10.0)
-    ap.add_argument('--tz', help='Time zone (hours offset from UTC) [-8]', type=float, default=-8.0)
+    ap.add_argument('--tz', help='Time zone (hours offset from UTC) [-8]', type=float, default=0.0)
     ap.add_argument('--tle_file', help='Name of tle file', default='tle/active.tle')
     ap.add_argument('--ftype', help='search horizon or beam', choices=['horizon', 'beam'], default='horizon')
     args = ap.parse_args()
