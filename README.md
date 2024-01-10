@@ -1,14 +1,14 @@
 Initial observing recipe
 
-cd into the obsnerd directory
+Log into gnuradio and cd into the obsnerd directory
+
+Note that for (hopefully) lack of confusion, all times should be in UTC (which is what the gnuradio server is set to).  I make this goof all of the time.
 
 When you are ready to go for the session, claim the antennas (if this fails, run './obsnerd.py end' first):
 ./obsnerd.py start <INITIALS HERE>
 
 Use S.O.P.P. to pick a satellite and a frequency:
- - for initial testing, GOES-16 as a geostationary at around 1680 MHz at az,el = 121.958,23.603 is a good start (these are the defaults)
- - next, GPS is a good option, with freq = 1575
-    I've adapted the S.O.P.P. example.py as find_sats.py.  Get get GPS satellites, can type
+ - I've adapted the S.O.P.P. example.py as find_sats.py.  To get GPS satellites, can type
 ./find_sats.py -s NAVS
  - ideally however we want to point in front of an LEO and measure it passing through
 

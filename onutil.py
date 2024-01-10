@@ -10,8 +10,13 @@ TIME_FORMATS = ['%Y-%m-%dT%H:%M:%S', '%y-%m-%dT%H:%M:%S',
                 '%Y%m%d %H%M%S', '%y%m%d %H%M%S',
                 '%Y%m%d_%H%M%S', '%y%m%d_%H%M%S',
                 '%Y%m%d%H%M%S', '%y%m%d%H%M%S'
-                ]
-def make_datetime(**kwargs):
+            ]
+
+def make_datetime(direction='toutc', **kwargs):
+    if direction == 'toutc':
+        sgn = -1.0
+    elif direction == 'tolocal':
+        sgn = 1.0
     this_datetime = None
     for p in ['date', 'time', 'datetime', 'datestamp', 'timestamp']:
         if p in kwargs:
@@ -29,16 +34,16 @@ def make_datetime(**kwargs):
         except (ValueError, KeyError):
             continue
     if isinstance(this_datetime, datetime):
-        return this_datetime + timedelta(hours=timezone)
+        return this_datetime - sgn * timedelta(hours=timezone)
 
     this_dt = None
     for this_tf in TIME_FORMATS:
         try:
-            this_dt = datetime.strptime(this_datetime, this_tf) + timedelta(hours=timezone)
+            this_dt = datetime.strptime(this_datetime, this_tf) - sgn * timedelta(hours=timezone)
             break
         except ValueError:
             try:
-                this_dt = datetime.strptime(this_datetime, this_tf+'.%f') + timedelta(hours=timezone)
+                this_dt = datetime.strptime(this_datetime, this_tf+'.%f') - sgn * timedelta(hours=timezone)
                 break
             except ValueError:
                 continue
