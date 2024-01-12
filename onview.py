@@ -7,10 +7,10 @@ from astropy.time import Time
 from datetime import timedelta, datetime
 from copy import copy
 from f2h5 import HDF5HeaderInfo
+import onutil
 
 
 class StateVariable:
-    time_formats = ['%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
     def __init__(self, kwargs={}, defaults={}):
         self.update(kwargs, defaults)
 
@@ -58,12 +58,7 @@ class StateVariable:
             kwargs['freq'] = None
         if 'time' in kwargs and kwargs['time'] is not None:
             if isinstance(kwargs['time'], str):
-                for this_time_fmt in self.time_formats:
-                    try:
-                        kwargs['time'] = [datetime.strptime(x, this_time_fmt) for x in kwargs['time'].split(",")]
-                        break
-                    except ValueError:
-                        continue
+                kwargs['time'] = [onutil.make_datetime(x) for x in kwargs['time'].split(",")]
         else:
             kwargs['time'] = None
 
@@ -101,7 +96,7 @@ class Axis:
 
     def array(self, shift=0.0, scale=1.0, label=None):
         """
-        Return the generated shifted/scaled data array for the Axis.
+        Return the generated shifted/scaled data array for the Axis.  Time shift will take UTC to local
 
         Parameters
         ----------
@@ -133,9 +128,9 @@ class Axis:
         arr = []
         this_val = copy(self.start)
         if self.type == 'datetime':
-            this_val += timedelta(hours=self.shift)
+            this_val -= timedelta(hours=self.shift)
         else:
-            this_val += self.shift
+            this_val -= self.shift
         for i in range(self.length):
             arrval = this_val if self.type == 'datetime' else self.scale * this_val
             arr.append(arrval)
@@ -193,9 +188,7 @@ class Data:
     def _parse_fn(self):
         X = self.filename.split('_')
         if len(X) == 3:
-            _date = '20' + '-'.join( [X[1][i:i+2] for i in range(0, len(X[1]), 2)])
-            _time = ':'.join([X[2][i:i+2] for i in range(0, len(X[2].split('.')[0]), 2)])
-            _datetime = Time(f"{_date}T{_time}").datetime
+            _datetime = onutil.make_datetime(date=f"{X[1]}_{X[2]}")
         else:
             _datetime = None
         return X[0], _datetime
