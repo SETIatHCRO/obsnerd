@@ -148,7 +148,7 @@ class Axis:
 
 
 class Data:
-    def __init__(self, fn, timezone=-8.0):
+    def __init__(self, fn, timezone=0.0):
         self.filename = fn
         self.timezone = timezone
         self.name, self.filename_datetime = self._parse_fn()  # Parse time out of filename (hopefully)
@@ -161,13 +161,11 @@ class Data:
                 else:
                     setattr(self, param, None)
             for param in self.h5.strings:
-                print(param)
                 if param in fp:
                     setattr(self, param, fp[param].asstr()[...])
-                    print(param)
         # Set time axis
-        self.tstart = Time(self.tstart, format='jd')
-        self.tstop = Time(self.tstop, format='jd')
+        for field in self.h5.from_datetime:
+            setattr(self, field, Time(getattr(self, field), format='jd'))
         self.t_info = Axis(self.tstart.datetime, self.tstop.datetime, len(self.data[:, 0]), 'UTC')
         self.t = self.t_info.array(self.timezone)
         print(self.t_info)
@@ -199,16 +197,18 @@ class Data:
         else:
             return data
 
-    def show_metadata(self):
+    def showdata(self, **kwargs):
         """Print information about the data."""
 
         print(f"Filename: {self.filename}")
         print(f"Data shape: {np.shape(self.data)}")
-        print(f"Start: UTC {self.tstart.datetime} (jd={self.tstart.jd})")
-        print(f"\tLocal: {self.tstart.datetime + timedelta(hours=self.timezone)}")
-        print(f"Stop: UTC {self.tstop.datetime} (jd={self.tstop.jd})")
-        print(f"\tLocal: {self.tstop.datetime + timedelta(hours=self.timezone)}")
-        print(f"Freq:  {self.fmin:.2f} - {self.fmax:.2f} MHz  (cf = {self.fcen}, bw = {self.bw} MHz)")
+        for field in self.h5.metadata:
+            val = getattr(self, field)
+            if field in self.h5.from_datetime:
+                print(f"{field}:  {val.datetime}  (jd={val.jd})")
+            else:
+                print(f"{field}: {val}")
+
 
     def wf(self, **kwargs):
         """
@@ -323,8 +323,8 @@ class Data:
             plt.plot(self.t[self.tslice], self._fmt_data(data_fit), '--', lw=2, color='w')
             plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=2, color='k')
             print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
-            if self.filename_datetime is not None:
-                  offset = self.t[fit_time] - self.filename_datetime
+            if self.expected is not None:
+                  offset = self.t[fit_time] - self.expected
                   print(f"{'Offset:':{N}s}{offset.total_seconds():.1f} sec")
             width = self.t[fit_range[1]] - self.t[fit_range[0]]
             print(f"{'Width:':{N}s}{width.total_seconds():.1f} sec")
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('fn', help="Name of hdf5 datafile")
-    ap.add_argument('-p', '--plot_type', help='wf, series, spectra [wf]', choices=['wf', 'series', 'spectra'], default='wf')
+    ap.add_argument('-o', '--output_type', help='wf, series, spectra [wf]', choices=['wf', 'series', 'spectra', 'showdata'], default='wf')
     ap.add_argument('-x', '--xticks', help="Number of xticks in waterfall [10]", type=int, default=10)
     ap.add_argument('-y', '--yticks', help="Number of yticks to use in waterfall [4]", type=int, default=4)
     ap.add_argument('-c', '--colorbar', help="Flag to hide colorbar", action='store_false')
@@ -349,5 +349,5 @@ if __name__ == '__main__':
     ap.add_argument('--tz', help="Timezone offset to UTC in hours [-8.0]", type=float, default=-8.0)
     args = ap.parse_args()
     obs = Data(args.fn, args.tz)
-    getattr(obs, args.plot_type)(**vars(args))
+    getattr(obs, args.output_type)(**vars(args))
     plt.show()

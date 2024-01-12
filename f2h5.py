@@ -33,6 +33,7 @@ class HDF5HeaderInfo:
         self.float64s = ['tstart', 'tstop', 'fcen', 'bw', 'decimation', 'nfft', 'tle', 'expected']
         self.strings = ['source', 'move', 'move_data']
         self.from_datetime = ['tstart', 'tstop', 'tle', 'expected']
+        self.metadata = self.float64s + self.strings
 
 
 def convert(input_file, output_file=None, split=4096):
