@@ -22,7 +22,7 @@ def make_filename(**kwargs):
         return kwargs['tag']
     if 'timezone' not in kwargs:
         kwargs['timezone'] = 0.0
-    this_dt = onutil.make_datetime(date=kwargs['date'], timezone=kwargs['timezone'])
+    this_dt = onutil.make_datetime('toutc', date=kwargs['date'], timezone=kwargs['timezone'])
 
     return f"{kwargs['tag']}_{this_dt.strftime('%y%m%d_%H%M%S')}.h5"
 
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('tag', help="Name of output file or prefix for date [meta]", nargs='?', default='meta')
     ap.add_argument('-d', '--date', help="Optional date to generate the filename with tag as prefix", default=None)
-    ap.add_argument('-z', '--timezone', help="Timezone to add (-8 is PST).", type=float, default=0.0)
+    ap.add_argument('-z', '--timezone', help="Timezone to add (-8 is PST) [0].", type=float, default=0.0)
     args = ap.parse_args()
 
     convert(RAW_FILENAME, make_filename(**vars(args)))

@@ -66,7 +66,6 @@ def get_meta():
 
 def start(samp_rate, decimation, nfft):
     move = get_latest_value('move to', parse=':')
-    move_data = get_latest_value(move, parse=':')
     data = {
         'tstart': datetime.now().isoformat(),
         'fcen': float(get_latest_value('fcen', parse=':')),
@@ -77,7 +76,7 @@ def start(samp_rate, decimation, nfft):
         'source': get_latest_value('source', parse=':'),
         'expected': get_latest_value('expected', parse=' '),
         'move': move,
-        'move_data': move_data
+        'move_data': get_latest_value(move, parse=':')
     }
     add_value(initialize=True, **data)
     onlog(['tstart', f"bw: {samp_rate}"])
