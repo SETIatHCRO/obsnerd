@@ -40,7 +40,7 @@ def find_orbit_type(mmdps):
 
 def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0, 360],
          el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all',
-         tle_file='./satellites.tle', timezone=-8.0):
+         tle_file='./satellites.tle', timezone=-8.0, output_file=None):
     # Facility
     facility = Facility(
         Coordinates(
@@ -136,8 +136,11 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
     print('==============================================================\n')
 
     fndctr = 0
+    if output_file is not None:
+        fpof = open(output_file, 'w')
+        print("FS141:  get other info like distance and X,Y,Z !!!")
     for i, window in enumerate(interference_events, start=1):
-        if search_for and search_for not in window.satellite.name:
+        if search_for and search_for.lower() not in window.satellite.name.lower():
             continue
         this_orbit = find_orbit_type(window.satellite.tle_information.mean_motion.value)
         if orbit_type == 'all':
@@ -157,9 +160,11 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             az.append(pos.position.azimuth)
             el.append(pos.position.altitude)
             tae.append(pos.time)
+            local_time = (pos.time + timedelta(hours=timezone)).strftime('%Y-%m-%dT%H:%M:%S.%f')
+            if output_file is not None:
+                print(f"{local_time},{pos.position.azimuth},{pos.position.altitude},{1.0}", file=fpof)
             if pos.time > offsettime and len(table_data) < 10 and not (j % 30):
-                local_time = pos.time + timedelta(hours=timezone)
-                table_row = [local_time.isoformat(), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
+                table_row = [local_time, f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
         if len(table_data):
             print('Frequency information:  ', window.satellite.frequency)
@@ -194,6 +199,7 @@ if __name__ == '__main__':
     ap.add_argument('--tz', help='Time zone (hours offset from UTC) [0]', type=float, default=0.0)
     ap.add_argument('--tle_file', help='Name of tle file', default='tle/active.tle')
     ap.add_argument('--ftype', help='search horizon or beam', choices=['horizon', 'beam'], default='horizon')
+    ap.add_argument('--output_file', help="Name of output file (None if not supplied)", default=None)
     args = ap.parse_args()
     if args.start_time is None:
         args.start_time = datetime.now()
@@ -205,14 +211,15 @@ if __name__ == '__main__':
     az_limit = [float(x) for x in args.az_limit.split(',')]
 
     main(starttime=args.start_time,
-         stoptime=stop_time,
-         offsettime=offset_time,
-         frequency=args.frequency,
-         bandwidth=args.bandwidth,
+         stoptime = stop_time,
+         offsettime = offset_time,
+         frequency = args.frequency,
+         bandwidth = args.bandwidth,
          az_limit = az_limit,
          el_limit = args.el_limit,
-         ftype=args.ftype,
-         search_for=args.search,
-         orbit_type=args.orbit,
-         tle_file=args.tle_file,
-         timezone=args.tz)
+         ftype = args.ftype,
+         search_for = args.search,
+         orbit_type = args.orbit,
+         tle_file = args.tle_file,
+         timezone = args.tz,
+         output_file = args.output_file)
