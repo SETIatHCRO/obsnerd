@@ -57,8 +57,8 @@ Offline, make a .txt file for each .5h file and add the information from the onl
 - updatetle.py
 - obsnerd.py start __initials__
 - ... loop for multiple satellites
-- obsnerd.py source __name__ __isoformat timestamp__
-- obsnerd.py freq __in MHz__
+- obsnerd.py source __name__ __isoformat_timestamp__
+- obsnerd.py freq ><in MHz>
 - obsnerd.py move __az,el__
 - nrdz_use.py
 - **END OBS X**
