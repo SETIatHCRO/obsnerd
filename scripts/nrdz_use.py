@@ -26,7 +26,7 @@ from gnuradio import eng_notation
 from gnuradio import uhd
 import time
 import sip
-from obsnerd import metadata
+from obsnerds import metadata
 
 
 def snipfcn_snippet_0(self):
