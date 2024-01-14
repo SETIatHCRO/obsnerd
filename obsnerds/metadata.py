@@ -1,6 +1,6 @@
 from datetime import datetime
 import yaml
-import onutil
+from . import onutil
 
 
 ONLOG_FILENAME = 'onlog.log'
