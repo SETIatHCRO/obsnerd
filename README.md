@@ -55,13 +55,13 @@ Offline, make a .txt file for each .5h file and add the information from the onl
 
 ================COMMANDS ONLY==================
 - updatetle.py
-- obsnerd.py start 'initials'
+- obsnerd.py start ==initials==
 - ... loop for multiple satellites
 - obsnerd.py source nav72 2023-12-24T18:01:36
 - obsnerd.py freq 1575
 - obsnerd.py move 238.275,51.614
 - nrdz_use.py
-- <END OBS X>
+- **END OBS X**
 - f2h5.py
 - ... observe more with above loop
 - obsnerd.py end
