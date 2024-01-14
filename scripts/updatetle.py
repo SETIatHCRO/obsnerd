@@ -2,7 +2,6 @@
 from obsnerds import updatetle_engine as ue
 import argparse
 
-
 ap = argparse.ArgumentParser()
 ap.add_argument('--base-url', dest='base_url', help="Base url for tles",
                 default='http://celestrak.org/NORAD/elements/')

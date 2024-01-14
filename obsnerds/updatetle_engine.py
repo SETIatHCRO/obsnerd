@@ -1,7 +1,7 @@
 import requests
 from html.parser import HTMLParser
 from os import path
-from obsnerd import metadata
+from . import metadata
 
 
 class DataParser(HTMLParser):
