@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import argparse
 from datetime import datetime, timedelta
-from obsnerd import sopp_engine as se
+from obsnerds import sopp_engine as se
 
 
 ap = argparse.ArgumentParser()

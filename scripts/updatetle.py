@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerd import updatetle_engine as ue
+from obsnerds import updatetle_engine as ue
 import argparse
 
 

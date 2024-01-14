@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerd import trajectory_engine as te
+from obsnerds import trajectory_engine as te
 import datetime
 import argparse
 

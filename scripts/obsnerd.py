@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from obsnerd import obsnerd_engine as oe
+from obsnerds import obsnerd_engine as oe
 import argparse
 
 ap = argparse.ArgumentParser()
