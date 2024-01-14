@@ -7,14 +7,14 @@ from setuptools import setup
 import glob
 
 setup_args = {
-    'name': "obsnerd",
+    'name': "obsnerds",
     'description': "NRDZ Observing for the ATA",
     'license': "BSD",
     'author': "David DeBoer",
     'author_email': "david.r.deboer@gmail.edu",
     'version': '0.0.1',
     'scripts': glob.glob('scripts/*'),
-    'packages': ['obsnerd']
+    'packages': ['obsnerds']
 }
 
 if __name__ == '__main__':
