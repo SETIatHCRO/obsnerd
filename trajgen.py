@@ -10,10 +10,9 @@ import datetime
 EPHEM_FILENAME = 'track.ephem'
 TRAJECTORY_FILENAME = 'track'
 TRACK_LOG_FILENAME = 'track.log'
-hcro = EarthLocation(lat=40.8178049*u.deg, lon=-121.4695413*u.deg, height=986*u.m)
-print("GET LIMIT VALUES")
-EL_TRACK_LIMIT = 0.9
-AZ_TRACK_LIMIT = 1.1
+HCRO = EarthLocation(lat=40.8178049*u.deg, lon=-121.4695413*u.deg, height=986*u.m)
+EL_TRACK_LIMIT = 1.5
+AZ_TRACK_LIMIT = 2.0
 
 class Track:
     """
@@ -35,7 +34,7 @@ class Track:
             setattr(self, key, val)
 
     def __repr__(self):
-        s = ''
+        s = f'Label: {self.name}\n'
         for i, lbl in zip([0, -1], ['Start at:', 'End at:']):
             s += f"{lbl} {self.obstime[i]} UTC\n"
             try:
@@ -123,7 +122,7 @@ class Trajectory:
         gp_b = np.ones(len(gp_l)) * self.b
         self.T0.gal = SkyCoord(frame='galactic', l=gp_l, b=gp_b)
         self.T0.radec = self.T0.gal.transform_to('icrs')
-        self.T0.azel = self.T0.radec.transform_to(AltAz(obstime=self.start_time, location=hcro))
+        self.T0.azel = self.T0.radec.transform_to(AltAz(obstime=self.start_time, location=HCRO))
 
         self.T0.above_horizon = np.where(self.T0.azel.alt.value > self.el_horizon)
         if not len(self.T0.above_horizon[0]):
@@ -141,7 +140,7 @@ class Trajectory:
                 this_l = this_l - 360.0*u.deg
             gal = SkyCoord(frame='galactic', l=this_l, b=self.b)
             radec = gal.transform_to('icrs')
-            azel = radec.transform_to(AltAz(obstime=self.track_Time[i], location=hcro))
+            azel = radec.transform_to(AltAz(obstime=self.track_Time[i], location=HCRO))
             self.track.add(az=azel.az.value, el=azel.alt.value, ra=radec.ra.value, dec=radec.dec.value, l=this_l.value, b=self.b.value)
         self.track.rates()
 
