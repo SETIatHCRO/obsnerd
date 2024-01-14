@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 
-
 def find_orbit_type(mmdps):
     """
     Parameter
@@ -37,9 +36,15 @@ def find_orbit_type(mmdps):
     return 'leo'
 
 
+def ugly_utc(t, tz):
+    if isinstance(t, str):
+        t = read_datetime_string_as_utc(t)
+    return read_datetime_string_as_utc((t.replace(tzinfo=None) - timedelta(hours=tz)).isoformat())
+
+
 def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0, 360],
-         el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all',
-         tle_file='./satellites.tle', timezone=-8.0, output_file=None):
+         el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all', time_resolution=1,
+         tle_file='tle/active.tle', timezone=0.0, output_file=False):
     # Facility
     facility = Facility(
         Coordinates(
@@ -52,11 +57,14 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
     )
 
     # Observation Window
+    starttime = ugly_utc(starttime, timezone)
+    stoptime = ugly_utc(stoptime, timezone)
+    offsettime = ugly_utc(offsettime, timezone)
+
     time_window = TimeWindow(
-        begin=read_datetime_string_as_utc(starttime.isoformat()),
-        end=read_datetime_string_as_utc(stoptime.isoformat()),
+        begin=starttime,
+        end=stoptime,
     )
-    offsettime = read_datetime_string_as_utc(offsettime.isoformat())
 
     # Frequency Range
     frequency_range = FrequencyRange(bandwidth=bandwidth, frequency=frequency)
@@ -68,18 +76,22 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
         frequency=frequency_range
     )
 
-    # Specify Observation Target
-    observation_target = ObservationTarget(
-        declination='7d24m25.426s',
-        right_ascension='5h55m10.3s'
-    )
+    if ftype == 'beam':
+        print("NEED TO SPECIFY A TARGET!!! USING CASA FOR NOW")
+        # Specify Observation Target
+        observation_target = ObservationTarget(
+            declination='23d23m24s',
+            right_ascension='58h48m54s'
+        )
 
-    # Antenna Direction Path (going to do automatically)
-    antenna_direction_path = ObservationPathFinderRhodesmill(
-        facility,
-        observation_target,
-        time_window
-    ).calculate_path()
+        # Antenna Direction Path (going to do automatically)
+        antenna_direction_path = ObservationPathFinderRhodesmill(
+            facility,
+            observation_target,
+            time_window
+        ).calculate_path()
+    else:
+        antenna_direction_path = None
 
     # Load Satellites
     all_satellites = SatellitesLoaderFromFiles(
@@ -95,7 +107,7 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
     # Runtime Settings
     runtime_settings = RuntimeSettings(
         concurrency_level=8,
-        time_continuity_resolution=timedelta(seconds=1)
+        time_continuity_resolution=timedelta(seconds=time_resolution)
     )
 
     # Display configuration
@@ -135,9 +147,6 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
     print('==============================================================\n')
 
     fndctr = 0
-    if output_file is not None:
-        fpof = open(output_file, 'w')
-        print("FS141:  get other info like distance and X,Y,Z !!!")
     for i, window in enumerate(interference_events, start=1):
         if search_for and search_for.lower() not in window.satellite.name.lower():
             continue
@@ -159,26 +168,38 @@ def main(starttime, stoptime, offsettime, frequency, bandwidth=20.0, az_limit=[0
             az.append(pos.position.azimuth)
             el.append(pos.position.altitude)
             tae.append(pos.time)
-            local_time = (pos.time + timedelta(hours=timezone)).strftime('%Y-%m-%dT%H:%M:%S.%f')
-            if output_file is not None:
-                print(f"{local_time},{pos.position.azimuth},{pos.position.altitude},{1.0}", file=fpof)
             if pos.time > offsettime and len(table_data) < 10 and not (j % 30):
-                table_row = [local_time, f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
+                table_row = [pos.time.strftime('%Y-%m-%dT%H:%M:%S.%f'), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
         if len(table_data):
+            if output_file:
+                fnout = f"{window.satellite.name.replace(' ', '')}.txt"
+                print(f"Writing {fnout}")
+                with open(fnout, 'w') as fpof:
+                    for _t, _a, _e in zip(tae, az, el):
+                        print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{1.0}", file=fpof)
             print('Frequency information:  ', window.satellite.frequency)
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             fndctr += 1
-            plt.figure('Trajectory')
+            plt.figure('AzEl Trajectory')
             plt.plot(az, el)
             plt.plot(az[0], el[0], 'ko')
+            plt.figure('Time Trajectory')
+            plt.plot(tae, az)
+            plt.plot(tae, el, '--')
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
+            fpof.close()
+            output_file = None
     ps4 = f" and {search_for}" if search_for else ""
     print(f"Found {fndctr} entries for {orbit_type}{ps4}")
-    plt.figure('Trajectory')
+    plt.figure('AzEl Trajectory')
     plt.xlabel('Az [deg]')
     plt.ylabel('El [deg]')
+    plt.grid()
+    plt.figure('Time Trajectory')
+    plt.xlabel('UTC')
+    plt.ylabel('Az/El [deg]')
     plt.grid()
     plt.show()

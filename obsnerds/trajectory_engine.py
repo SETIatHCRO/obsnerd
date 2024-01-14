@@ -152,10 +152,10 @@ class Trajectory:
         """
         self.trajectory_type = 'from_file'
         from scipy import interpolate
-        self.track = Track('Out', timestamp=self.track_tsns, obstime=self.track_Time)
+        self.track = Track(f"Output: {filename}", timestamp=self.track_tsns, obstime=self.track_Time)
         # Read input file
         overlap = False
-        self.input_track = Track('In')
+        self.input_track = Track(f"Input: {filename}")
         with open(filename, 'r') as fp:
             for line in fp:
                 data = line.split(',')
@@ -164,38 +164,49 @@ class Trajectory:
                     overlap = True
                 ts = int(obstime.unix_tai * 1E9)
                 self.input_track.add(timestamp=ts, obstime=obstime, az=float(data[1]), el=float(data[2]), ir=1.0 / float(data[3]))
+        self.input_track.obstime = Time(self.input_track.obstime)
         if not overlap:
             print("This supplied file and desired track don't overlap")
             self.valid = False
-        self.input_track.obstime = Time(self.input_track.obstime)
+            return
 
         # Overlap, so fit az, el, ir
+        f = interpolate.interp1d(self.input_track.timestamp, self.input_track.el, fill_value=0.0, bounds_error=False)
+        _el = f(self.track.timestamp)
+        valid = np.where(_el > 0.0)
+        self.track.timestamp = self.track.timestamp[valid]
+        self.track.obstime = self.track.obstime[valid]
+        self.track.el = _el[valid]
         f = interpolate.interp1d(self.input_track.timestamp, self.input_track.az, fill_value=0.0, bounds_error=False)
         self.track.az = f(self.track.timestamp)
-        f = interpolate.interp1d(self.input_track.timestamp, self.input_track.el, fill_value=0.0, bounds_error=False)
-        self.track.el = f(self.track.timestamp)
         f = interpolate.interp1d(self.input_track.timestamp, self.input_track.ir, fill_value=0.0, bounds_error=False)
         self.track.ir = f(self.track.timestamp)
         self.track.rates()
 
     def write(self):
+        if not self.valid:
+            print("Trajectory not valid.")
+            return
         self.track.log_track(TRACK_LOG_FILENAME)
         self.track.ephem_file(EPHEM_FILENAME)
         self.track.full_file(TRAJECTORY_FILENAME)
 
     def plot(self):
+        if not self.valid:
+            print("Trajectory not valid.")
+            return
         if self.trajectory_type == 'galactic':
             self._plot_galactic()
         elif self.trajectory_type == 'from_file':
             self._plot_from_file()
         plt.figure('Rates')
         t_extremes = [self.track.obstime.datetime[1], self.track.obstime.datetime[-1]]
-        sgn = '--' if np.any(self.track.dazdt < 0.0) else '-'
-        plt.plot(self.track.obstime.datetime[1:], abs(self.track.dazdt), 'k'+sgn, label='daz/dt')
+        plt.plot(self.track.obstime.datetime[1:], self.track.dazdt, 'k', label='daz/dt')
         plt.plot(t_extremes, [AZ_TRACK_LIMIT, AZ_TRACK_LIMIT], 'k-.', lw=3)
-        sgn = '--' if np.any(self.track.deldt < 0.0) else '-'
-        plt.plot(self.track.obstime.datetime[1:], abs(self.track.deldt), 'b'+sgn, label='del/dt')
+        plt.plot(t_extremes, [-AZ_TRACK_LIMIT, -AZ_TRACK_LIMIT], 'k-.', lw=3)
+        plt.plot(self.track.obstime.datetime[1:], self.track.deldt, 'b', label='del/dt')
         plt.plot(t_extremes, [EL_TRACK_LIMIT, EL_TRACK_LIMIT], 'b-.', lw=3)
+        plt.plot(t_extremes, [-EL_TRACK_LIMIT, -EL_TRACK_LIMIT], 'b-.', lw=3)
         plt.legend()
         plt.ylabel('[deg/sec]')
         plt.grid()
@@ -223,11 +234,16 @@ class Trajectory:
 
     def _plot_from_file(self):
         plt.figure('From_file')
-        plt.plot(self.input_track.obstime.datetime, self.input_track.az, 'k', label='Az')
-        plt.plot(self.input_track.obstime.datetime, self.input_track.el, 'b', label='El')
-        plt.plot(self.track.obstime.datetime, self.track.az, 'ko')
-        plt.plot(self.track.obstime.datetime, self.track.el, 'bo')
+        plt.plot(self.input_track.obstime.datetime, self.input_track.az, 'k.', label='Az')
+        plt.plot(self.input_track.obstime.datetime, self.input_track.el, 'b.', label='El')
+        #plt.plot(self.track.obstime.datetime, self.track.az, 'ko')
+        #plt.plot(self.track.obstime.datetime, self.track.el, 'bo')
         plt.xlabel('Time')
         plt.ylabel('[deg]')
         plt.legend()
+        plt.grid()
+        plt.figure('Input Track')
+        plt.plot(self.input_track.az, self.input_track.el, '.')
+        plt.xlabel('Az')
+        plt.ylabel('El')
         plt.grid()
