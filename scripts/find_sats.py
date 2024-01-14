@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import argparse
 from datetime import datetime, timedelta
-from obsnerd import sopp_engine
+from obsnerd import sopp_engine as se
 
 
 ap = argparse.ArgumentParser()
@@ -28,16 +28,16 @@ stop_time = args.start_time + timedelta(minutes=args.duration)
 offset_time = args.start_time + timedelta(minutes=args.offset)
 az_limit = [float(x) for x in args.az_limit.split(',')]
 
-sopp_engine.main(starttime=args.start_time,
-                 stoptime = stop_time,
-                 offsettime = offset_time,
-                 frequency = args.frequency,
-                 bandwidth = args.bandwidth,
-                 az_limit = az_limit,
-                 el_limit = args.el_limit,
-                 ftype = args.ftype,
-                 search_for = args.search,
-                 orbit_type = args.orbit,
-                 tle_file = args.tle_file,
-                 timezone = args.tz,
-                 output_file = args.output_file)
+se.main(starttime=args.start_time,
+        stoptime = stop_time,
+        offsettime = offset_time,
+        frequency = args.frequency,
+        bandwidth = args.bandwidth,
+        az_limit = az_limit,
+        el_limit = args.el_limit,
+        ftype = args.ftype,
+        search_for = args.search,
+        orbit_type = args.orbit,
+        tle_file = args.tle_file,
+        timezone = args.tz,
+        output_file = args.output_file)
