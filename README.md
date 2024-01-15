@@ -5,7 +5,7 @@ Log into gnuradio and cd into the obsnerd directory
 Note that for (hopefully) lack of confusion, all times should be in UTC (which is what the gnuradio server is set to).  I make this goof all of the time.
 
 When you are ready to go for the session, claim the antennas (if this fails, run 'obsnerd.py end' first):
-obsnerd.py start <INITIALS HERE>
+obsnerd.py start [INITIALS HERE]
 
 Use S.O.P.P. to pick a satellite and a frequency:
  - I've adapted the S.O.P.P. example.py as find_sats.py.  To get GPS satellites, can type
@@ -71,3 +71,12 @@ Offline, make a .txt file for each .5h file and add the information from the onl
 ...etc
 ...update googlesheet
 ...make .txt file (nav72_231224_180136.txt)
+
+
+Frequencies:
+
+- Iridium - 1626
+- L1 GPS - 1575.42 15.345
+- L2 GPS - 1227.6 11
+- L5 GPS - 1176.45 12.5
+- RA - 1400 - 1427

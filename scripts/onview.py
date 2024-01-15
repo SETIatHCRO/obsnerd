@@ -15,7 +15,7 @@ ap.add_argument('-l', '--log', help="Flag to take log10 of data", action='store_
 ap.add_argument('-d', '--dB', help="Flag to convert to dB", action='store_true')
 ap.add_argument('-P', '--total_power', help="Show total power (for series)", action='store_true')
 ap.add_argument('-n', '--norm', help="Norm to apply for total power (Total, [/bin], /full)", choices=['Total', '/bin', '/full'], default='/bin')
-ap.add_argument('--tz', help="Timezone offset to UTC in hours [-8.0]", type=float, default=-8.0)
+ap.add_argument('--tz', help="Timezone offset to UTC in hours [-8.0]", type=float, default=0.0)
 args = ap.parse_args()
 obs = oe.Data(args.fn, args.tz)
 getattr(obs, args.output_type)(**vars(args))

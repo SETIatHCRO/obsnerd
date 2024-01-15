@@ -5,7 +5,7 @@ from astropy.time import Time
 from datetime import timedelta, datetime
 from copy import copy
 from .convert2hdf5 import HDF5HeaderInfo
-import onutil
+from . import onutil
 
 
 class StateVariable:
