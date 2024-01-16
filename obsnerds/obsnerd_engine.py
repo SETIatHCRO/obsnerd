@@ -18,23 +18,29 @@ class CommandHandler:
         self.initials = self.payload if initials is None else initials
         if self.initials is None:
             print("Please include your name or initials.")
+        elif ata_control is None:
+            self.test(f'test start:  {self.initials}')
         else:
             ata_control.move_ant_group(self.group_ants, 'none', 'atagr')
             metadata.onlog(f"session start: {self.initials} -- {', '.join(self.use_ants)} / {', '.join(self.group_ants)}")
 
     def end(self):
-        atexit.register(ata_control.move_ant_group, self.group_ants, 'atagr', 'none')
-        atexit.register(ata_control.park_antennas, self.use_ants)
-        metadata.onlog(f"end: {', '.join(self.use_ants)} / {', '.join(self.group_ants)}")
+        if ata_control is None:
+            self.test("test end")
+        else:
+            atexit.register(ata_control.move_ant_group, self.group_ants, 'atagr', 'none')
+            atexit.register(ata_control.park_antennas, self.use_ants)
+            metadata.onlog(f"end: {', '.join(self.use_ants)} / {', '.join(self.group_ants)}")
 
     def freq(self, freq=None, att=20):
         self.freq = float(self.payload) if freq is None else freq
         self.att = att
         metadata.onlog(f"fcen: {self.freq}")
-        ata_control.set_freq(self.freq, self.use_ants, lo='d')
-        ata_control.autotune(self.use_ants)
-        ata_control.rf_switch_thread(self.use_ants)
-        ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.use_ants], [[self.att, self.att] for ant in self.use_ants])
+        if ata_control is not None:
+            ata_control.set_freq(self.freq, self.use_ants, lo='d')
+            ata_control.autotune(self.use_ants)
+            ata_control.rf_switch_thread(self.use_ants)
+            ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.use_ants], [[self.att, self.att] for ant in self.use_ants])
 
     def move(self, location=None, coord_type=None):
         self.location = self.payload if location is None else location
@@ -42,6 +48,9 @@ class CommandHandler:
 
         if ',' in self.location:
             x, y = [float(_v) for _v in self.location.split(',')]
+        if ata_control is None:
+            self.test('test move')
+            return
 
         metadata.onlog(f'move to: {self.coord_type}')
         if self.coord_type == 'azel':
@@ -82,3 +91,6 @@ class CommandHandler:
         else:
             self.datestamp = onutil.make_datetime(date=self.datestamp)
         metadata.onlog([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
+
+    def test(self, msg='test'):
+        metadata.onlog(msg)

@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import yaml
 from . import onutil
 
 
 ONLOG_FILENAME = 'onlog.log'
 META_FILENAME = 'metadata.yaml'
+UTC = timezone(timedelta(0), 'UTC')
+PST = timezone(timedelta(hours=-8), 'PST')
+PDT = timezone(timedelta(hours=-7), 'PDT')
 
 
 # Log functions
@@ -19,7 +22,7 @@ def onlog(notes):
     """
     if isinstance(notes, str):
         notes = [notes]
-    ts = datetime.now()
+    ts = datetime.now().astimezone(UTC).isoformat()
     with open(ONLOG_FILENAME, 'a') as fp:
         for note in notes:
             print(f"{ts} -- {note}", file=fp)
@@ -67,7 +70,7 @@ def get_meta():
 def start(samp_rate, decimation, nfft):
     move = get_latest_value('move to', parse=':')
     data = {
-        'tstart': datetime.now().isoformat(),
+        'tstart': datetime.now().astimezone(UTC).isoformat(),
         'fcen': float(get_latest_value('fcen', parse=':')),
         'bw': samp_rate / 1E6,
         'decimation': decimation,
@@ -98,4 +101,4 @@ def add_value(initialize=False, **kwargs):
 
 
 def add_datetimestamp(kw):
-    add_value(**{kw: datetime.now().isoformat()})
+    add_value(**{kw: datetime.now().astimezone(UTC).isoformat()})
