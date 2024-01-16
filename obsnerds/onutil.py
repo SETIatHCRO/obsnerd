@@ -1,15 +1,15 @@
 import datetime
 
-TIME_FORMATS = ['%Y-%m-%dT%H:%M:%S', '%y-%m-%dT%H:%M:%S',
-                '%Y-%m-%d %H:%M:%S', '%y-%m-%d %H:%M:%S',
-                '%Y/%m/%dT%H:%M:%S', '%y/%m/%dT%H:%M:%S',
-                '%Y/%m/%d %H:%M:%S', '%y/%m/%d %H:%M:%S',
-                '%d/%m/%YT%H:%M:%S', '%d/%m/%yT%H:%M:%S',
-                '%d/%m/%Y %H:%M:%S', '%d/%m/%y %H:%M:%S',
-                '%Y%m%dT%H%M%S', '%y%m%dT%H%M%S',
-                '%Y%m%d %H%M%S', '%y%m%d %H%M%S',
-                '%Y%m%d_%H%M%S', '%y%m%d_%H%M%S',
-                '%Y%m%d%H%M%S', '%y%m%d%H%M%S'
+TIME_FORMATS = ['%Y-%m-%dT%H:%M', '%y-%m-%dT%H:%M',
+                '%Y-%m-%d %H:%M', '%y-%m-%d %H:%M',
+                '%Y/%m/%dT%H:%M', '%y/%m/%dT%H:%M',
+                '%Y/%m/%d %H:%M', '%y/%m/%d %H:%M',
+                '%d/%m/%YT%H:%M', '%d/%m/%yT%H:%M',
+                '%d/%m/%Y %H:%M', '%d/%m/%y %H:%M',
+                '%Y%m%dT%H%M', '%y%m%dT%H%M',
+                '%Y%m%d %H%M', '%y%m%d %H%M',
+                '%Y%m%d_%H%M', '%y%m%d_%H%M',
+                '%Y%m%d%H%M', '%y%m%d%H%M'
             ]
 
 def make_datetime(**kwargs):
@@ -46,12 +46,22 @@ def make_datetime(**kwargs):
     this_dt = None
     for this_tf in TIME_FORMATS:
         try:
-            this_dt = datetime.strptime(this_datetime, this_tf)
+            this_dt = datetime.datetime.strptime(this_datetime, this_tf)
             break
         except ValueError:
             try:
-                this_dt = datetime.strptime(this_datetime, this_tf+'.%f')
+                if ':' in this_tf:
+                    this_tf += ':%S'
+                else:
+                    this_tf += '%S'
+                this_dt = datetime.datetime.strptime(this_datetime, this_tf)
                 break
             except ValueError:
-                continue
+                try:
+                    this_dt = datetime.datetime.strptime(this_datetime, this_tf+'.%f')
+                    break
+                except ValueError:
+                    continue
+    if not isinstance(this_dt, datetime.datetime):
+        return None
     return this_dt.replace(tzinfo=timezone)

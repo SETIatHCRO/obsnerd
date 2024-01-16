@@ -93,4 +93,5 @@ class CommandHandler:
         metadata.onlog([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
 
     def test(self, msg='test'):
+        print(msg)
         metadata.onlog(msg)

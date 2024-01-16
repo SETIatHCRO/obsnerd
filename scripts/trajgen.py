@@ -19,9 +19,9 @@ if args.time.startswith('now'):
     offsp = args.time.split('+')
     offsm = args.time.split('-')
     if len(offsp) == 2:
-        args.time = datetime.datetime.now() + datetime.timedelta(minutes=float(offsp[1]))
+        args.time = datetime.datetime.now().astimezone() + datetime.timedelta(minutes=float(offsp[1]))
     elif len(offsm) == 2:
-        args.time = datetime.datetime.now() - datetime.timedelta(minutes=float(offsm[1]))
+        args.time = datetime.datetime.now().astimezone() - datetime.timedelta(minutes=float(offsm[1]))
 
 traj = te.Trajectory(start_time=args.time, time_to_track=args.duration, tstep=args.tstep, el_horizon=args.el_horizon, tz=args.tz)
 
