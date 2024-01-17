@@ -13,19 +13,24 @@ TIME_FORMATS = ['%Y-%m-%dT%H:%M', '%y-%m-%dT%H:%M',
             ]
 
 def make_datetime(**kwargs):
-    for p in ['date', 'time', 'datetime', 'datestamp', 'timestamp']:
+    """
+    Take various datetime/str/offset/timezone options and return timezone-aware datetime
+
+    """
+    # Get datetime value
+    for p in ['date', 'time', 'datetime', 'datestamp', 'timestamp', 'offset']:
         if p in kwargs:
             this_datetime = kwargs[p]
             break
         else:
             continue
-    if not isinstance(this_datetime, (str, datetime.datetime)):
-        return None
 
+    # Get timezone
     timezone = None
     for p in ['timezone', 'tz']:
         try:
             if isinstance(kwargs[p], datetime.timezone):
+                timezone = kwargs[p]
                 break
             else:
                 hr = float(kwargs[p])
@@ -34,13 +39,18 @@ def make_datetime(**kwargs):
                 break
         except (ValueError, KeyError):
             continue
-    
-    if this_datetime == 'now':
+
+    # Process datetime value and timezone
+    if this_datetime == 'now' or this_datetime is None:
         return datetime.datetime.now().astimezone(timezone)
 
+    try:
+        dt = float(this_datetime)
+        return datetime.datetime.now().astimezone(timezone) + datetime.timedelta(minutes=dt)
+    except (TypeError, ValueError):
+        pass
+
     if isinstance(this_datetime, datetime.datetime):
-        if this_datetime.tzinfo == timezone:
-            return this_datetime
         return this_datetime.replace(tzinfo=timezone)
 
     this_dt = None
@@ -48,7 +58,7 @@ def make_datetime(**kwargs):
         try:
             this_dt = datetime.datetime.strptime(this_datetime, this_tf)
             break
-        except ValueError:
+        except (TypeError, ValueError):
             try:
                 if ':' in this_tf:
                     this_tf += ':%S'
@@ -56,11 +66,11 @@ def make_datetime(**kwargs):
                     this_tf += '%S'
                 this_dt = datetime.datetime.strptime(this_datetime, this_tf)
                 break
-            except ValueError:
+            except (TypeError, ValueError):
                 try:
                     this_dt = datetime.datetime.strptime(this_datetime, this_tf+'.%f')
                     break
-                except ValueError:
+                except (TypeError, ValueError):
                     continue
     if not isinstance(this_dt, datetime.datetime):
         return None

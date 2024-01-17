@@ -4,6 +4,7 @@ from astropy.time import Time
 import numpy as np
 import matplotlib.pyplot as plt
 from argparse import Namespace
+from . import onutil
 
 EPHEM_FILENAME = 'track.ephem'
 TRAJECTORY_FILENAME = 'track'
@@ -84,13 +85,13 @@ class Track:
 
 
 class Trajectory:
-    def __init__(self, start_time='2023-12-31 23:59:59', time_to_track=20.0, tstep=1.0, el_horizon=30.0, tz=-8.0):
+    def __init__(self, start_time, duration=20.0, tstep=1.0, el_horizon=30.0, tz=0.0):
         """
         Parameters
         ----------
         start_time : str etc
             isoformat or anything Time handles in local time used to start checking
-        time_to_track : float
+        duration : float
             Length of track in minutes
         tstep : float
             Trajectory time step in seconds
@@ -101,18 +102,25 @@ class Trajectory:
 
         """
         self.valid = True
-        self.tz = tz * u.hour
-        self.start_time = Time(start_time) - self.tz
+        self.tz = tz
+        this_datetime = onutil.make_datetime(date=start_time, timezone=tz)
+        if this_datetime is not None:
+            self.start_time = Time(this_datetime)
+        else:
+            self.start_time = None
         self.el_horizon = float(el_horizon)
-        self.time_to_track = float(time_to_track) * 60.0 * u.second
+        self.duration = float(duration) * 60.0 * u.second
         self.tstep = float(tstep) * u.second
-        self.track_Time = self.start_time + np.arange(0.0, self.time_to_track.value, self.tstep.value) * u.second
-        self.track_tsns = int(self.start_time.unix_tai * 1E9) + np.arange(0, int(self.time_to_track.value * 1E9), int(self.tstep.value * 1E9))
+
+    def _time_arrays(self):
+        self.track_Time = self.start_time + np.arange(0.0, self.duration.value, self.tstep.value) * u.second
+        self.track_tsns = int(self.start_time.unix_tai * 1E9) + np.arange(0, int(self.duration.value * 1E9), int(self.tstep.value * 1E9))
 
     def galactic(self, b=0.0, rate=0.1):
         self.trajectory_type = 'galactic'
         self.b = b * u.deg
         self.rate = rate * u.deg / u.second
+        self._time_arrays()
 
         # Get starting galactic longitude to nearest 1/10 degree and plot
         self.T0 = Namespace()
@@ -152,19 +160,21 @@ class Trajectory:
         """
         self.trajectory_type = 'from_file'
         from scipy import interpolate
-        self.track = Track(f"Output: {filename}", timestamp=self.track_tsns, obstime=self.track_Time)
         # Read input file
-        overlap = False
         self.input_track = Track(f"Input: {filename}")
         with open(filename, 'r') as fp:
             for line in fp:
                 data = line.split(',')
                 obstime = Time(data[0], format='isot')
-                if not overlap and obstime >= self.track_Time[0] and obstime <= self.track_Time[-1]:
-                    overlap = True
                 ts = int(obstime.unix_tai * 1E9)
                 self.input_track.add(timestamp=ts, obstime=obstime, az=float(data[1]), el=float(data[2]), ir=1.0 / float(data[3]))
         self.input_track.obstime = Time(self.input_track.obstime)
+        if self.start_time is None:
+            self.start_time = self.input_track.obstime[0]
+        self._time_arrays()
+        self.track = Track(f"Output: {filename}", timestamp=self.track_tsns, obstime=self.track_Time)
+
+        overlap = not (self.track_Time[-1] < self.input_track.obstime[0] or self.track_Time[0] > self.input_track.obstime[-1])        
         if not overlap:
             print("This supplied file and desired track don't overlap")
             self.valid = False
