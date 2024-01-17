@@ -174,7 +174,7 @@ class Trajectory:
         self._time_arrays()
         self.track = Track(f"Output: {filename}", timestamp=self.track_tsns, obstime=self.track_Time)
 
-        overlap = not (self.track_Time[-1] < self.input_track.obstime[0] or self.track_Time[0] > self.input_track.obstime[-1])        
+        overlap = self.track_Time[-1] > self.input_track.obstime[0] and self.track_Time[0] < self.input_track.obstime[-1])        
         if not overlap:
             print("This supplied file and desired track don't overlap")
             self.valid = False
