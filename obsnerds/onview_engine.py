@@ -163,6 +163,7 @@ class Data:
                     setattr(self, param, fp[param].asstr()[...])
         # Set time axis
         for field in self.h5.from_datetime:
+            print("OE:  ", field, getattr(self, field))
             setattr(self, field, Time(getattr(self, field), format='jd'))
         self.t_info = Axis(self.tstart.datetime, self.tstop.datetime, len(self.data[:, 0]), 'UTC')
         self.t = self.t_info.array(self.timezone)

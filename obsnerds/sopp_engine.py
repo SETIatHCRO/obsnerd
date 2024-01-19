@@ -36,7 +36,7 @@ def find_orbit_type(mmdps):
 def main(start, duration, frequency, bandwidth=20.0, az_limit=[0, 360],
          el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all', time_resolution=1,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 30.0,
-         tle_file='tle/active.tle', timezone=0.0, output_file=False):
+         tle_file='tle/active.tle', timezone=None, output_file=False):
     """
     Parameters
     ----------

@@ -26,7 +26,11 @@ def make_datetime(**kwargs):
             continue
     tzindt = None
     if isinstance(this_datetime, str):
-        if this_datetime[-6] in ['+', '-']:
+        try:
+            sgn = this_datetime[-6]
+        except IndexError:
+            sgn = False
+        if  sgn in ['+', '-']:
             sgn = 1.0 if this_datetime[-6] == '+' else -1.0
             a, b = [float(x) for x in this_datetime[-5:].split(':')]
             name = f"UTC{'+' if sgn > 0.0 else '-'}{a:.0f}"
@@ -45,7 +49,7 @@ def make_datetime(**kwargs):
                 name = f"UTC{'+' if hr>=0.0 else '-'}{hr:.0f}"
                 timezone = datetime.timezone(datetime.timedelta(hours=hr), name)
                 break
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, TypeError):
             continue
     if timezone is None:
         timezone = tzindt
