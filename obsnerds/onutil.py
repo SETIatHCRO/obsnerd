@@ -24,6 +24,14 @@ def make_datetime(**kwargs):
             break
         else:
             continue
+    tzindt = None
+    if isinstance(this_datetime, str):
+        if this_datetime[-6] in ['+', '-']:
+            sgn = 1.0 if this_datetime[-6] == '+' else -1.0
+            a, b = [float(x) for x in this_datetime[-5:].split(':')]
+            name = f"UTC{'+' if sgn > 0.0 else '-'}{a:.0f}"
+            tzindt = datetime.timezone(datetime.timedelta(hours=sgn * (a + b / 60.0)), name)
+            this_datetime = this_datetime[:-6]
 
     # Get timezone
     timezone = None
@@ -39,6 +47,8 @@ def make_datetime(**kwargs):
                 break
         except (ValueError, KeyError):
             continue
+    if timezone is None:
+        timezone = tzindt
 
     # Process datetime value and timezone
     if this_datetime == 'now' or this_datetime is None:

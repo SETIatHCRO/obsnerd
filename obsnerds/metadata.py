@@ -60,10 +60,9 @@ def get_latest_value(param, parse=False):
 def get_meta():
     with open(META_FILENAME, 'r') as fp:
         meta = yaml.safe_load(fp)
-    for key, val in meta.items():
-        tval = onutil.make_datetime(date=val)
-        if isinstance(tval, datetime):
-            meta.update({key: tval})
+    for key in ['tstart', 'tstop', 'tle', 'expected']:
+        if key in meta:
+            meta.update({key: onutil.make_datetime(date=meta[key])})
     return meta
 
 
@@ -75,9 +74,9 @@ def start(samp_rate, decimation, nfft):
         'bw': samp_rate / 1E6,
         'decimation': decimation,
         'nfft': nfft,
-        'tle': get_latest_value('TLEs', parse='timestamp'),
+        'tle': onutil.make_datetime(date=get_latest_value('TLEs', parse='timestamp'), tz=0.0),
         'source': get_latest_value('source', parse=':'),
-        'expected': get_latest_value('expected', parse=' '),
+        'expected': onutil.make_datetime(date=get_latest_value('expected', parse=' '), tz=0.0),
         'move': move,
         'move_data': get_latest_value(move, parse=':')
     }

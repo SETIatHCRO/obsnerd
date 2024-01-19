@@ -18,7 +18,7 @@ def make_filename(**kwargs):
         return kwargs['tag']
     if 'timezone' not in kwargs:
         kwargs['timezone'] = 0.0
-    this_dt = onutil.make_datetime('toutc', date=kwargs['date'], timezone=kwargs['timezone'])
+    this_dt = onutil.make_datetime(date=kwargs['date'], timezone=kwargs['timezone'])
 
     return f"{kwargs['tag']}_{this_dt.strftime('%y%m%d_%H%M%S')}.h5"
 
@@ -59,7 +59,8 @@ def convert(input_file, output_file=None, split=4096):
                 val = Time(val, format='datetime').jd
             # mset = fp.create_dataset(key, shape=(), dtype=float, data=val)
             # mset = fp.create_dataset(key, data=val)
-            fp[key] = val
             print(f"\t{key}:  {val}")
+            fp[key] = val
+
     metadata.onlog(f"Writing {output_file}")
 
