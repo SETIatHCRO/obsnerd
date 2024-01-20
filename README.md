@@ -1,16 +1,16 @@
 Initial observing recipe
 
-Log into gnuradio and cd into the obsnerd directory
+**Start the VNC**
 
 Note that for (hopefully) lack of confusion, all times should be in UTC (which is what the gnuradio server is set to).  I make this goof all of the time.
 
 When you are ready to go for the session, claim the antennas (if this fails, run 'obsnerd.py end' first):
-obsnerd.py start [INITIALS HERE]
+- **obsnerd.py start [INITIALS HERE]**
 
-Use S.O.P.P. to pick a satellite and a frequency:
- - I've adapted the S.O.P.P. example.py as find_sats.py.  To get GPS satellites, can type
-find_sats.py -s NAVS
- - ideally however we want to point in front of an LEO and measure it passing through
+Use S.O.P.P. to pick a satellite and a frequency, first update the tle files then search for satellites
+ - **updatetle.py**
+ - I've adapted the S.O.P.P. example.py as find_sats.py.  E.g. to get GPS satellites starting 10min in the future, can type
+ - **find_sats.py -t 10 -s NAVS**
 
 Note, there are two gnuradio companion scripts:  nrdz_use.py and nrdz_nofiles.py
 If you don't want to record the data, use the nrdz_nofiles.py option and skip the file conversion/viewing steps below. 
@@ -57,17 +57,18 @@ Offline, make a .txt file for each .5h file and add the information from the onl
 - updatetle.py
 - obsnerd.py start [initials]
 - ... loop for multiple satellites
+- find_sats.py -t 15 -s NAVS  # search for GPS (NAVSTAR) starting 15min in the future
 - obsnerd.py source [name] [isoformat_timestamp]
 - obsnerd.py freq [in MHz]
 - obsnerd.py move [az,el]
 - nrdz_use.py
-- **END OBS X**
+- **End obs by clicking X in corner of spectrum window**
 - f2h5.py
 - ... observe more with above loop
 - obsnerd.py end
 
 - ...analyze
-- onview nav72_231224_180136.h5 -p series -d
+- onview nav72_231224_180136.h5 -p series -d -b
 ...etc
 ...update googlesheet
 ...make .txt file (nav72_231224_180136.txt)

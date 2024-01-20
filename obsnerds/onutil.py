@@ -12,17 +12,69 @@ TIME_FORMATS = ['%Y-%m-%dT%H:%M', '%y-%m-%dT%H:%M',
                 '%Y%m%d%H%M', '%y%m%d%H%M'
             ]
 
+
+def strip_tz(this_datetime):
+    if not isinstance(this_datetime, str):
+        return this_datetime
+    try:
+        if this_datetime[-6] in ['+', '-']:
+            return this_datetime[:-6]
+    except IndexError:
+        this_datetime
+
+
+def create_tz(tz, default='server'):
+    if isinstance(default, str):
+        if default.lower() == 'server':
+            default = datetime.datetime.now().astimezone().tzinfo
+        elif default.lower() == 'utc':
+            default = datetime.timezone(datetime.timedelta(0), 'UTC+00:00')
+    if tz is None:
+        return default
+    if isinstance(tz, datetime.datetime):
+        return tz.tzinfo
+    if isinstance(tz, datetime.timezone):
+        return tz
+
+    if isinstance(tz, str) and ':' in tz:  # Provided as e.g. -08:00 or +02:00 or isoformat with tz
+        if len(tz) == 6:
+            sgn = tz[0]            
+            hr, mn = [float(x) for x in tz[1:].split(':')]
+        else:
+            try:
+                sgn = tz[-6]
+                hr, mn = [float(x) for x in tz[-6:].split(':')]
+            except (IndexError, ValueError):
+                return default
+        vsgn = 1.0 if sgn == '+' else -1.0
+        hroffset = vsgn * (hr + mn / 60.0)
+        name = f"UTC{tz}"
+    else:
+        from math import modf
+        try:
+            tz = float(tz)
+        except (ValueError, TypeError):
+            return default
+        sgn = '-' if tz < 0.0 else '+'
+        vsgn = 1.0 if sgn == '+' else -1.0
+        hroffset = tz
+        fhr, hr = modf(abs(tz))
+        name = f"UTC{sgn}{int(hr)}:{int(60.0*fhr)}"
+    return datetime.timezone(datetime.timedelta(hours=hroffset), name)
+
+
 def make_datetime(**kwargs):
     """
     Take various datetime/str/offset/timezone options and return timezone-aware datetimes
 
     """
-    for p in ['date', 'time', 'datetime', 'datestamp', 'timestamp', 'offset']:
-        if p in kwargs:
-            datetimes = kwargs[p]
+    for ptype in ['date', 'time', 'datetime', 'datestamp', 'timestamp', 'offset',
+                  'tstart', 'tstop', 'tle', 'expected']:
+        if ptype in kwargs:
+            datetimes = kwargs[ptype]
             break
     else:
-        raise InputError("No valid datetime term included")
+        raise ValueError("No valid datetime term included")
     if isinstance(datetimes, str):
         datetimes = datetimes.split(',')
     elif not isinstance(datetimes, list):
@@ -43,7 +95,7 @@ def make_datetime(**kwargs):
 
     datetime_out = []
     for dt, tz in zip(datetimes, timezones):
-        datetime_out.append(proc_datetime(dt, tz))
+        datetime_out.append(proc_datetime(dt, tz, ptype))
 
     if len(datetime_out) == 1:
         return datetime_out[0]
@@ -51,38 +103,14 @@ def make_datetime(**kwargs):
         return datetime_out
 
 
-def proc_datetime(this_datetime, this_timezone):
+def proc_datetime(this_datetime, this_timezone, ptype=''):
     """
     Handles one datetime/timezone pair
 
     """
-    tzindt = None
-    if isinstance(this_datetime, str):
-        try:
-            sgn = this_datetime[-6]
-        except IndexError:
-            sgn = False
-        if  sgn in ['+', '-']:
-            vsgn = 1.0 if sgn == '+' else -1.0
-            a, b = [float(x) for x in this_datetime[-5:].split(':')]
-            name = f"UTC{sgn}{abs(a):.0f}"
-            tzindt = datetime.timezone(datetime.timedelta(hours=vsgn * (a + b / 60.0)), name)
-            this_datetime = this_datetime[:-6]
-    elif isinstance(this_datetime, datetime.datetime):
-        tzindt = this_datetime.tzinfo
-
-    # Get timezone
-    if not isinstance(this_timezone, datetime.timezone):
-        try:
-            hr = float(this_timezone)
-            name = f"UTC{'+' if hr>=0.0 else '-'}{hr:.0f}"
-            this_timezone = datetime.timezone(datetime.timedelta(hours=hr), name)
-        except (ValueError, KeyError, TypeError):
-            this_timezone = None
-
-    # If supplied, the this_timezone overrides any timezone sent in this_datetime
+    this_timezone = create_tz(this_timezone, default=None)
     if this_timezone is None:
-        this_timezone = tzindt
+        this_timezone = create_tz(this_datetime, default='utc')
 
     # Process datetime value and timezone
     if this_datetime == 'now' or this_datetime is None:
@@ -94,7 +122,8 @@ def proc_datetime(this_datetime, this_timezone):
     if isinstance(this_datetime, datetime.datetime):
         return this_datetime.replace(tzinfo=this_timezone)
 
-    # ... it is a str
+    # ... it is a str, make sure no tz info left
+    this_datetime = strip_tz(this_datetime)
     this_dt = None
     for this_tf in TIME_FORMATS:
         try:

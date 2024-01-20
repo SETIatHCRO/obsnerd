@@ -62,7 +62,7 @@ def get_meta():
         meta = yaml.safe_load(fp)
     for key in ['tstart', 'tstop', 'tle', 'expected']:
         if key in meta:
-            meta.update({key: onutil.make_datetime(date=meta[key])})
+            meta.update({key: onutil.make_datetime(**{key: meta[key]})})
     return meta
 
 
