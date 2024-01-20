@@ -36,16 +36,17 @@ def updatetle(base_path, base_url):
             if useThis:
                 a = lll.split('.')
                 outfile = a[0]+'.tle'
-                print(f'Reading {lll}:  {tlefiles[lll]}')
+                reading = f'Reading {tlefiles[lll]}:  {lll}'
                 sat = requests.get(path.join(base_url, lll))
                 if sat.status_code == 404:
-                    print(f"Normal request not working for {lll}", end=' -- ')
                     new_url = base_url + f"gp.php?GROUP={lll.split('.txt')[0]}&FORMAT=tle"
-                    print(f"Trying {new_url}", end=' -- ')
+                    reading = f"Reading {tlefiles[lll]}:  {new_url}"
                     sat = requests.get(new_url)
-                    print(sat.status_code)
 
-                if sat.status_code == 200:
+                if sat.status_code != 200:
+                    print(f"Invalid code for {tlefiles[lll]}:  {sat.status_code}")
+                else:
+                    print(reading)
                     sat_text = sat.text.splitlines()
                     with open(path.join(base_path, outfile), 'w') as fp:
                         for line in sat_text:
