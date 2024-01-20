@@ -27,7 +27,7 @@ def updatetle(base_path, base_url):
                 this_file = word.split('/')[-1]
                 tlefiles[this_file] = hpp.description
 
-    print("Updating")
+    print(f"Updating from {base_url}")
     with open(path.join(base_path, 'master.dat'), 'w') as master:
         for lll in tlefiles:
             useThis = True
@@ -37,11 +37,11 @@ def updatetle(base_path, base_url):
             if useThis:
                 a = lll.split('.')
                 outfile = a[0]+'.tle'
-                reading = f'{tlefiles[lll]:30s}:  {lll}'
+                reading = f'{tlefiles[lll]:30s}  {lll}'
                 sat = requests.get(path.join(base_url, lll))
                 if sat.status_code == 404:
                     new_url = base_url + f"gp.php?GROUP={lll.split('.txt')[0]}&FORMAT=tle"
-                    reading = f"{tlefiles[lll]:30s}:  {new_url}"
+                    reading = f"{tlefiles[lll]:30s}  {new_url.split('?')[1]}"
                     sat = requests.get(new_url)
 
                 if sat.status_code != 200:
