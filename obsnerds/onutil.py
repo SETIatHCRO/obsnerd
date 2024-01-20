@@ -88,15 +88,13 @@ def proc_datetime(this_datetime, this_timezone):
     if this_datetime == 'now' or this_datetime is None:
         return datetime.datetime.now().astimezone(this_timezone)
 
-    try:
-        dt = float(this_datetime)
-        return datetime.datetime.now().astimezone(this_timezone) + datetime.timedelta(minutes=dt)
-    except (TypeError, ValueError):
-        pass
+    if isinstance(this_datetime, (float, int)):
+        return datetime.datetime.now().astimezone(this_timezone) + datetime.timedelta(minutes=this_datetime)
 
     if isinstance(this_datetime, datetime.datetime):
         return this_datetime.replace(tzinfo=this_timezone)
 
+    # ... it is a str
     this_dt = None
     for this_tf in TIME_FORMATS:
         try:
@@ -116,6 +114,11 @@ def proc_datetime(this_datetime, this_timezone):
                     break
                 except (TypeError, ValueError):
                     continue
-    if not isinstance(this_dt, datetime.datetime):
+    if isinstance(this_dt, datetime.datetime):
+        return this_dt.replace(tzinfo=this_timezone)
+
+    try:
+        dt = float(this_datetime)
+        return datetime.datetime.now().astimezone(this_timezone) + datetime.timedelta(minutes=dt)
+    except (TypeError, ValueError):
         return None
-    return this_dt.replace(tzinfo=this_timezone)

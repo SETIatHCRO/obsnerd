@@ -167,7 +167,7 @@ class Data:
             setattr(self, field, Time(getattr(self, field), format='jd'))
         tstartdt = onutil.make_datetime(date=self.tstart.datetime, tz=self.sv.tz)
         tstopdt = onutil.make_datetime(date=self.tstop.datetime, tz=self.sv.tz)
-        self.t_info = Axis(tstartdt, tstopdt, len(self.data[:, 0]), 'UTC')
+        self.t_info = Axis(tstartdt, tstopdt, len(self.data[:, 0]), tstartdt.tzname())
         self.t = self.t_info.array()
         print(self.t_info)
         # Set freq axis
@@ -183,11 +183,11 @@ class Data:
         if self.tle is not None:
             print(f"Updated TLEs: {self.tle.datetime}")
         
-
     def _parse_fn(self):
         X = self.filename.split('_')
         if len(X) == 3:
-            _datetime = onutil.make_datetime(date=f"{X[1]}_{X[2]}", tz=self.sv.tz)
+            X2 = X[2].split('.')[0]
+            _datetime = onutil.make_datetime(date=f"{X[1]}_{X2}", tz=self.sv.tz)
         else:
             _datetime = None
         return X[0], _datetime
@@ -242,11 +242,11 @@ class Data:
         inds = self.f_info.index(self.sv.freq)
         self.fslice = slice(inds[0], inds[-1] + 1)
         self.frange = range(self.fslice.start, self.fslice.stop)
-        self._f0, self._f1 = self.freq[self.fslice.start], self.freq[self.fslice.stop]
+        self._f0, self._f1 = self.freq[self.fslice.start], self.freq[self.fslice.stop-1]
         inds = self.t_info.index(self.sv.time)
         self.tslice = slice(inds[0], inds[-1] + 1)
         self.trange = range(self.tslice.start, self.tslice.stop)
-        self._T0, self._T1 = self.t[self.tslice.start], self.t[self.tslice.stop]
+        self._T0, self._T1 = self.t[self.tslice.start], self.t[self.tslice.stop-1]
 
     def spectra(self, **kwargs):
         """Make a 2-D plot of the spectra."""
@@ -296,7 +296,7 @@ class Data:
 
     def series(self, **kwargs):
         """Make a 2-D plot of the time series."""
-        defaults = {'log': False, 'dB': False, 'total_power': False, 'freq': None, 'time': None}
+        defaults = {'log': False, 'dB': False, 'total_power': False, 'freq': None, 'time': None, 'beamfit': False}
         self.sv.update(kwargs, defaults)
         self._get_ft_slices()
 
@@ -309,25 +309,29 @@ class Data:
         # Do extra fitting stuff below
         N = 10
         results_prefix = '--Results--\n' if self.sv.beamfit else ''
+        extents = plt.axis()
+        yaxlim = [extents[-1], extents[-1]]
         if self.sv.beamfit or self.sv.total_power:
             self.make_power(**kwargs)
             plt.plot(self.t[self.tslice], self._fmt_data(self.power[self.tslice]), lw=4, color='k')
-        yaxlim = [plt.axis()[2], plt.axis()[3]]
-        if self.filename_datetime is not None:
             print(f"{results_prefix}{'Expected:':{N}s}{self.filename_datetime.isoformat()}")
             if self.filename_datetime>=self.t[self.tslice.start] and self.filename_datetime<=self.t[self.tslice.stop-1]:  
                 plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
 
         if self.sv.beamfit:
-            import beamfit
+            from obsnerds import beamfit
+            expected = onutil.make_datetime(date=self.expected.datetime, tz=self.sv.tz)
+            if self.filename_datetime - expected > timedelta(seconds=10):
+                self.filename_datetime = None  # Ignore incorrect conversion right now
+                # print(self.filename_datetime, expected)
             coeff, data_fit = beamfit.gaussian(self.power[self.tslice], max(self.power[self.tslice]), len(self.trange) / 2.0, len(self.trange)/4.0 )
             fit_time = int(coeff[1]) + self.tslice.start
             fit_range = [int(coeff[1] - coeff[2]), int(coeff[1] + coeff[2])]
             plt.plot(self.t[self.tslice], self._fmt_data(data_fit), '--', lw=2, color='w')
             plt.plot([self.t[fit_time], self.t[fit_time]], yaxlim, '--', lw=2, color='k')
             print(f"{'Found:':{N}s}{self.t[fit_time].isoformat()}")
-            if self.expected is not None:
-                  offset = self.t[fit_time] - self.expected
+            if expected is not None:
+                  offset = self.t[fit_time] - expected
                   print(f"{'Offset:':{N}s}{offset.total_seconds():.1f} sec")
             width = self.t[fit_range[1]] - self.t[fit_range[0]]
             print(f"{'Width:':{N}s}{width.total_seconds():.1f} sec")
