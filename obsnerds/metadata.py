@@ -28,6 +28,21 @@ def onlog(notes):
             print(f"{ts} -- {note}", file=fp)
 
 
+def read_onlog(params=['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'tstop']):
+    logdata = {}
+    for param in params:
+        logdata[param.strip(':')] = {}
+    with open(ONLOG_FILENAME, 'r') as fp:
+        for line in fp:
+            for param in params:
+                if param in line:
+                    data = [x.strip() for x in line.split('--')]
+                    if param in ['tstart', 'tstop']:
+                        logdata[param][data[0]] = data[0]
+                    else:
+                        logdata[param.strip(':')][data[0]] = ' -- '.join(data[1:])
+    return logdata
+
 def get_latest_value(param, parse=False):
     """
     Return the latest entry for given param in line.
@@ -40,21 +55,52 @@ def get_latest_value(param, parse=False):
         if 'timestamp' uses the timestamp
         if str will split on that string and return last index
     """
-    metadata = {}
-    indentry = 0 if parse == 'timestamp' else -1
-    with open(ONLOG_FILENAME, 'r') as fp:
-        for line in fp:
-            if param in line:
-                data = [x.strip() for x in line.split('--')]
-                metadata[data[0]] = data[indentry]
-    ts = sorted(metadata)
+    logdata = read_onlog()
+    ts = sorted(logdata[param])
     if not len(ts):
         return None
-    val = metadata[ts[-1]]
+    val = logdata[param][ts[-1]]
     if parse:
         val = val.split(parse)[-1].strip()
     return val
 
+
+def get_summary():
+    logdata = read_onlog()
+    tstart = list(logdata['tstart'].keys())
+    source = list(logdata['source'].keys())
+    azel = list(logdata['azel'].keys())
+    expected = list(logdata['expected'].keys())
+    fcen = list(logdata['fcen'].keys())
+    bw = list(logdata['bw'].keys())
+    tstop = list(logdata['tstop'].keys())
+    tsall = set(tstart + source + azel + expected + fcen + bw + tstop)
+    tsall = sorted(list(tsall))
+    table_data = []
+    row = ['' for x in range(8)]
+    for this_ts in tsall:
+        if this_ts in tstart:
+            row[0] = logdata['tstart'][this_ts]
+        if this_ts in source:
+            row[2] = logdata['source'][this_ts].split(':')[-1]
+        if this_ts in expected:
+            row[3] = logdata['expected'][this_ts][9:].strip()
+        if this_ts in azel:
+            payload = logdata['azel'][this_ts].split(':')[-1].split(',')
+            row[4] = payload[0]
+            row[5] = payload[1]
+        if this_ts in fcen:
+            row[6] = logdata['fcen'][this_ts].split(':')[-1]
+        if this_ts in bw:
+            row[7] = logdata['bw'][this_ts].split(':')[-1]
+        if this_ts in tstop:
+            row[1] = logdata['tstop'][this_ts]
+            table_data.append(row)
+            row = ['' for x in range(8)]
+    from tabulate import tabulate
+    print(tabulate(table_data, headers=['start', 'stop', 'source', 'expected', 'az', 'el', 'fcen', 'bw']))
+    return table_data
+    
 
 # Metadata functions
 def get_meta():

@@ -87,6 +87,9 @@ class CommandHandler:
         self.datestamp = onutil.make_datetime(date=self.datestamp)
         metadata.onlog([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
 
+    def summary(self, **kwargs):
+        summary = metadata.get_summary()
+
     def test(self, msg='test'):
         print(msg)
         metadata.onlog(msg)

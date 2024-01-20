@@ -3,7 +3,7 @@ from obsnerds import obsnerd_engine as oe
 import argparse
 
 ap = argparse.ArgumentParser()
-ap.add_argument('cmd', help="Action [start, freq,  move, end, note, source]", choices=['start', 'freq', 'move', 'end', 'note', 'source'])
+ap.add_argument('cmd', help="Action [start, freq,  move, end, note, source, summary]", choices=['start', 'freq', 'move', 'end', 'note', 'source', 'summary'])
 ap.add_argument('payload', help="Argument for command.", nargs='?', default=None)
 ap.add_argument('arg2', help="If source, associated datetime.", nargs='?', default=None)
 ap.add_argument('-c', '--coord-type', dest='coord_type', help="For <move> coordinate type: azel/radec/source/traj [azel]",
