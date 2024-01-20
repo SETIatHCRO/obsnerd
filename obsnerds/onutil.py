@@ -20,10 +20,10 @@ def strip_tz(this_datetime):
         if this_datetime[-6] in ['+', '-']:
             return this_datetime[:-6]
     except IndexError:
-        this_datetime
+        return this_datetime
 
 
-def create_tz(tz, default='server'):
+def create_tz(tz, default='server', only_from_datetime=False):
     if isinstance(default, str):
         if default.lower() == 'server':
             default = datetime.datetime.now().astimezone().tzinfo
@@ -49,7 +49,7 @@ def create_tz(tz, default='server'):
         vsgn = 1.0 if sgn == '+' else -1.0
         hroffset = vsgn * (hr + mn / 60.0)
         name = f"UTC{tz}"
-    else:
+    elif not only_from_datetime:
         from math import modf
         try:
             tz = float(tz)
@@ -60,6 +60,8 @@ def create_tz(tz, default='server'):
         hroffset = tz
         fhr, hr = modf(abs(tz))
         name = f"UTC{sgn}{int(hr)}:{int(60.0*fhr)}"
+    else:
+        return None
     return datetime.timezone(datetime.timedelta(hours=hroffset), name)
 
 
@@ -110,8 +112,7 @@ def proc_datetime(this_datetime, this_timezone):
     """
     this_timezone = create_tz(this_timezone, default=None)
     if this_timezone is None:
-        this_timezone = create_tz(this_datetime, default='utc')
-
+        this_timezone = create_tz(this_datetime, default='utc', only_from_datetime=True)
     # Process datetime value and timezone
     if this_datetime == 'now' or this_datetime is None:
         return datetime.datetime.now().astimezone(this_timezone)
@@ -145,7 +146,6 @@ def proc_datetime(this_datetime, this_timezone):
                     continue
     if isinstance(this_dt, datetime.datetime):
         return this_dt.replace(tzinfo=this_timezone)
-
     try:
         dt = float(this_datetime)
         return datetime.datetime.now().astimezone(this_timezone) + datetime.timedelta(minutes=dt)
