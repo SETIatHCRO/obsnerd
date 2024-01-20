@@ -60,7 +60,7 @@ def create_tz(tz, default='server', only_from_datetime=False):
         vsgn = 1.0 if sgn == '+' else -1.0
         hroffset = tz
         fhr, hr = modf(abs(tz))
-        name = f"UTC{sgn}{int(hr)}:{int(60.0*fhr)}"
+        name = f"UTC{sgn}{int(hr):02d}:{int(60.0*fhr):02d}"
     else:
         return None
     return datetime.timezone(datetime.timedelta(hours=hroffset), name)
