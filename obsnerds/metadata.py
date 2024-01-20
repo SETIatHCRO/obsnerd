@@ -66,6 +66,7 @@ def get_latest_value(param, parse=False):
 
 
 def get_summary():
+    from copy import copy
     logdata = read_onlog()
     tstart = list(logdata['tstart'].keys())
     source = list(logdata['source'].keys())
@@ -78,6 +79,7 @@ def get_summary():
     tsall = sorted(list(tsall))
     table_data = []
     row = ['' for x in range(8)]
+    previous_fcen = ''
     for this_ts in tsall:
         if this_ts in tstart:
             row[0] = logdata['tstart'][this_ts]
@@ -91,10 +93,13 @@ def get_summary():
             row[5] = payload[1]
         if this_ts in fcen:
             row[6] = logdata['fcen'][this_ts].split(':')[-1]
+            previous_fcen = copy(row[6])
         if this_ts in bw:
-            row[7] = logdata['bw'][this_ts].split(':')[-1]
+            row[7] = float(logdata['bw'][this_ts].split(':')[-1]) / 1E6
         if this_ts in tstop:
             row[1] = logdata['tstop'][this_ts]
+            if not len(row[6]):
+                row[6] = previous_fcen
             table_data.append(row)
             row = ['' for x in range(8)]
     from tabulate import tabulate
