@@ -314,13 +314,13 @@ class Data:
         if self.sv.beamfit or self.sv.total_power:
             self.make_power(**kwargs)
             plt.plot(self.t[self.tslice], self._fmt_data(self.power[self.tslice]), lw=4, color='k')
-            print(f"{results_prefix}{'Expected:':{N}s}{self.filename_datetime.isoformat()}")
-            if self.filename_datetime>=self.t[self.tslice.start] and self.filename_datetime<=self.t[self.tslice.stop-1]:  
-                plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
 
         if self.sv.beamfit:
             from obsnerds import beamfit
             expected = onutil.make_datetime(date=self.expected.datetime, tz=self.sv.tz)
+            print(f"--Results--\n{'Expected:':{N}s}{expected}")
+            if expected>=self.t[self.tslice.start] and expected<=self.t[self.tslice.stop-1]:  
+                plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
             if self.filename_datetime - expected > timedelta(seconds=10):
                 self.filename_datetime = None  # Ignore incorrect conversion right now
                 # print(self.filename_datetime, expected)
