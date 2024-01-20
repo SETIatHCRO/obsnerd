@@ -34,8 +34,6 @@ class StateVariable:
             if key not in kwargs:
                 kwargs[key] = val
 
-        if 'tz' not in kwargs:
-            kwargs['tz'] = 0.0
         if 'log' in kwargs and kwargs['log']:
             kwargs['_ylabel'] = 'log'
             kwargs['_mult'] = 1.0
@@ -54,9 +52,12 @@ class StateVariable:
                 kwargs['freq'] = [float(x) for x in kwargs['freq'].split(',')]
         else:
             kwargs['freq'] = None
+        if 'tz' in kwargs:
+            self.tz = float(kwargs['tz'])
+            del(kwargs['tz'])
         if 'time' in kwargs and kwargs['time'] is not None:
             if isinstance(kwargs['time'], str):
-                kwargs['time'] = [onutil.make_datetime(x) for x in kwargs['time'].split(",")]
+                kwargs['time'] = onutil.make_datetime(date=kwargs['time'], tz=self.tz)
         else:
             kwargs['time'] = None
 
@@ -94,7 +95,7 @@ class Axis:
 
     def array(self, shift=0.0, scale=1.0, label=None):
         """
-        Return the generated shifted/scaled data array for the Axis.  Time shift will take UTC to local
+        Return the generated shifted/scaled data array for the Axis.
 
         Parameters
         ----------
@@ -108,7 +109,7 @@ class Axis:
         """
         self.shift = float(shift)
         self.scale = float(scale)
-        self.step = (self.stop - self.start) / self.length
+        self.step = (self.stop - self.start) / (self.length - 1)
         if label is None:
             if abs(self.shift) < 1E-6:
                 self.label = self.unit
@@ -148,7 +149,7 @@ class Axis:
 class Data:
     def __init__(self, fn, timezone=0.0):
         self.filename = fn
-        self.timezone = timezone
+        self.sv = StateVariable({'tz': timezone})
         self.name, self.filename_datetime = self._parse_fn()  # Parse time out of filename (hopefully)
         self.h5 = HDF5HeaderInfo()
         with h5py.File(fn, 'r') as fp:
@@ -163,10 +164,11 @@ class Data:
                     setattr(self, param, fp[param].asstr()[...])
         # Set time axis
         for field in self.h5.from_datetime:
-            print("OE:  ", field, getattr(self, field))
             setattr(self, field, Time(getattr(self, field), format='jd'))
-        self.t_info = Axis(self.tstart.datetime, self.tstop.datetime, len(self.data[:, 0]), 'UTC')
-        self.t = self.t_info.array(self.timezone)
+        tstartdt = onutil.make_datetime(date=self.tstart.datetime, tz=self.sv.tz)
+        tstopdt = onutil.make_datetime(date=self.tstop.datetime, tz=self.sv.tz)
+        self.t_info = Axis(tstartdt, tstopdt, len(self.data[:, 0]), 'UTC')
+        self.t = self.t_info.array()
         print(self.t_info)
         # Set freq axis
         self.fmin = self.fcen - self.bw / 2.0
@@ -180,12 +182,12 @@ class Data:
         self.tle = None if self.tle is None else Time(self.tle, format='jd')
         if self.tle is not None:
             print(f"Updated TLEs: {self.tle.datetime}")
-        self.sv = StateVariable(defaults={'tz': 0.0})
+        
 
     def _parse_fn(self):
         X = self.filename.split('_')
         if len(X) == 3:
-            _datetime = onutil.make_datetime(date=f"{X[1]}_{X[2]}")
+            _datetime = onutil.make_datetime(date=f"{X[1]}_{X[2]}", tz=self.sv.tz)
         else:
             _datetime = None
         return X[0], _datetime
@@ -208,7 +210,6 @@ class Data:
             else:
                 print(f"{field}: {val}")
 
-
     def wf(self, **kwargs):
         """
         Make a waterfall plot of the data.
@@ -219,18 +220,19 @@ class Data:
             num_xticks (int), num_yticks (int), colorbar (bool), log (bool), dB
 
         """
-        defaults = {'log': True, 'dB': False, 'colorbar': True, 'xticks': 12, 'yticks': 6}
+        defaults = {'log': True, 'dB': False, 'colorbar': True, 'xticks': 12, 'yticks': 6, 'freq': None, 'time': None}
         self.sv.update(kwargs, defaults)
+        self._get_ft_slices()
 
-        plt.imshow(self._fmt_data(self.data))
+        plt.imshow(self._fmt_data(self.data[self.tslice, self.fslice]))
         if self.sv.colorbar:
             plt.colorbar()
-
-        plt.xticks(np.linspace(0, len(self.data[0]), self.sv.xticks), [f"{x:.2f}" for x in np.linspace(self.fmin, self.fmax, self.sv.xticks)])
-        jds = np.linspace(self.tstart.jd, self.tstop.jd, self.sv.yticks)
-        apt = Time(jds, format='jd')
-        yticks = [(x + timedelta(hours=self.timezone)).strftime("%H:%M:%S") for x in apt.datetime]
-        plt.yticks(np.linspace(0, len(self.data), self.sv.yticks), yticks)
+        f_axis = Axis(self._f0, self._f1, self.sv.xticks)
+        xticks = [f"{x:.2f}" for x in f_axis.array()]
+        plt.xticks(np.linspace(0, len(self.frange), self.sv.xticks), xticks)
+        T_axis = Axis(self._T0, self._T1, self.sv.yticks)
+        yticks = [x.strftime("%H:%M:%S") for x in T_axis.array()]
+        plt.yticks(np.linspace(0, len(self.trange), self.sv.yticks), yticks)
         plt.xlabel(self.f_info.label)
         plt.ylabel(self.t_info.label)
         plt.title(f"{self.t_info.unit}:  {self.t_info.start.strftime('%Y-%m-%d')}")
@@ -240,9 +242,11 @@ class Data:
         inds = self.f_info.index(self.sv.freq)
         self.fslice = slice(inds[0], inds[-1] + 1)
         self.frange = range(self.fslice.start, self.fslice.stop)
+        self._f0, self._f1 = self.freq[self.fslice.start], self.freq[self.fslice.stop]
         inds = self.t_info.index(self.sv.time)
         self.tslice = slice(inds[0], inds[-1] + 1)
         self.trange = range(self.tslice.start, self.tslice.stop)
+        self._T0, self._T1 = self.t[self.tslice.start], self.t[self.tslice.stop]
 
     def spectra(self, **kwargs):
         """Make a 2-D plot of the spectra."""
@@ -251,7 +255,7 @@ class Data:
         self._get_ft_slices()
 
         for i in self.trange:
-            plt.plot(self.freq[self.fslice], self._fmt_data(self.data[i][self.fslice]))
+            plt.plot(self.freq[self.fslice], self._fmt_data(self.data[i, self.fslice]))
         plt.grid()
         plt.xlabel(self.f_info.label)
         plt.ylabel(self.sv._ylabel)
@@ -297,7 +301,7 @@ class Data:
         self._get_ft_slices()
 
         for i in self.frange:
-            plt.plot(self.t[self.tslice], self._fmt_data(self.data[self.trange, i]))               
+            plt.plot(self.t[self.tslice], self._fmt_data(self.data[self.tslice, i]))               
         plt.grid()
         plt.xlabel(self.t_info.label)
         plt.ylabel(self.sv._ylabel)

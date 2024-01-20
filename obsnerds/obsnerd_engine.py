@@ -84,12 +84,7 @@ class CommandHandler:
     def source(self, name=None, datestamp=None):
         self.name = self.payload if name is None else name
         self.datestamp = self.arg2 if datestamp is None else datestamp
-        if self.datestamp is None:
-            from datetime import datetime
-            self.datestamp = datetime.now()
-            print(f"Using current as date: {self.datestamp}")
-        else:
-            self.datestamp = onutil.make_datetime(date=self.datestamp)
+        self.datestamp = onutil.make_datetime(date=self.datestamp)
         metadata.onlog([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
 
     def test(self, msg='test'):

@@ -14,16 +14,48 @@ TIME_FORMATS = ['%Y-%m-%dT%H:%M', '%y-%m-%dT%H:%M',
 
 def make_datetime(**kwargs):
     """
-    Take various datetime/str/offset/timezone options and return timezone-aware datetime
+    Take various datetime/str/offset/timezone options and return timezone-aware datetimes
 
     """
-    # Get datetime value
     for p in ['date', 'time', 'datetime', 'datestamp', 'timestamp', 'offset']:
         if p in kwargs:
-            this_datetime = kwargs[p]
+            datetimes = kwargs[p]
             break
-        else:
-            continue
+    else:
+        raise InputError("No valid datetime term included")
+    if isinstance(datetimes, str):
+        datetimes = datetimes.split(',')
+    elif not isinstance(datetimes, list):
+        datetimes = [datetimes]
+
+    timezones = None
+    for p in ['timezone', 'tz']:
+        if p in kwargs:
+            timezones = kwargs[p]
+            break
+    if isinstance(timezones, str):
+        timezones = timezones.split(',')
+    elif not isinstance(timezones, list):
+        timezones = [timezones] * len(datetimes)
+
+    if len(timezones) != len(datetimes):
+        raise ValueError(f"Datetime lengths ({len(datetimes)}) differs from timezone lengths ({len(timezones)})")
+
+    datetime_out = []
+    for dt, tz in zip(datetimes, timezones):
+        datetime_out.append(proc_datetime(dt, tz))
+
+    if len(datetime_out) == 1:
+        return datetime_out[0]
+    else:
+        return datetime_out
+
+
+def proc_datetime(this_datetime, this_timezone):
+    """
+    Handles one datetime/timezone pair
+
+    """
     tzindt = None
     if isinstance(this_datetime, str):
         try:
@@ -31,41 +63,39 @@ def make_datetime(**kwargs):
         except IndexError:
             sgn = False
         if  sgn in ['+', '-']:
-            sgn = 1.0 if this_datetime[-6] == '+' else -1.0
+            vsgn = 1.0 if sgn == '+' else -1.0
             a, b = [float(x) for x in this_datetime[-5:].split(':')]
-            name = f"UTC{'+' if sgn > 0.0 else '-'}{a:.0f}"
-            tzindt = datetime.timezone(datetime.timedelta(hours=sgn * (a + b / 60.0)), name)
+            name = f"UTC{sgn}{abs(a):.0f}"
+            tzindt = datetime.timezone(datetime.timedelta(hours=vsgn * (a + b / 60.0)), name)
             this_datetime = this_datetime[:-6]
+    elif isinstance(this_datetime, datetime.datetime):
+        tzindt = this_datetime.tzinfo
 
     # Get timezone
-    timezone = None
-    for p in ['timezone', 'tz']:
+    if not isinstance(this_timezone, datetime.timezone):
         try:
-            if isinstance(kwargs[p], datetime.timezone):
-                timezone = kwargs[p]
-                break
-            else:
-                hr = float(kwargs[p])
-                name = f"UTC{'+' if hr>=0.0 else '-'}{hr:.0f}"
-                timezone = datetime.timezone(datetime.timedelta(hours=hr), name)
-                break
+            hr = float(this_timezone)
+            name = f"UTC{'+' if hr>=0.0 else '-'}{hr:.0f}"
+            this_timezone = datetime.timezone(datetime.timedelta(hours=hr), name)
         except (ValueError, KeyError, TypeError):
-            continue
-    if timezone is None:
-        timezone = tzindt
+            this_timezone = None
+
+    # If supplied, the this_timezone overrides any timezone sent in this_datetime
+    if this_timezone is None:
+        this_timezone = tzindt
 
     # Process datetime value and timezone
     if this_datetime == 'now' or this_datetime is None:
-        return datetime.datetime.now().astimezone(timezone)
+        return datetime.datetime.now().astimezone(this_timezone)
 
     try:
         dt = float(this_datetime)
-        return datetime.datetime.now().astimezone(timezone) + datetime.timedelta(minutes=dt)
+        return datetime.datetime.now().astimezone(this_timezone) + datetime.timedelta(minutes=dt)
     except (TypeError, ValueError):
         pass
 
     if isinstance(this_datetime, datetime.datetime):
-        return this_datetime.replace(tzinfo=timezone)
+        return this_datetime.replace(tzinfo=this_timezone)
 
     this_dt = None
     for this_tf in TIME_FORMATS:
@@ -88,4 +118,4 @@ def make_datetime(**kwargs):
                     continue
     if not isinstance(this_dt, datetime.datetime):
         return None
-    return this_dt.replace(tzinfo=timezone)
+    return this_dt.replace(tzinfo=this_timezone)
