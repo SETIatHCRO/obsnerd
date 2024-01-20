@@ -95,7 +95,7 @@ def make_datetime(**kwargs):
 
     datetime_out = []
     for dt, tz in zip(datetimes, timezones):
-        datetime_out.append(proc_datetime(dt, tz, ptype))
+        datetime_out.append(proc_datetime(dt, tz))
 
     if len(datetime_out) == 1:
         return datetime_out[0]
@@ -103,7 +103,7 @@ def make_datetime(**kwargs):
         return datetime_out
 
 
-def proc_datetime(this_datetime, this_timezone, ptype=''):
+def proc_datetime(this_datetime, this_timezone):
     """
     Handles one datetime/timezone pair
 
