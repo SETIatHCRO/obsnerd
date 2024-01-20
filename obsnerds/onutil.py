@@ -20,7 +20,8 @@ def strip_tz(this_datetime):
         if this_datetime[-6] in ['+', '-']:
             return this_datetime[:-6]
     except IndexError:
-        return this_datetime
+        pass
+    return this_datetime
 
 
 def create_tz(tz, default='server', only_from_datetime=False):
@@ -144,6 +145,7 @@ def proc_datetime(this_datetime, this_timezone):
                     break
                 except (TypeError, ValueError):
                     continue
+
     if isinstance(this_dt, datetime.datetime):
         return this_dt.replace(tzinfo=this_timezone)
     try:
