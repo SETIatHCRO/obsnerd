@@ -9,7 +9,6 @@ from sopp.custom_dataclasses.time_window import TimeWindow
 from sopp.custom_dataclasses.reservation import Reservation
 from sopp.custom_dataclasses.runtime_settings import RuntimeSettings
 from sopp.custom_dataclasses.frequency_range.frequency_range import FrequencyRange
-from sopp.frequency_filter.frequency_filter import FrequencyFilter
 import datetime
 import matplotlib.pyplot as plt
 from tabulate import tabulate
@@ -128,12 +127,6 @@ def main(start, duration, frequency, bandwidth=20.0, az_limit=[0, 360],
         tle_file=tle_file,
     ).load_satellites()
 
-    # Filter satellites on frequency (optional, going to do automatically)
-    filtered_satellites = FrequencyFilter(
-        satellites=all_satellites,
-        observation_frequency=frequency_range
-    ).filter_frequencies()
-
     # Runtime Settings
     runtime_settings = RuntimeSettings(
         concurrency_level=8,
@@ -156,14 +149,14 @@ def main(start, duration, frequency, bandwidth=20.0, az_limit=[0, 360],
     # Determine Satellite Interference
     if ftype == 'horizon':
         interference_events = EventFinderRhodesmill(
-            list_of_satellites=filtered_satellites,
+            list_of_satellites=all_satellites,
             reservation=reservation,
             antenna_direction_path=antenna_direction_path,
             runtime_settings=runtime_settings,
         ).get_satellites_above_horizon()
     else:
         interference_events = EventFinderRhodesmill(
-            list_of_satellites=filtered_satellites,
+            list_of_satellites=all_satellites,
             reservation=reservation,
             antenna_direction_path=antenna_direction_path,
             runtime_settings=runtime_settings,
