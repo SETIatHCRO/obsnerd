@@ -28,7 +28,7 @@ def onlog(notes):
             print(f"{ts} -- {note}", file=fp)
 
 
-def read_onlog(params=['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'tstop']):
+def read_onlog(params=['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'session start:', 'end:', 'Writing', 'move to:', 'tstop']):
     logdata = {}
     for param in params:
         logdata[param.strip(':')] = {}
@@ -67,6 +67,10 @@ def get_latest_value(param, parse=False):
 
 def get_summary():
     from copy import copy
+    headers=['obs', 'start', 'stop', 'source', 'expected', 'az', 'el', 'fcen', 'bw']
+    I = {}
+    for i, hdr in enumerate(headers):
+        I[hdr] = i
     logdata = read_onlog()
     tstart = list(logdata['tstart'].keys())
     source = list(logdata['source'].keys())
@@ -74,36 +78,43 @@ def get_summary():
     expected = list(logdata['expected'].keys())
     fcen = list(logdata['fcen'].keys())
     bw = list(logdata['bw'].keys())
+    obs = list(logdata['session start'].keys())
     tstop = list(logdata['tstop'].keys())
-    tsall = set(tstart + source + azel + expected + fcen + bw + tstop)
+    tsall = set(tstart + source + azel + expected + fcen + bw + obs + tstop)
     tsall = sorted(list(tsall))
     table_data = []
-    row = ['' for x in range(8)]
+    row = ['' for x in range(len(headers))]
     previous_fcen = ''
+    previous_obs = ''
     for this_ts in tsall:
+        if this_ts in obs:
+            row[I['obs']] = (logdata['session start'][this_ts].split('--')[0][15:]).strip()
+            previous_obs = copy(row[0])
         if this_ts in tstart:
-            row[0] = logdata['tstart'][this_ts]
+            row[I['start']] = logdata['tstart'][this_ts]
         if this_ts in source:
-            row[2] = logdata['source'][this_ts].split(':')[-1]
+            row[I['source']] = logdata['source'][this_ts].split(':')[-1]
         if this_ts in expected:
-            row[3] = logdata['expected'][this_ts][9:].strip()
+            row[I['expected']] = logdata['expected'][this_ts][9:].strip()
         if this_ts in azel:
             payload = logdata['azel'][this_ts].split(':')[-1].split(',')
-            row[4] = payload[0]
-            row[5] = payload[1]
+            row[I['az']] = payload[0]
+            row[I['el']] = payload[1]
         if this_ts in fcen:
-            row[6] = logdata['fcen'][this_ts].split(':')[-1]
-            previous_fcen = copy(row[6])
+            row[I['fcen']] = logdata['fcen'][this_ts].split(':')[-1]
+            previous_fcen = copy(row[I['fcen']])
         if this_ts in bw:
-            row[7] = float(logdata['bw'][this_ts].split(':')[-1]) / 1E6
+            row[I['bw']] = float(logdata['bw'][this_ts].split(':')[-1]) / 1E6
         if this_ts in tstop:
-            row[1] = logdata['tstop'][this_ts]
-            if not len(row[6]):
-                row[6] = previous_fcen
+            row[I['stop']] = logdata['tstop'][this_ts]
+            if not len(row[I['fcen']]):
+                row[I['fcen']] = previous_fcen
+            if not len(row[I['obs']]):
+                row[I['obs']] = previous_obs
             table_data.append(row)
-            row = ['' for x in range(8)]
+            row = ['' for x in range(len(headers))]
     from tabulate import tabulate
-    print(tabulate(table_data, headers=['start', 'stop', 'source', 'expected', 'az', 'el', 'fcen', 'bw']))
+    print(tabulate(table_data, headers=headers))
     return table_data
     
 
