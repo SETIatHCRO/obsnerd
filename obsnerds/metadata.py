@@ -84,12 +84,11 @@ def get_summary():
     tsall = sorted(list(tsall))
     table_data = []
     row = ['' for x in range(len(headers))]
-    previous_fcen = ''
-    previous_obs = ''
+    previous = {'fcen': '', 'obs': '', 'az': '', 'el': ''}
     for this_ts in tsall:
         if this_ts in obs:
             row[I['obs']] = (logdata['session start'][this_ts].split('--')[0][15:]).strip()
-            previous_obs = copy(row[0])
+            previous['obs'] = copy(row[I['obs']])
         if this_ts in tstart:
             row[I['start']] = logdata['tstart'][this_ts]
         if this_ts in source:
@@ -100,17 +99,18 @@ def get_summary():
             payload = logdata['azel'][this_ts].split(':')[-1].split(',')
             row[I['az']] = payload[0]
             row[I['el']] = payload[1]
+            previous['az'] = copy(row[I['az']])
+            previous['el'] = copy(row[I['el']])
         if this_ts in fcen:
             row[I['fcen']] = logdata['fcen'][this_ts].split(':')[-1]
-            previous_fcen = copy(row[I['fcen']])
+            previous['fcen'] = copy(row[I['fcen']])
         if this_ts in bw:
             row[I['bw']] = float(logdata['bw'][this_ts].split(':')[-1]) / 1E6
         if this_ts in tstop:
             row[I['stop']] = logdata['tstop'][this_ts]
-            if not len(row[I['fcen']]):
-                row[I['fcen']] = previous_fcen
-            if not len(row[I['obs']]):
-                row[I['obs']] = previous_obs
+            for par in ['obs', 'fcen', 'az', 'el']:
+                if not len(row[I[par]]):
+                    row[I[par]] = previous[par]
             table_data.append(row)
             row = ['' for x in range(len(headers))]
     from tabulate import tabulate
