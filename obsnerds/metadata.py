@@ -28,7 +28,7 @@ def onlog(notes):
             print(f"{ts} -- {note}", file=fp)
 
 
-def read_onlog(params=['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'session start:', 'end:', 'Writing', 'move to:', 'tstop']):
+def read_onlog(params=['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'session start:', 'end:', 'Writing', 'move to:', 'TLEs', 'tstop']):
     logdata = {}
     for param in params:
         logdata[param.strip(':')] = {}
@@ -37,7 +37,7 @@ def read_onlog(params=['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:'
             for param in params:
                 if param in line:
                     data = [x.strip() for x in line.split('--')]
-                    if param in ['tstart', 'tstop']:
+                    if param in ['tstart', 'tstop', 'TLEs']:
                         logdata[param][data[0]] = data[0]
                     else:
                         logdata[param.strip(':')][data[0]] = ' -- '.join(data[1:])
