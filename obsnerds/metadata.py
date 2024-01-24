@@ -8,6 +8,9 @@ META_FILENAME = 'metadata.yaml'
 UTC = timezone(timedelta(0), 'UTC')
 PST = timezone(timedelta(hours=-8), 'PST')
 PDT = timezone(timedelta(hours=-7), 'PDT')
+LOGFILE_DELIMITER = '--'
+LOG_PARAMS_TO_GET = ['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'session start:',
+                     'end:', 'traj:', 'track:', 'Writing', 'move to:', 'TLEs', 'tstop']
 
 
 # Log functions
@@ -28,20 +31,29 @@ def onlog(notes):
             print(f"{ts} -- {note}", file=fp)
 
 
-def read_onlog(params=['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'session start:', 'end:', 'traj:', 'Writing', 'move to:', 'TLEs', 'tstop']):
-    logdata = {}
-    for param in params:
-        logdata[param.strip(':')] = {}
+def read_onlog(params=LOG_PARAMS_TO_GET):
+    logdata = {'other': {}}
+    keys = [p.strip(':') for p in params]
+    for key in keys:
+        logdata[key] = {}
     with open(ONLOG_FILENAME, 'r') as fp:
         for line in fp:
-            for param in params:
-                if param in line:
-                    data = [x.strip() for x in line.split('--')]
-                    if param in ['tstart', 'tstop', 'TLEs']:
-                        logdata[param][data[0]] = data[0]
+            par_not_found = True
+            data = [x.strip() for x in line.split(LOGFILE_DELIMITER)]
+            for key, param in zip(keys, params):
+                if param in data[1]:
+                    par_not_found = False
+                    if key in ['tstart', 'tstop', 'TLEs']:
+                        logdata[key][data[0]] = data[0]
+                    elif key == 'track':
+                        logdata[key].setdefault(data[0], [])
+                        logdata[key][data[0]].append(LOGFILE_DELIMITER.join(data[1:]))
                     else:
-                        logdata[param.strip(':')][data[0]] = ' -- '.join(data[1:])
+                        logdata[key][data[0]] = LOGFILE_DELIMITER.join(data[1:])
+            if par_not_found:
+                logdata['other'][data[0]] = line.strip()
     return logdata
+
 
 def get_latest_value(param, parse=False):
     """
@@ -87,7 +99,7 @@ def get_summary():
     previous = {'fcen': '', 'obs': '', 'az': '', 'el': ''}
     for this_ts in tsall:
         if this_ts in obs:
-            row[I['obs']] = (logdata['session start'][this_ts].split('--')[0][15:]).strip()
+            row[I['obs']] = (logdata['session start'][this_ts].split(LOGFILE_DELIMITER)[0][15:]).strip()
             previous['obs'] = copy(row[I['obs']])
         if this_ts in tstart:
             row[I['start']] = logdata['tstart'][this_ts]
