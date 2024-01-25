@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
+import yaml
 from astropy.time import Time
 from datetime import timedelta, datetime
 from copy import copy
@@ -152,19 +153,27 @@ class Data:
         self.sv = StateVariable({'tz': timezone})
         self.name, self.filename_datetime = self._parse_fn()  # Parse time out of filename (hopefully)
         self.h5 = HDF5HeaderInfo()
+        fields_present = []
         with h5py.File(fn, 'r') as fp:
             self.data = np.array(fp[self.h5.data])
             for param in self.h5.float64s:
                 if param in fp:
                     setattr(self, param, float(np.float64(fp[param])))
+                    fields_present.append(param)
                 else:
                     setattr(self, param, None)
             for param in self.h5.strings:
                 if param in fp:
                     setattr(self, param, fp[param].asstr()[...])
-        # Set time axis
+                    fields_present.append(param)
+        # Post-process from_ fields
         for field in self.h5.from_datetime:
-            setattr(self, field, Time(getattr(self, field), format='jd'))
+            if field in fields_present:
+                setattr(self, field, Time(getattr(self, field), format='jd'))
+        for field in self.h5.from_yaml:
+            if field in fields_present:
+                setattr(self, field, yaml.safe_load(getattr(self, field)))
+        # Set time axis
         tstartdt = onutil.make_datetime(date=self.tstart.datetime, tz=self.sv.tz)
         tstopdt = onutil.make_datetime(date=self.tstop.datetime, tz=self.sv.tz)
         self.t_info = Axis(tstartdt, tstopdt, len(self.data[:, 0]), tstartdt.tzname())

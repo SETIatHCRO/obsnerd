@@ -2,6 +2,7 @@ import astropy.units as u
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.time import Time
 import numpy as np
+import yaml
 import matplotlib.pyplot as plt
 from argparse import Namespace
 from . import onutil
@@ -33,22 +34,18 @@ class Track:
             setattr(self, key, val)
 
     def __repr__(self):
-        s = f'Label: {self.name}\n'
-        for i, lbl in zip([0, -1], ['Start at:', 'End at:']):
-            s += f"{lbl} {self.obstime[i]} UTC\n"
-            try:
-                s += f"\tl={self.l[i]:.3f}, b={self.b[i]:.3f}\n"
-            except IndexError:
-                pass
-            try:
-                s += f"\tRA={self.ra[i]:.3f}, Dec={self.dec[i]:.3f}\n"
-            except IndexError:
-                pass
-            try:
-                s += f"\tAz={self.az[i]:.3f}, El={self.el[i]:.3f}\n"
-            except IndexError:
-                pass
-        return s
+        self.summary_yaml()
+        return yaml.safe_dump(self.summary)
+
+    def summary_yaml(self):
+        self.summary = {'Name':  self.name, 'Start': {}, 'Stop': {}}
+        for i, lbl in zip([0, -1], ['Start', 'Stop']):
+            self.summary[lbl]['time'] = self.obstime[i].datetime.isoformat()
+            for par in ['l', 'b', 'ra', 'dec', 'az', 'el']:
+                try:
+                    self.summary[lbl][par] = float(getattr(self, par)[i])
+                except IndexError:
+                    pass
 
     def add(self, **kwargs):
         for key, value in kwargs.items():

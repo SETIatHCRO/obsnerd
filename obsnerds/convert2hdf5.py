@@ -27,7 +27,8 @@ class HDF5HeaderInfo:
     def __init__(self):
         self.data = 'data'
         self.float64s = ['tstart', 'tstop', 'fcen', 'bw', 'decimation', 'nfft', 'tle', 'expected']
-        self.strings = ['source', 'move', 'move_data']
+        self.strings = ['source', 'move', 'move_data', 'track']
+        self.from_yaml = ['track']
         self.from_datetime = ['tstart', 'tstop', 'tle', 'expected']
         self.metadata = self.float64s + self.strings
 
