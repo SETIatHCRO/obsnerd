@@ -44,6 +44,8 @@ def create_tz(tz, default='server', only_from_datetime=False):
         else:
             try:
                 sgn = tz[-6]
+                if sgn not in ['+', '-']:
+                    return default
                 hr, mn = [float(x) for x in tz[-6:].split(':')]
             except (IndexError, ValueError):
                 return default
@@ -114,6 +116,7 @@ def proc_datetime(this_datetime, this_timezone):
     this_timezone = create_tz(this_timezone, default=None)
     if this_timezone is None:
         this_timezone = create_tz(this_datetime, default='utc', only_from_datetime=True)
+
     # Process datetime value and timezone
     if this_datetime == 'now' or this_datetime is None:
         return datetime.datetime.now().astimezone(this_timezone)
@@ -126,6 +129,7 @@ def proc_datetime(this_datetime, this_timezone):
 
     # ... it is a str, make sure no tz info left
     this_datetime = strip_tz(this_datetime)
+
     this_dt = None
     for this_tf in TIME_FORMATS:
         try:
