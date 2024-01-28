@@ -60,9 +60,8 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
 
     # Filters
     filterer = Filterer()
-    frequency_range = FrequencyRange(bandwidth=bandwidth, frequency=frequency) if frequency is not None else None
     if frequency is not None:
-        filterer.add_filter(filters.filter_frequency(frequency_range))
+        filterer.add_filter(filters.filter_frequency(FrequencyRange(bandwidth=bandwidth, frequency=frequency)))
     if search_for:
         filterer.add_filter(filters.filter_name_contains(search_for))
     if orbit_type in ['leo', 'meo', 'geo']:
