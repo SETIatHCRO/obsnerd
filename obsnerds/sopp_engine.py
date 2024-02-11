@@ -14,7 +14,7 @@ from . import onutil
 
 
 def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
-         el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all', time_resolution=1,
+         el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all', exclude=False, time_resolution=1,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 60.0,
          tle_file='tle/active.tle', timezone=None, output_file=False):
     """
@@ -38,6 +38,8 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         If str, only allow if str in satellite name
     orbit_type : str
         All, GEO, MEO, LEO, other
+    exclude : str or False
+        If str, only allow if string not in name
     time_resolution : int
         Time resolution in sec
     ra : str or float
@@ -64,6 +66,8 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         filterer.add_filter(filters.filter_frequency(FrequencyRange(bandwidth=bandwidth, frequency=frequency)))
     if search_for:
         filterer.add_filter(filters.filter_name_contains(search_for))
+    if exclude:
+        filterer.add_filter(filters.filter_name_does_not_contain(exclude))
     if orbit_type in ['leo', 'meo', 'geo']:
         filterer.add_filter(getattr(filters, f"filter_is_{orbit_type}")())
 
