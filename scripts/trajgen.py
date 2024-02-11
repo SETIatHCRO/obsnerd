@@ -4,7 +4,7 @@ import argparse
 
 ap = argparse.ArgumentParser()
 ap.add_argument('type', help="Type of trajectory ([gal]/file)", nargs='?', default='gal')
-ap.add_argument('-t', '--time', help="Start time as isoformat string or delay in minutes from now.", default=0.0)
+ap.add_argument('-t', '--time', help="Start time as isoformat string or delay in minutes from now. 'None' to use file start.", default=0.0)
 ap.add_argument('-u', '--using', help="Galactic latitude to use if 'gal' or filename to us for ephem [0.0 deg]", default=0.0)
 ap.add_argument('-e', '--el_horizon', help='Elevation to start at [30.0 deg]', type=float, default=30.0)
 ap.add_argument('-d', '--duration', help='Duration of track [10.0 min]', type=float, default=10.0)

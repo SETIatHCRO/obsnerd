@@ -100,11 +100,10 @@ class Trajectory:
         """
         self.valid = True
         self.tz = tz
-        this_datetime = onutil.make_datetime(date=start_time, timezone=tz)
-        if this_datetime is not None:
-            self.start_time = Time(this_datetime)
-        else:
+        if isinstance(start_time, str) and start_time.lower() == 'none':
             self.start_time = None
+        else:
+            self.start_time = Time(onutil.make_datetime(date=start_time, timezone=tz))
         self.el_horizon = float(el_horizon)
         self.duration = float(duration) * 60.0 * u.second
         self.tstep = float(tstep) * u.second
