@@ -69,6 +69,12 @@ class Onlog:
                     self.data['other'][timestamp] = payload
         self.all_timestamps = sorted(list(self.all_timestamps))
 
+    def get_latest_value(self, key, parse=False):
+        val = self.latest[key]
+        if parse:
+            val = val.split(parse)[-1].strip()
+        return val
+
 
 def get_latest_value(key, parse=False):
     """
@@ -83,10 +89,7 @@ def get_latest_value(key, parse=False):
         if str will split on that string and return last index
     """
     log = Onlog(auto_read=True)
-    val = log.latest[key]
-    if parse:
-        val = val.split(parse)[-1].strip()
-    return val
+    return log.get_latest_value(key=key, parse=parse)
 
 
 def get_summary():
@@ -143,19 +146,20 @@ def get_meta():
 
 
 def start(samp_rate, decimation, nfft):
-    move = get_latest_value('move to', parse=':')
+    log = Onlog(auto_read=True)
+    move = log.get_latest_value('move to', parse=':')
     print(f"Move type is {move}")
     data = {
         'tstart': datetime.now().astimezone(UTC).isoformat(),
-        'fcen': float(get_latest_value('fcen', parse=':')),
+        'fcen': float(log.get_latest_value('fcen', parse=':')),
         'bw': samp_rate / 1E6,
         'decimation': decimation,
         'nfft': nfft,
-        'tle': onutil.make_datetime(date=get_latest_value('TLEs', parse='timestamp'), tz=0.0),
-        'source': get_latest_value('source', parse=':'),
-        'expected': onutil.make_datetime(date=get_latest_value('expected', parse=' '), tz=0.0),
+        'tle': onutil.make_datetime(date=log.get_latest_value('TLEs', parse='timestamp'), tz=0.0),
+        'source': log.get_latest_value('source', parse=':'),
+        'expected': onutil.make_datetime(date=log.get_latest_value('expected', parse=' '), tz=0.0),
         'move': move,
-        'move_data': get_latest_value(move, parse=':')
+        'move_data': log.get_latest_value(move, parse=':')
     }
     if move == 'traj':
         import yaml
