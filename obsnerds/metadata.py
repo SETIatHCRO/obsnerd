@@ -144,6 +144,7 @@ def get_meta():
 
 def start(samp_rate, decimation, nfft):
     move = get_latest_value('move to', parse=':')
+    print(f"Move type is {move}")
     data = {
         'tstart': datetime.now().astimezone(UTC).isoformat(),
         'fcen': float(get_latest_value('fcen', parse=':')),
