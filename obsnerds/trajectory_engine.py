@@ -11,6 +11,7 @@ EPHEM_FILENAME = 'track.ephem'
 TRAJECTORY_FILENAME = 'track'
 TRACK_LOG_FILENAME = 'track.log'
 HCRO = EarthLocation(lat=40.8178049*u.deg, lon=-121.4695413*u.deg, height=986*u.m)
+HERA = EarthLocation(lat=-30.721208*u.deg, lon=21.428555*u.deg, height=1000*u.m)
 EL_TRACK_LIMIT = 1.5
 AZ_TRACK_LIMIT = 2.0
 
@@ -82,7 +83,7 @@ class Track:
 
 
 class Trajectory:
-    def __init__(self, start_time, duration=20.0, tstep=1.0, el_horizon=30.0, tz=0.0):
+    def __init__(self, start_time, duration=20.0, tstep=1.0, el_horizon=30.0, tz=0.0, obs=HCRO):
         """
         Parameters
         ----------
@@ -107,6 +108,7 @@ class Trajectory:
         self.el_horizon = float(el_horizon)
         self.duration = float(duration) * 60.0 * u.second
         self.tstep = float(tstep) * u.second
+        self.observatory = obs
 
     def _time_arrays(self):
         self.track_Time = self.start_time + np.arange(0.0, self.duration.value, self.tstep.value) * u.second
@@ -124,7 +126,7 @@ class Trajectory:
         gp_b = np.ones(len(gp_l)) * self.b
         self.T0.gal = SkyCoord(frame='galactic', l=gp_l, b=gp_b)
         self.T0.radec = self.T0.gal.transform_to('icrs')
-        self.T0.azel = self.T0.radec.transform_to(AltAz(obstime=self.start_time, location=HCRO))
+        self.T0.azel = self.T0.radec.transform_to(AltAz(obstime=self.start_time, location=self.observatory))
 
         self.T0.above_horizon = np.where(self.T0.azel.alt.value > self.el_horizon)
         if not len(self.T0.above_horizon[0]):
@@ -142,7 +144,7 @@ class Trajectory:
                 this_l = this_l - 360.0*u.deg
             gal = SkyCoord(frame='galactic', l=this_l, b=self.b)
             radec = gal.transform_to('icrs')
-            azel = radec.transform_to(AltAz(obstime=self.track_Time[i], location=HCRO))
+            azel = radec.transform_to(AltAz(obstime=self.track_Time[i], location=self.observatory))
             self.track.add(az=azel.az.value, el=azel.alt.value, ra=radec.ra.value, dec=radec.dec.value, l=this_l.value, b=self.b.value)
         self.track.rates()
 
