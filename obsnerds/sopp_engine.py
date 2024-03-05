@@ -82,13 +82,15 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
             longitude=-121.4695413,
             elevation=986,
             name='HCRO',
-            beamwidth=3,
-            bandwidth=10,
-            frequency=135
+            beamwidth=3
         )
         .set_time_window(
             begin=starttime.isoformat(),
             end=stoptime.isoformat()
+        )
+        .set_frequency_range(
+            bandwidth=bandwidth,
+            frequency=frequency
         )
         .set_observation_target(
             declination=ra,
