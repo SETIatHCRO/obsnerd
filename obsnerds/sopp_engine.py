@@ -165,7 +165,9 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
             shownctr += 1
             plt.figure('AzEl Trajectory')
             plt.plot(az, el)
-            plt.plot(az[0], el[0], 'ko')
+            #plt.plot(az[0], el[0], 'k+')
+            #plt.plot(az[-1], el[-1], 'k>')
+            plt.arrow(az[-2], el[-2], az[-1]-az[-2], el[-1]-el[-2], head_width=2)
             plt.figure('Time Trajectory')
             plt.plot(tae, az)
             plt.plot(tae, el, '--')
