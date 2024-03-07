@@ -54,6 +54,8 @@ obsnerd.py end
 Offline, make a .txt file for each .5h file and add the information from the onlog.log and the googlesheet, and then describe the RFI in the field.
 
 ================COMMANDS ONLY==================
+NOTE - WORK IN THE /home/gnuradio/obsnerd directory
+
 - updatetle.py
 - obsnerd.py start [initials]
 - ... loop for multiple satellites
