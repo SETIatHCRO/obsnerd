@@ -275,7 +275,7 @@ def main(top_block_cls=nrdz, options=None):
     tb = top_block_cls(gaindB=options.gaindB, samp_rate=options.samp_rate, src_name=options.src_name)
     snippets_main_after_init(tb)
     tb.start()
-    metadata.start(tb.samp_rate, tb.decimation, tb.nfft)
+    metadata.start(tb.samp_rate, tb.decimate, tb.nfft)
     tb.show()
 
     def sig_handler(sig=None, frame=None):
