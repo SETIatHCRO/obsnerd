@@ -22,13 +22,13 @@ options:
     run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: Not titled yet
+    title: nrdz_pipeline
     window_size: (1000,1000)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [8, 8]
+    coordinate: [72, 28.0]
     rotation: 0
     state: enabled
 
@@ -42,7 +42,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [576, 68.0]
+    coordinate: [552, 68.0]
     rotation: 0
     state: true
 - name: nfft
@@ -94,7 +94,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [752, 204.0]
+    coordinate: [840, 228.0]
     rotation: 0
     state: true
 - name: blocks_file_sink_0
@@ -112,9 +112,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1024, 564.0]
+    coordinate: [1312, 404.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_file_sink_0_0
   id: blocks_file_sink
   parameters:
@@ -130,7 +130,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1024, 692.0]
+    coordinate: [344, 196.0]
     rotation: 0
     state: disabled
 - name: blocks_integrate_xx_0
@@ -148,7 +148,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [752, 300.0]
+    coordinate: [1064, 220.0]
     rotation: 0
     state: true
 - name: blocks_nlog10_ff_0
@@ -166,7 +166,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [632, 404.0]
+    coordinate: [1072, 324.0]
     rotation: 0
     state: true
 - name: blocks_null_sink_0
@@ -201,7 +201,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 360.0]
+    coordinate: [424, 352.0]
     rotation: 0
     state: true
 - name: blocks_vector_to_streams_0
@@ -219,7 +219,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [816, 524.0]
+    coordinate: [960, 444.0]
     rotation: 0
     state: true
 - name: fft_vxx_0
@@ -240,7 +240,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [520, 220.0]
+    coordinate: [576, 196.0]
     rotation: 0
     state: true
 - name: gaindB
@@ -270,7 +270,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [592, 20.0]
+    coordinate: [544, 20.0]
     rotation: 0
     state: true
 - name: qtgui_vector_sink_f_0
@@ -344,9 +344,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1016, 412.0]
+    coordinate: [1056, 532.0]
     rotation: 0
-    state: true
+    state: enabled
 - name: samp_rate
   id: parameter
   parameters:
@@ -361,7 +361,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [200, 12.0]
+    coordinate: [240, 28.0]
     rotation: 0
     state: enabled
 - name: snippet_0
@@ -370,19 +370,19 @@ blocks:
     alias: ''
     code: 'self.uhd_usrp_source.set_time_next_pps(uhd.time_spec(int(time.time())+1))
 
-      self.uhd_usrp_source.set_lo_export_enabled(True, "lo1", 0)
+      #self.uhd_usrp_source.set_lo_export_enabled(True, "lo1", 0)
 
-      self.uhd_usrp_source.set_rx_lo_dist(True, "LO_OUT_0")
+      #self.uhd_usrp_source.set_rx_lo_dist(True, "LO_OUT_0")
 
-      self.uhd_usrp_source.set_rx_lo_dist(True, "LO_OUT_1")
+      #self.uhd_usrp_source.set_rx_lo_dist(True, "LO_OUT_1")
 
-      self.uhd_usrp_source.set_lo_source("external", "lo1", 0)
+      #self.uhd_usrp_source.set_lo_source("external", "lo1", 0)
 
-      self.uhd_usrp_source.set_lo_source("external", "lo1", 1)
+      #self.uhd_usrp_source.set_lo_source("external", "lo1", 1)
 
-      self.uhd_usrp_source.set_lo_source("external", "lo1", 2)
+      #self.uhd_usrp_source.set_lo_source("external", "lo1", 2)
 
-      self.uhd_usrp_source.set_lo_source("external", "lo1", 3)
+      #self.uhd_usrp_source.set_lo_source("external", "lo1", 3)
 
       time.sleep(1)'
     comment: ''
@@ -514,8 +514,8 @@ blocks:
     center_freq8: '0'
     center_freq9: '0'
     clock_rate: 0e0
-    clock_source0: external
-    clock_source1: external
+    clock_source0: ''
+    clock_source1: ''
     clock_source2: ''
     clock_source3: ''
     clock_source4: ''
@@ -587,7 +587,8 @@ blocks:
     dc_offs_enb7: default
     dc_offs_enb8: default
     dc_offs_enb9: default
-    dev_addr: '"addr0=10.11.1.22"'
+    dev_addr: '"addr0=10.11.1.20, addr1=10.11.1.22, clock_source=external, time_source=external,
+      ref_clk_freq=10e6"'
     dev_args: '""'
     gain0: gaindB
     gain1: gaindB
@@ -832,8 +833,8 @@ blocks:
     stream_args: ''
     stream_chans: '[]'
     sync: sync
-    time_source0: external
-    time_source1: external
+    time_source0: ''
+    time_source1: ''
     time_source2: ''
     time_source3: ''
     time_source4: ''

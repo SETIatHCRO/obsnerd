@@ -25,7 +25,7 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio import uhd
 import time
-from obsnerds import metadata
+import sip
 
 
 def snipfcn_snippet_0(self):
@@ -121,14 +121,52 @@ class nrdz(gr.top_block, Qt.QWidget):
         self.uhd_usrp_source.set_center_freq(fc, 3)
         self.uhd_usrp_source.set_antenna('RX2', 3)
         self.uhd_usrp_source.set_gain(gaindB, 3)
+        self.qtgui_vector_sink_f_0 = qtgui.vector_sink_f(
+            nfft,
+            (-samp_rate/2+1.575e9),
+            (samp_rate/nfft),
+            "x-Axis",
+            "y-Axis",
+            "",
+            1, # Number of inputs
+            None # parent
+        )
+        self.qtgui_vector_sink_f_0.set_update_time(0.10)
+        self.qtgui_vector_sink_f_0.set_y_axis((-20), 60)
+        self.qtgui_vector_sink_f_0.enable_autoscale(False)
+        self.qtgui_vector_sink_f_0.enable_grid(False)
+        self.qtgui_vector_sink_f_0.set_x_axis_units("")
+        self.qtgui_vector_sink_f_0.set_y_axis_units("")
+        self.qtgui_vector_sink_f_0.set_ref_level(0)
+
+
+        labels = ['', '', '', '', '',
+            '', '', '', '', '']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ["blue", "red", "green", "black", "cyan",
+            "magenta", "yellow", "dark red", "dark green", "dark blue"]
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_vector_sink_f_0.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_vector_sink_f_0.set_line_label(i, labels[i])
+            self.qtgui_vector_sink_f_0.set_line_width(i, widths[i])
+            self.qtgui_vector_sink_f_0.set_line_color(i, colors[i])
+            self.qtgui_vector_sink_f_0.set_line_alpha(i, alphas[i])
+
+        self._qtgui_vector_sink_f_0_win = sip.wrapinstance(self.qtgui_vector_sink_f_0.qwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_vector_sink_f_0_win)
         self.fft_vxx_0 = fft.fft_vcc(nfft, True, window.blackmanharris(nfft), True, 4)
         self.blocks_vector_to_streams_0 = blocks.vector_to_streams(gr.sizeof_float*nfft, 1)
         self.blocks_stream_to_vector_0 = blocks.stream_to_vector(gr.sizeof_gr_complex*1, nfft)
         self.blocks_null_sink_0 = blocks.null_sink(gr.sizeof_gr_complex*1)
         self.blocks_nlog10_ff_0 = blocks.nlog10_ff(10, nfft, 0)
-	self.decimation = int(0.2*samp_rate/nfft)
-        self.blocks_integrate_xx_0 = blocks.integrate_ff(self.decimation, nfft)
-        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*nfft, 'nrdz', False)
+        self.blocks_integrate_xx_0 = blocks.integrate_ff((int(0.2*samp_rate/nfft)), nfft)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*nfft, '/home/ddeboer/nrdz', False)
         self.blocks_file_sink_0.set_unbuffered(False)
         self.blocks_complex_to_mag_squared_0 = blocks.complex_to_mag_squared(nfft)
 
@@ -141,10 +179,11 @@ class nrdz(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_nlog10_ff_0, 0), (self.blocks_vector_to_streams_0, 0))
         self.connect((self.blocks_stream_to_vector_0, 0), (self.fft_vxx_0, 0))
         self.connect((self.blocks_vector_to_streams_0, 0), (self.blocks_file_sink_0, 0))
+        self.connect((self.blocks_vector_to_streams_0, 0), (self.qtgui_vector_sink_f_0, 0))
         self.connect((self.fft_vxx_0, 0), (self.blocks_complex_to_mag_squared_0, 0))
         self.connect((self.uhd_usrp_source, 3), (self.blocks_null_sink_0, 2))
-        self.connect((self.uhd_usrp_source, 2), (self.blocks_null_sink_0, 0))
         self.connect((self.uhd_usrp_source, 1), (self.blocks_null_sink_0, 1))
+        self.connect((self.uhd_usrp_source, 2), (self.blocks_null_sink_0, 0))
         self.connect((self.uhd_usrp_source, 0), (self.blocks_stream_to_vector_0, 0))
 
 
@@ -152,7 +191,6 @@ class nrdz(gr.top_block, Qt.QWidget):
         self.settings = Qt.QSettings("GNU Radio", "nrdz")
         self.settings.setValue("geometry", self.saveGeometry())
         self.stop()
-	metadata.stop()
         self.wait()
 
         event.accept()
@@ -172,6 +210,7 @@ class nrdz(gr.top_block, Qt.QWidget):
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
+        self.qtgui_vector_sink_f_0.set_x_axis((-self.samp_rate/2+1.575e9), (self.samp_rate/self.nfft))
         self.uhd_usrp_source.set_samp_rate(self.samp_rate)
 
     def get_src_name(self):
@@ -197,6 +236,7 @@ class nrdz(gr.top_block, Qt.QWidget):
 
     def set_nfft(self, nfft):
         self.nfft = nfft
+        self.qtgui_vector_sink_f_0.set_x_axis((-self.samp_rate/2+1.575e9), (self.samp_rate/self.nfft))
 
     def get_fc(self):
         return self.fc
@@ -233,7 +273,7 @@ def main(top_block_cls=nrdz, options=None):
     tb = top_block_cls(gaindB=options.gaindB, samp_rate=options.samp_rate, src_name=options.src_name)
     snippets_main_after_init(tb)
     tb.start()
-    metadata.start(tb.samp_rate, tb.decimation, tb.nfft)
+
     tb.show()
 
     def sig_handler(sig=None, frame=None):
