@@ -63,7 +63,7 @@ class CommandHandler:
             source = ata_control.track_source(self.use_ants, source=self.location)
             metadata.onlog(f"source: {self.location}")
         elif self.coord_type == 'traj':
-            from obsnerds.obsnerd_engine import TRACK_YAML_FILENAME
+            from obsnerds.trajectory_engine import TRACK_YAML_FILENAME
             ephem = ata_control.upload_ephemeris(self.location)
             ata_control.track_ephemeris(ephem, self.use_ants, wait=True)
             metadata.onlog(f"traj: {self.location}")
