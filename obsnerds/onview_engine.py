@@ -170,9 +170,10 @@ class Data:
         for field in self.h5.from_datetime:
             if field in fields_present:
                 setattr(self, field, Time(getattr(self, field), format='jd'))
-        for field in self.h5.from_yaml:
-            if field in fields_present:
-                setattr(self, field, yaml.safe_load(getattr(self, field)))
+        print("COMMENTED OUT READING YAML INFO FROM H5 (onview_engine.pyL173)")
+        #for field in self.h5.from_yaml:
+        #    if field in fields_present:
+        #        setattr(self, field, yaml.safe_load(getattr(self, field)))
         # Set time axis
         tstartdt = onutil.make_datetime(date=self.tstart.datetime, tz=self.sv.tz)
         tstopdt = onutil.make_datetime(date=self.tstop.datetime, tz=self.sv.tz)
