@@ -18,6 +18,8 @@ traj = te.Trajectory(start_time=args.time, duration=args.duration, tstep=args.ts
 
 if args.type == 'gal':
     traj.galactic(b=float(args.using), rate=args.rate)
+elif args.type == 'geo':
+    traj.geoarc()
 else:
     traj.from_file(filename=args.using)
 if traj.valid:
