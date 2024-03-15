@@ -163,8 +163,8 @@ def start(samp_rate, decimation, nfft):
     }
     if move == 'traj':
         import yaml
-        from .trajectory_engine import TRACK_LOG_FILENAME
-        with open(TRACK_LOG_FILENAME, 'r') as fp:
+        from .trajectory_engine import TRACK_YAML_FILENAME
+        with open(TRACK_YAML_FILENAME, 'r') as fp:
             move_data = yaml.safe_load(fp)
         data['track'] = yaml.safe_dump(move_data)
     add_value(initialize=True, **data)
