@@ -3,7 +3,7 @@ from obsnerds import trajectory_engine as te
 import argparse
 
 ap = argparse.ArgumentParser()
-ap.add_argument('type', help="Type of trajectory ([gal]/file)", nargs='?', default='gal')
+ap.add_argument('type', help="Type of trajectory ([gal]/file/geo)", nargs='?', default='gal')
 ap.add_argument('-t', '--time', help="Start time as isoformat string or delay in minutes from now. 'None' to use file start.", default=0.0)
 ap.add_argument('-u', '--using', help="Galactic latitude to use if 'gal' or filename to us for ephem [0.0 deg]", default=0.0)
 ap.add_argument('-e', '--el_horizon', help='Elevation to start at [30.0 deg]', type=float, default=30.0)
@@ -19,7 +19,7 @@ traj = te.Trajectory(start_time=args.time, duration=args.duration, tstep=args.ts
 if args.type == 'gal':
     traj.galactic(b=float(args.using), rate=args.rate)
 elif args.type == 'geo':
-    traj.geoarc()
+    traj.geoarc(rate=args.rate)
 else:
     traj.from_file(filename=args.using)
 if traj.valid:

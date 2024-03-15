@@ -144,6 +144,7 @@ class Trajectory:
         R = -1.0*self.rate*self.tstep if direction == 'E-W' else self.rate*self.tstep
         for i in range(len(self.track_Time)):
             this_s = start_sub + i * R.value
+            print(this_s)
             lon_s = radians(this_s)
             cosG = np.cos(lat_e) * np.cos(lon_s - lon_e)
             sinG = np.sqrt( 1.0 - cosG**2 )
