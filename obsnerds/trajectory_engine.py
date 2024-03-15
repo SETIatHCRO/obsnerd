@@ -67,7 +67,7 @@ class Track:
         tai = np.array(self.timestamp, dtype=int)
         az = np.array(self.az, dtype=float)
         el = np.array(self.el, dtype=float)
-        print("!!!!NEED TO GET DISTANCES FROM SOPP  I THINK I DO")
+        print("!!!!NEED TO GET DISTANCES FROM SOPP!!!! (FOR from_file?)")
         if self.name.startswith('Gal'):
             self.ir = np.zeros(len(tai)) + 1E-20
         ephem = ((np.array([tai, az, el, self.ir], dtype=object)))
@@ -132,6 +132,7 @@ class Trajectory:
             Direction of trajectory 'E-W' or 'W-E'
 
         """
+        print("HCRO ONLY FOR NOW")
         from math import radians, degrees
         self._time_arrays()
         self.track = Track('Geo', timestamp=self.track_tsns, obstime=self.track_Time)
