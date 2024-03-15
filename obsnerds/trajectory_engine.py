@@ -4,16 +4,19 @@ from astropy.time import Time
 import numpy as np
 import yaml
 import matplotlib.pyplot as plt
+from copy import copy
 from argparse import Namespace
 from . import onutil
 
 EPHEM_FILENAME = 'track.ephem'
 TRAJECTORY_FILENAME = 'track'
-TRACK_LOG_FILENAME = 'track.log'
+TRACK_YAML_FILENAME = 'track.yaml'
 HCRO = EarthLocation(lat=40.8178049*u.deg, lon=-121.4695413*u.deg, height=986*u.m)
 HERA = EarthLocation(lat=-30.721208*u.deg, lon=21.428555*u.deg, height=1000*u.m)
 EL_TRACK_LIMIT = 1.5
 AZ_TRACK_LIMIT = 2.0
+REARTH = 6378.0
+RGEO = 42164.0
 
 class Track:
     """
@@ -52,7 +55,7 @@ class Track:
         for key, value in kwargs.items():
             getattr(self, key).append(value)
 
-    def log_track(self, filename=TRACK_LOG_FILENAME):
+    def log_track(self, filename=TRACK_YAML_FILENAME):
         print(self)
         if filename is not None:
             with open(filename, 'w') as fp:
@@ -64,19 +67,22 @@ class Track:
         tai = np.array(self.timestamp, dtype=int)
         az = np.array(self.az, dtype=float)
         el = np.array(self.el, dtype=float)
-        if True:
-            print("NEED TO GET DISTANCES FROM SOPP")
+        print("!!!!NEED TO GET DISTANCES FROM SOPP  I THINK I DO")
+        if self.name.startswith('Gal'):
             self.ir = np.zeros(len(tai)) + 1E-20
         ephem = ((np.array([tai, az, el, self.ir], dtype=object)))
         self.ephemtxt = np.savetxt(filename, ephem.T, fmt='%i  %.5f  %.5f  %.10E')
 
     def full_file(self, filename=TRAJECTORY_FILENAME):
-        print(F"Writing full trajectory: {filename}")
+        print(f"Writing full trajectory: {filename}")
         np.savez_compressed(filename, obstime=self.obstime.datetime,
                             az=self.az, el=self.el, ra=self.ra, dec=self.dec, 
                             l=self.l, b=self.b, ir=self.ir, allow_pickle=True)
 
     def rates(self):
+        if len(self.timestamp) != len(self.az):
+            self.timestamp = self.timestamp[:len(self.az)]
+            self.obstime = self.obstime[:len(self.az)]
         dt = np.diff(self.timestamp) / 1E9
         self.dazdt = np.diff(self.az) / dt
         self.deldt = np.diff(self.el) / dt
@@ -113,6 +119,45 @@ class Trajectory:
     def _time_arrays(self):
         self.track_Time = self.start_time + np.arange(0.0, self.duration.value, self.tstep.value) * u.second
         self.track_tsns = int(self.start_time.unix_tai * 1E9) + np.arange(0, int(self.duration.value * 1E9), int(self.tstep.value * 1E9))
+
+    def geoarc(self, rate=0.1, start_sub=-60.0, direction='E-W'):
+        """
+        ONLY FOR HCRO RIGHT NOW generally want -180 - -60
+
+        Parameters
+        ----------
+        rate : float
+            Rate of trajectory in deg/sec
+        direction : str
+            Direction of trajectory 'E-W' or 'W-E'
+
+        """
+        from math import radians, degrees
+        self._time_arrays()
+        self.track = Track('Geo', timestamp=self.track_tsns, obstime=self.track_Time)
+        self.trajectory_type = 'geo'
+        self.rate = rate * u.deg / u.second
+        Rr = (REARTH + HCRO.height.value) / RGEO
+        lon_e, lat_e = radians(HCRO.lon.value), radians(HCRO.lat.value)
+        self.az, self.el = [], []
+        R = -1.0*self.rate*self.tstep if direction == 'E-W' else self.rate*self.tstep
+        for i in range(len(self.track_Time)):
+            this_s = start_sub + i * R.value
+            lon_s = radians(this_s)
+            cosG = np.cos(lat_e) * np.cos(lon_s - lon_e)
+            sinG = np.sqrt( 1.0 - cosG**2 )
+            d = RGEO * np.sqrt(1.0 + Rr**2 - 2.0*Rr*cosG)
+            elevation = degrees(np.arccos((RGEO / d) * sinG ))
+            # THIS ONLY WORKS FOR LIMITED CASE NEED ALL QUADRANTS
+            beta = np.arccos( np.tan(lat_e) * cosG / sinG)
+            if lon_e > lon_s:
+                Az = np.pi - beta
+            if lon_e <= lon_s:
+                Az = np.pi + beta
+            azimuth = degrees(Az) % 360.0
+            if elevation > 15.0:
+                self.track.add(az=azimuth, el=elevation, ir=1.0 / (d * 1000.0))
+        self.track.rates()
 
     def galactic(self, b=0.0, rate=0.1):
         self.trajectory_type = 'galactic'
@@ -195,7 +240,7 @@ class Trajectory:
         if not self.valid:
             print("Trajectory not valid.")
             return
-        self.track.log_track(TRACK_LOG_FILENAME)
+        self.track.log_track(TRACK_YAML_FILENAME)
         self.track.ephem_file(EPHEM_FILENAME)
         self.track.full_file(TRAJECTORY_FILENAME)
 
@@ -207,6 +252,8 @@ class Trajectory:
             self._plot_galactic()
         elif self.trajectory_type == 'from_file':
             self._plot_from_file()
+        elif self.trajectory_type == 'geo':
+            self._plot_geo()
         plt.figure('Rates')
         t_extremes = [self.track.obstime.datetime[1], self.track.obstime.datetime[-1]]
         plt.plot(self.track.obstime.datetime[1:], self.track.dazdt, 'k', label='daz/dt')
@@ -219,6 +266,22 @@ class Trajectory:
         plt.ylabel('[deg/sec]')
         plt.grid()
         plt.show()
+
+    def _plot_geo(self):
+        plt.figure('Geo')
+        plt.subplot(211)
+        plt.plot(self.track.az, self.track.el, '.', lw=4, label='azel-track')
+        plt.grid()
+        plt.legend()
+        plt.xlabel('Az [deg]')
+        plt.ylabel('El [deg]')
+        plt.subplot(212)
+        plt.plot(self.track.obstime.datetime, self.track.az, '.', label='Az')
+        plt.plot(self.track.obstime.datetime, self.track.el, '.', label='El')
+        plt.xlabel('Time')
+        plt.ylabel('[deg]')
+        plt.grid()
+        plt.legend()
 
     def _plot_galactic(self):
         plt.figure('Galactic')
