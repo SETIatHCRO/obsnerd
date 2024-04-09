@@ -14,7 +14,7 @@ from . import onutil
 
 
 def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
-         el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all', exclude=False, time_resolution=1,
+         el_limit=0.0, ftype='horizon', search_for=False, orbit_type=None, exclude=False, time_resolution=1,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 60.0,
          tle_file='tle/active.tle', timezone=None, output_file=False):
     """
@@ -61,15 +61,13 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
     """
 
     # Filters
-    filterer = Filterer()
-    if frequency is not None:
-        filterer.add_filter(filters.filter_frequency(FrequencyRange(bandwidth=bandwidth, frequency=frequency)))
-    if search_for:
-        filterer.add_filter(filters.filter_name_contains(search_for))
-    if exclude:
-        filterer.add_filter(filters.filter_name_does_not_contain(exclude))
-    if orbit_type in ['leo', 'meo', 'geo']:
-        filterer.add_filter(getattr(filters, f"filter_is_{orbit_type}")())
+    filterer = (
+        Filterer()
+        .add_filter(filters.filter_frequency(FrequencyRange(bandwidth=bandwidth, frequency=frequency)))
+        .add_filter(filters.filter_name_regex(search_for))
+        .add_filter(filters.filter_name_does_not_contain(exclude))
+        .add_filter(filters.filter_orbit_is(orbit_type))
+    )
 
     # Observation Window
     starttime = onutil.make_datetime(date=start, tz=timezone)
@@ -85,8 +83,8 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
             beamwidth=3
         )
         .set_time_window(
-            begin=starttime.isoformat(),
-            end=stoptime.isoformat()
+            begin=starttime,
+            end=stoptime
         )
         .set_frequency_range(
             bandwidth=bandwidth,
@@ -98,13 +96,14 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         )
         .set_runtime_settings(
             concurrency_level=8,
-            time_continuity_resolution=1
+            time_continuity_resolution=time_resolution,
+            min_altitude=el_limit,
         )
         .set_satellites(tle_file=tle_file)
         .set_satellites_filter(filterer)
         .build()
     )
-    
+
     # Determine Satellite Interference
     sopp = Sopp(configuration=configuration)
 
@@ -142,8 +141,6 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         table_data = []
 
         for j, pos in enumerate(window.positions):
-            if pos.position.altitude < el_limit:
-                continue
             if pos.position.azimuth < az_limit[0] or pos.position.azimuth > az_limit[1]:
                 continue
             az.append(pos.position.azimuth)
