@@ -9,6 +9,8 @@ import datetime
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 from . import onutil
+import pandas as pd
+import numpy as np
 
 
 
@@ -104,7 +106,7 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         .set_satellites_filter(filterer)
         .build()
     )
-    
+
     # Determine Satellite Interference
     sopp = Sopp(configuration=configuration)
 
@@ -135,6 +137,10 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
 
     shownctr = 0
     jcadence = int(row_cadence / time_resolution)
+
+    ### Frequency info incorporated
+    freqData = pd.read_csv('SatList.csv')
+
     for i, window in enumerate(events, start=1):
 
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
@@ -160,7 +166,16 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                 with open(fnout, 'w') as fpof:
                     for _t, _a, _e, _d in zip(tae, az, el, dist):
                         print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{1.0/_d}", file=fpof)
-            print('Frequency information:  ', window.satellite.frequency)
+
+            # Query for frequency info
+            try:
+                indFreq_id = freqData.query("ID=={}".format(str(window.satellite.tle_information.satellite_number)))["Frequency [MHz]"].values
+                indFreq_name = freqData.query("Name=='{}'".format(str(window.satellite.name)))["Frequency [MHz]"].values
+                indFreq = set(list(indFreq_id) + list(indFreq_name))
+                print('Frequency information:  ', indFreq)
+            except:
+                print('Frequency information:  ', window.satellite.frequency)
+
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             shownctr += 1
             plt.figure('AzEl Trajectory')
