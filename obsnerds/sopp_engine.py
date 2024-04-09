@@ -168,10 +168,18 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                         print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{1.0/_d}", file=fpof)
 
             # Query for frequency info
+
+
             try:
                 indFreq_id = freqData.query("ID=={}".format(str(window.satellite.tle_information.satellite_number)))["Frequency [MHz]"].values
                 indFreq_name = freqData.query("Name=='{}'".format(str(window.satellite.name)))["Frequency [MHz]"].values
-                indFreq = set(list(indFreq_id) + list(indFreq_name))
+                indFreq_ur = list(set(list(indFreq_id) + list(indFreq_name)))
+                indFreq = []
+                for freq in indFreq_ur:
+                    if(type(freq) != float):
+                        indFreq += [float(freq)]
+
+
                 print('Frequency information:  ', indFreq)
             except:
                 print('Frequency information:  ', window.satellite.frequency)
