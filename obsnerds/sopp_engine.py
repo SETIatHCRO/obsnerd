@@ -32,10 +32,6 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         Bandwidth in MHz
     az_limit : list of float
         Az limits in degrees
-    el_limit : float
-        El lower limit in degrees
-    ftype : str
-        Search type 'beam' or 'horizon'
     search_for : str or bool
         If str, only allow if str in satellite name
     orbit_type : str
@@ -64,8 +60,10 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
 
     # Filters
     filterer = Filterer()
+    """
     if frequency is not None:
         filterer.add_filter(filters.filter_frequency(FrequencyRange(bandwidth=bandwidth, frequency=frequency)))
+    """
     if search_for:
         filterer.add_filter(filters.filter_name_contains(search_for))
     if exclude:
@@ -168,18 +166,25 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                         print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{1.0/_d}", file=fpof)
 
             # Query for frequency info
+            indFreq = [] 
             try:
                 indFreq_id = freqData.query("ID=={}".format(str(window.satellite.tle_information.satellite_number)))["Frequency [MHz]"].values
                 indFreq_name = freqData.query("Name=='{}'".format(str(window.satellite.name)))["Frequency [MHz]"].values
                 indFreq_ur = list(set(list(indFreq_id) + list(indFreq_name)))
-                indFreq = []
                 for freq in indFreq_ur:
                     if(type(freq) != float):
                         indFreq += [float(freq)]
-                print('Frequency information:  ', indFreq)
             except:
-                print('Frequency information:  ', window.satellite.frequency)
+                indFreq = window.satellite.frequency
 
+            if frequency is not None:
+                if (len(indFreq) == 0):
+                    continue
+                freqBools = [((x > (frequency - (bandwidth/2.))) and (x < (frequency + (bandwidth/2.)))) for x in indFreq]
+                if (True not in freqBools):
+                    continue
+		
+            print('Frequency information:  ', indFreq)
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             shownctr += 1
             plt.figure('AzEl Trajectory')
