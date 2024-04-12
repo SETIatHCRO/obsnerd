@@ -74,7 +74,6 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
     # Observation Window
     starttime = onutil.make_datetime(date=start, tz=timezone)
     stoptime = starttime + datetime.timedelta(minutes=duration)
-
     configuration = (
         ConfigurationBuilder()
         .set_facility(
@@ -176,11 +175,14 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                         indFreq += [float(freq)]
             except:
                 indFreq = window.satellite.frequency
-
-            if frequency is not None:
+            if (frequency != 1575.0):
+                #print(frequency)
+                #print(type(frequency))
+                #print(bandwidth)
                 if (len(indFreq) == 0):
                     continue
                 freqBools = [((x > (frequency - (bandwidth/2.))) and (x < (frequency + (bandwidth/2.)))) for x in indFreq]
+                #print(freqBools)
                 if (True not in freqBools):
                     continue
 		
