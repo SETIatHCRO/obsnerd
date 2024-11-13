@@ -40,19 +40,19 @@ class Eph:
         """
         import json
         self.feph = Satellite([], tref=[], t0=[], t1=[])
-        self.sources = {}
+        self.feph_sources = {}
         with open(fn, 'r') as fp:
-            fephjson = json.load(fp)
-            for src, data in fephjson.items():
+            feph_json_input = json.load(fp)
+            for src, data in feph_json_input.items():
                 data['tref'] = Time(data['tref'])
                 self.feph.satno.append(src)
                 for dval in ['tref', 'ra', 'dec', 'az', 'el']:
                     getattr(self.feph, dval).append(data[dval])
                 data['t0'] = Time(data['t0']) if 't0' in data else 0
                 data['t1'] = Time(data['t1']) if 't1' in data else 0
-                self.sources[src] = Satellite(src)
+                self.feph_sources[src] = Satellite(src)
                 for dval in data:
-                    setattr(self.sources[src], dval, data[dval])
+                    setattr(self.feph_sources[src], dval, data[dval])
         self.feph.tref = Time(self.feph.tref)
         if show_plot:
             plt.plot(self.feph.tref.datetime, self.feph.az, 'o')
@@ -70,7 +70,7 @@ class Eph:
         """
         from copy import copy
         sorter = {}
-        for src, data in self.sources.items():
+        for src, data in self.feph_sources.items():
             sorter[data.tref.datetime] = Satellite(satno=src, ra=data.ra, dec=data.dec, az=data.az, el=data.el)
         with open('observe.dat', 'w') as fp:
             print("#Source,pause[s],obs[s],start,ref,ra,dec,az,el", file=fp)
@@ -152,7 +152,26 @@ class Eph:
             self.sats[this_sat].provided.az = np.array(self.sats[this_sat].provided.az)
             self.sats[this_sat].provided.el = np.array(self.sats[this_sat].provided.el)
             self.sats[this_sat].times = Time(self.sats[this_sat].times)
-        
+
+    def update_feph_boresight(self, fn):
+        """
+        This assumes you've read in the reada/readb stuff
+
+        """
+        import json
+        self.readfeph(fn)
+        with open(fn, 'r') as fp:
+            feph_input_file = json.load(fp)
+        for src in self.feph_sources:
+            satno = int(src[1:-1])  # strip off the first and last letters
+            self.angular_sep(satno, self.feph_sources[src].ra, self.feph_sources[src].dec, ra_unit='deg')
+            suptimes = [np.round(x, 1) for x in (self.sats[satno].times - self.feph_sources[src].tref).to(u.second).value]
+            feph_input_file[src]['suptimes'] = suptimes
+            off_boresight = [np.round(x, 3) for x in self.sats[satno].angsep.value]
+            feph_input_file[src]['off_boresight'] = off_boresight
+        with open(fn, 'w') as fp:
+            json.dump(feph_input_file, fp, indent=2)
+
     def angular_sep(self, satno, ra, dec, ra_unit='hourangle'):
         from astropy.coordinates import angular_separation
         ra = ra * getattr(u, ra_unit)
