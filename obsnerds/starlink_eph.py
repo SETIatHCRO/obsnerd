@@ -1,10 +1,11 @@
-from astropy.time import Time, TimeDelta
+from astropy.time import Time
 from astropy.coordinates import EarthLocation, AltAz, SkyCoord
 import matplotlib.pyplot as plt
 import numpy as np
 import astropy.units as u
 from argparse import Namespace
 from datetime import datetime, timedelta
+from copy import copy
 
 
 #ATA = EarthLocation(lat = 40.8171 * u.deg, lon = -121.469 * u.deg, height = 1050.0 * u.m)
@@ -27,38 +28,64 @@ class Satellite:
 
 
 class Eph:
-    def __init__(self, fn=None):
-        if fn is not None:
-            print(f"Starlink ephemerides:  {fn}")
-            self.fn = fn
+    def __init__(self):
+        print("Handle Starlink observation ephemerides etc")
 
-    def readfeph(self, fn, show_plot=False):
+    def read_SpaceX(self, fn, ftype='c'):
         """
-        This reads the "feph" json files written out below in self.filter.
-        Manually added the Tx times from the file later from SpaceX
+        Since the files from SpaceX vary so much, pull the readers out but produce common self.sats dictionary.
+
+        """
+        from . import starlink_input
+        self.SpaceX = fn
+        if ftype == 'a':
+            self.sats = starlink_input.reada(fn)
+        if ftype == 'b':
+            self.sats = starlink_input.readb(fn)
+        if ftype == 'c':
+            self.sats = starlink_input.readc(fn)
+        self.get_azel()
+
+
+    def read_feph(self, fn, show_plot=False):
+        """
+        This reads the "feph" json files written out below in self.filter.  Makes a 'feph' Namespace with
+        2 attributes: 'array' and 'sources'
 
         """
         import json
-        self.feph = Satellite([], tref=[], t0=[], t1=[])
-        self.feph_sources = {}
+        self.feph = Namespace(array=Satellite(satno=[]), sources={})
+        parameters = set()
+        print(f"Reading {fn}")
         with open(fn, 'r') as fp:
             feph_json_input = json.load(fp)
-            for src, data in feph_json_input.items():
-                data['tref'] = Time(data['tref'])
-                self.feph.satno.append(src)
-                for dval in ['tref', 'ra', 'dec', 'az', 'el']:
-                    getattr(self.feph, dval).append(data[dval])
-                data['t0'] = Time(data['t0']) if 't0' in data else 0
-                data['t1'] = Time(data['t1']) if 't1' in data else 0
-                self.feph_sources[src] = Satellite(src)
-                for dval in data:
-                    setattr(self.feph_sources[src], dval, data[dval])
-        self.feph.tref = Time(self.feph.tref)
+            for src, data in feph_json_input['Sources'].items():
+                self.feph.array.satno.append(src)
+                self.feph.sources[src] = Satellite(satno=src)
+                for key, value in data.items():
+                    parameters.add(key)
+                    if key[0] == 't': # Is Time format
+                        try:
+                            value = Time(value)
+                        except ValueError:
+                            raise ValueError(f"Parameters starting with 't' must be astropy.time.Time format:  {key}: {value}")
+                    try:
+                        getattr(self.feph.array, key).append(value)
+                    except AttributeError:
+                        setattr(self.feph.array, key, [value])
+                    setattr(self.feph.sources[src], key, value)
+        parameters.add('satno')
+        print(f"\t{', '.join(list(parameters))}")
+        for par in parameters:
+            if par[0] == 't':
+                value = Time(copy(getattr(self.feph.array, par)))
+                setattr(self.feph.array, par, value)
+                
         if show_plot:
-            plt.plot(self.feph.tref.datetime, self.feph.az, 'o')
-            plt.plot(self.feph.tref.datetime, self.feph.el, 'x')
+            plt.plot(self.feph.array.tref.datetime, self.feph.array.az, 'o')
+            plt.plot(self.feph.array.tref.datetime, self.feph.array.el, 'x')
 
-    def write_sorted_obs_file(self, obslen=6.0, startup=15.0, tz=0.0, fn='observe.dat'):
+    def write_sorted_obs_file(self, obslen=6.0, startup=15.0, tz=0.0, fn='observe.dat', fmt=2):
         """
         obslen : float
             Length of observation in minutes
@@ -70,10 +97,16 @@ class Eph:
         """
         from copy import copy
         sorter = {}
-        for src, data in self.feph_sources.items():
+    
+        for src, data in self.sources.items():
             sorter[data.tref.datetime] = Satellite(satno=src, ra=data.ra, dec=data.dec, az=data.az, el=data.el)
-        with open('observe.dat', 'w') as fp:
-            print("#Source,pause[s],obs[s],start,ref,ra,dec,az,el", file=fp)
+        with open(fn, 'w') as fp:
+            if fmt == 1:
+                print("#Source,pause[s],obs[s],start,ref,ra,dec,az,el", file=fp)
+            elif fmt == 2:
+                print("#Source, Start")
+            elif fmt == 3:
+                print("#Source,ra,dec")
             for i, key in enumerate(sorted(sorter.keys())):
                 if i:
                     daz = sorter[key].az - prev_az
@@ -89,69 +122,15 @@ class Eph:
                 prev_az = sorter[key].az
                 prev_time = copy(key)
                 startat = key - timedelta(hours=-1.0*tz, minutes=obslen/2.0, seconds=startup)
-                print(f"{sorter[key].satno},{pause:.1f},{obslen*60.0:.1f},{startat.isoformat()},{key.isoformat()},", end='', file=fp)
-                print(f"{sorter[key].ra},{sorter[key].dec},{sorter[key].az},{sorter[key].el}", file=fp)
-
-    def reada(self):
-        """
-        Read the version supplied for first set in October 2024
-
-        """
-        self.sats = {}
-        with open(self.fn, 'r') as fp:
-            self.T0 = Time(int(fp.readline().strip()), scale='utc', format='gps')
-            print(f"T0 = {self.T0}")
-            for line in fp:
-                if line[0] != '(':
-                    this_sat = int(line.strip())
-                    self.sats[this_sat] = Satellite(satno=line.strip())
-                elif line[0] == '(':
-                    for _E in line.strip().split('('):
-                        if len(_E):
-                            #print(_E.strip(',').strip(')').split(','))
-                            t, ra, dec = [float(x) for x in _E.strip(',').strip(')').split(',')]
-                            self.sats[this_sat].times.append(self.T0 + TimeDelta(t, format='sec'))
-                            #self.sats[this_sat].times.append(t)
-                            if ra < 0.0:
-                                ra += 360.0
-                            self.sats[this_sat].ra.append(ra)
-                            self.sats[this_sat].dec.append(dec)
-        for this_sat in self.sats:
-            self.sats[this_sat].ra = np.array(self.sats[this_sat].ra)
-            self.sats[this_sat].dec = np.array(self.sats[this_sat].dec)
-
-    def readb(self):
-        """
-        Read the version supplied for second set in November 2024.
-
-        """
-        self.sats = {}
-        with open(self.fn, 'r') as fp:
-            self.T0 = Time(int(fp.readline().strip()), scale='utc', format='gps')
-            print(f"T0 = {self.T0}")
-            for line in fp:
-                if not line[0].isspace():
-                    this_sat = int(line.strip())
-                    self.sats[this_sat] = Satellite(satno=line.strip())
-                else:
-                    t, tstr, rastr, ra, decstr, dec, azstr, az, elstr, el = line.split()
-                    self.sats[this_sat].times.append(self.T0 + TimeDelta(float(t), format='sec'))
-                    self.sats[this_sat].provided.times.append(tstr)
-                    ra, dec, az, el = float(ra.strip(',')), float(dec.strip(',')), float(az.strip(',')), float(el.strip(','))
-                    if ra < 0.0:
-                        ra += 360.0
-                    if az < 0.0:
-                        az += 360.0
-                    self.sats[this_sat].ra.append(ra)
-                    self.sats[this_sat].dec.append(dec)
-                    self.sats[this_sat].provided.az.append(az)
-                    self.sats[this_sat].provided.el.append(el)
-        for this_sat in self.sats:
-            self.sats[this_sat].ra = np.array(self.sats[this_sat].ra)
-            self.sats[this_sat].dec = np.array(self.sats[this_sat].dec)
-            self.sats[this_sat].provided.az = np.array(self.sats[this_sat].provided.az)
-            self.sats[this_sat].provided.el = np.array(self.sats[this_sat].provided.el)
-            self.sats[this_sat].times = Time(self.sats[this_sat].times)
+                if fmt == 1:
+                    print(f"{sorter[key].satno},{pause:.1f},{obslen*60.0:.1f},{startat.isoformat()},{key.isoformat()},", end='', file=fp)
+                    print(f"{sorter[key].ra},{sorter[key].dec},{sorter[key].az},{sorter[key].el}", file=fp)
+                elif fmt == 2:
+                    print(f'["{sorter[key].satno}"], ["{startat.isoformat()}"]', file=fp)
+                elif fmt == 3:
+                    ra = 360.0 + sorter[key].ra if sorter[key].ra < 0.0 else sorter[key].ra
+                    ra = ra / 15.0
+                    print(f"{sorter[key].satno}: [{ra:.4f},{sorter[key].dec}]", file=fp)
 
     def update_feph_boresight(self, fn):
         """
@@ -162,15 +141,14 @@ class Eph:
         self.readfeph(fn)
         with open(fn, 'r') as fp:
             feph_input_file = json.load(fp)
-        for src in self.feph_sources:
+        for src in self.sources:
             satno = int(src[1:-1])  # strip off the first and last letters
-            self.angular_sep(satno, self.feph_sources[src].ra, self.feph_sources[src].dec, ra_unit='deg')
-            suptimes = [np.round(x, 1) for x in (self.sats[satno].times - self.feph_sources[src].tref).to(u.second).value]
-            feph_input_file[src]['suptimes'] = suptimes
+            self.angular_sep(satno, self.sources[src].ra, self.sources[src].dec, ra_unit='deg')
+            suptimes = [np.round(x, 1) for x in (self.sats[satno].times - self.sources[src].tref).to(u.second).value]
+            feph_input_file['Sources'][src]['suptimes'] = suptimes
             off_boresight = [np.round(x, 3) for x in self.sats[satno].angsep.value]
-            feph_input_file[src]['off_boresight'] = off_boresight
-        with open(fn, 'w') as fp:
-            json.dump(feph_input_file, fp, indent=2)
+            feph_input_file['Sources'][src]['off_boresight'] = off_boresight
+        self.write_feph(fn, feph_input_file)
 
     def angular_sep(self, satno, ra, dec, ra_unit='hourangle'):
         from astropy.coordinates import angular_separation
@@ -195,29 +173,10 @@ class Eph:
                 dt = self.sats[satno].times[i] - self.sats[satno].times[i-1]
                 self.sats[satno].angvel.append(
                     (angular_separation(az0, el0, az1, el1) / dt).to(u.deg / u.second).value)
-        self.sats[satno].angvel = np.array(self.sats[satno].angvel) * u.deg / u.second
+        self.sats[satno].angvel = np.array(self.sats[satno].angvel) * u.deg / u.second  
 
-    def plot(self, ptype='radec'):
-        for sat, data in self.sats.items():
-            if ptype[0].lower() == 'r':
-                plt.plot(data.ra, data.dec)
-                plt.xlabel('RA')
-                plt.ylabel('Dec')
-            elif ptype[0].lower() == 'a':
-                plt.plot(data.az, data.el)
-                plt.xlabel('Az')
-                plt.ylabel('El')
-            elif ptype[0].lower() == 'p':
-                plt.plot(data.provided.az, data.provided.el)
-                plt.xlabel('Az')
-                plt.ylabel('El')
-            elif ptype[0].lower() == 'd':
-                plt.plot(data.az - data.provided.az, data.el - data.provided.el, '.')
-                plt.xlabel('dAz')
-                plt.ylabel('dEl')    
-
-    def get_azel(self, satno='all', observatory=ATA):
-        if satno == 'all':
+    def get_azel(self, satno=None, observatory=ATA):
+        if satno is None:
             satno = list(self.sats.keys())
         for this_satno in satno:
             aa = AltAz(location=observatory, obstime=self.sats[this_satno].times)
@@ -226,18 +185,19 @@ class Eph:
             self.sats[this_satno].az = altazsky.az.value
             self.sats[this_satno].el = altazsky.alt.value
 
-    def filter(self, satno='all', ytime=['2024-11-06T23:00:00', '2024-11-07T01:00:00'], yel=[40, 50]):
-        import json
-        now = datetime.now()
-        fn = f"feph_{now.strftime('%Y%m%dT%H%M')}.json"
+    def filter(self, satno=None, ytime=['2024-11-06T23:00:00', '2024-11-15T01:00:00'], yel=[30, 70]):
+        """
+        use None, None, None to write out everything.
+
+        """
         import string
         tags = string.ascii_lowercase
-        if satno == 'all':
+        if satno is None:
             satno = list(self.sats.keys())
         if ytime is not None:
             ytime[0] = Time(ytime[0], format='isot')
             ytime[1] = Time(ytime[1], format='isot')
-        fephjson = {}
+        fephjson = {'Sources': {}}
         ctr = 0
         for this_sat in satno:
             for i in range(len(self.sats[this_sat].times)):
@@ -252,18 +212,28 @@ class Eph:
                         use_it = False
                 source_name = f"S{this_sat}{tags[i]}"
                 if use_it:
-                    fephjson[source_name] = {
+                    fephjson['Sources'][source_name] = {
+                        'sat': this_sat,
                         'az': self.sats[this_sat].az[i],
                         'el': self.sats[this_sat].el[i],
                         'ra': self.sats[this_sat].ra[i],
                         'dec': self.sats[this_sat].dec[i],
-                        'tref': self.sats[this_sat].times[i].datetime.isoformat()
+                        'tref': self.sats[this_sat].times[i].datetime.isoformat(),
+                        'norad': self.sats[this_sat].norad[i],
+                        'bf_distance': self.sats[this_sat].bf_distance[i]
                     }
                     #print(f"S{this_sat}{tags[i]},{self.sats[this_sat].ra[i] / 15.0:.6f},{self.sats[this_sat].dec[i]:.6f}", file=fp)
                     print(f"S{this_sat}{tags[i]},{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}")
                     #print(f"S{this_sat}{tags[i]},{self.sats[this_sat].times[i].datetime},{self.sats[this_sat].ra[i] / 15.0:.6f},{self.sats[this_sat].dec[i]:.6f},", file=fp, end='')
                     #print(f"{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}", file=fp)
                     ctr += 1
+        print(f"{ctr} entries")
+        now = datetime.now()
+        fn = f"feph_{now.strftime('%Y%m%dT%H%M')}.json"
+        self.write_feph(fn=fn, feph_dict=fephjson)
+
+    def write_feph(self, fn, feph_dict):
+        import json
+        print(f"Writing {fn}")
         with open(fn, 'w') as fp:
-            json.dump(fephjson, fp, indent=2)
-        print(f"Wrote {ctr} to {fn}")
+            json.dump(feph_dict, fp, indent=2)
