@@ -1,20 +1,23 @@
-import starlink_look
+from . import starlink_look
 import numpy as np
 
 class WideBand:
-    def __init__(self, src, lo, cnode=[352, 544, 736, 928, 1120, 1312, 1504]):
+    def __init__(self, source, lo, cnode=[352, 544, 736, 928, 1120, 1312, 1504]):
         self.filelist = []
         for cn in cnode:
-            self.filelist.append(f"{src}_{lo}_C{cn:04d}.npz")
+            self.filelist.append(f"{source}_{lo}_C{cn:04d}.npz")
         self.lookall = starlink_look.Look()  # This will use the methods to plot for concatenated
-        self.lookall.source = src
+        self.lookall.source = source
         self.lookall.lo = lo
         self.looks = {}
         for fil in self.filelist:
             key = fil.split('.')[0]
             self.looks[key] = starlink_look.Look()
-            self.looks[key].read_npz(fil)
-            self.looks[key].source = src
+            found_it = self.looks[key].read_npz(fil)
+            if not found_it:
+                del(self.look[key])
+                continue
+            self.looks[key].source = source
             self.looks[key].lo = lo
         ford = {}
         for key, lk in self.looks.items():
@@ -41,9 +44,9 @@ class WideBand:
             dataf.append(self.looks[key].data)
         self.lookall.data = np.concatenate(dataf, axis=1)
 
-    def dashboard(self, use_db=True, save=False, time_axis='diff', feph=False):
+    def dashboard(self, use_db=True, save=False, time_axis='diff', feph=False, show_feph='False'):
         """
         Shortcut to the look dashboard with False antenna since self.lookall.data made in concat
 
         """
-        self.lookall.dashboard(ant=False, pol=self.pol, use_db=use_db, save=save, time_axis=time_axis, feph=feph)
+        self.lookall.dashboard(ant=False, pol=self.pol, use_db=use_db, save=save, time_axis=time_axis, feph=feph, show_feph=show_feph)

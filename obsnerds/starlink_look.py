@@ -19,6 +19,15 @@ class Look:
     def __init__(self, freq_unit='MHz'):
         self.freq_unit = freq_unit
 
+    def read_source(self, fn, src=None):
+        st = fn.split('.')[-1]
+        if st == 'uvh5':
+            self.read_uvh5(fn=fn, src=src)
+        elif st == 'npz':
+            self.read_npz(fn=fn)
+        else:
+            print(f"Invalid file {fn}")
+
     def read_uvh5(self, fn, src=None):
         print(f"Reading {fn}")
         self.file_type = 'uvh5'
@@ -39,11 +48,16 @@ class Look:
     def read_npz(self, fn):
         self.file_type = 'npz'
         self.fn = fn
-        self.npzfile = np.load(self.fn)
-        self.source, self.lo, self.cnode = str(self.npzfile['source']).split('_')
+        try:
+            self.npzfile = np.load(self.fn)
+        except FileNotFoundError:
+            print(f"Couldn't find {fn}")
+            return False
+        self.source, self.lo, self.cnode = self.fn.split('_')
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
+        return True
 
     def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
         """
@@ -98,7 +112,7 @@ class Look:
             b = np.interp(x, self.xp, self.yp)
             return b, 'deg'
 
-    def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', feph=False):
+    def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', feph=False, show_feph=False):
         if feph:
             self.get_feph(feph)
         plt.figure('Dashboard', figsize=(16, 9))
@@ -133,7 +147,7 @@ class Look:
             used_filter.append(filt)
             tax2 = self.get_sum(over='freq', dmin=filt[0][0], dmax=filt[0][1], use_db=use_db)
             axt.plot(offt, tax2, label=f"{filt[0][0]}-{filt[0][1]}", color=filt[1])
-        if feph:
+        if show_feph:
             self.plot_feph_times(axt)
         axt.legend()
         axt.set_xlabel(xlabel)
@@ -270,4 +284,4 @@ class Look:
 
     def get_feph(self, fn):
         self.eph = starlink_eph.Eph()
-        self.eph.read_feph(fn)
+        self.eph.read_feph(fn, source=self.source)

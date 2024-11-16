@@ -47,13 +47,24 @@ class Eph:
         self.get_azel()
 
 
-    def read_feph(self, fn, show_plot=False):
+    def read_feph(self, fn, source=None, show_plot=False):
         """
         This reads the "feph" json files written out below in self.filter.  Makes a 'feph' Namespace with
         3 attributes: 'filename', 'array' and 'sources'
 
         """
         import json
+        if fn is None or fn.lower() == 'none':
+            return
+        if fn.lower() == 'auto':
+            if source is None:
+                raise ValueError("Need a source name for auto feph")
+            with open('feph_files.json', 'r') as fp:
+                feph_file_list = json.load(fp)
+                for ffn, ffl in feph_file_list.items():
+                    if source in ffl:
+                        fn = ffn
+                        break
         self.feph = Namespace(filename=fn, array=Satellite(satno=[]), sources={})
         parameters = set()
         print(f"Reading {fn}")
