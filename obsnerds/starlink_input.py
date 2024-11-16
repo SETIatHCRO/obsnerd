@@ -51,7 +51,7 @@ def readb(fn):
                 sats_inp[this_sat] = Satellite(satno=line.strip())
             else:
                 t, tstr, rastr, ra, decstr, dec, azstr, az, elstr, el = line.split()
-                sats_inp[this_sat].times.append(self.T0 + TimeDelta(float(t), format='sec'))
+                sats_inp[this_sat].times.append(T0 + TimeDelta(float(t), format='sec'))
                 sats_inp[this_sat].provided.times.append(tstr)
                 ra, dec, az, el = float(ra.strip(',')), float(dec.strip(',')), float(az.strip(',')), float(el.strip(','))
                 if ra < 0.0:
