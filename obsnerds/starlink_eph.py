@@ -50,11 +50,11 @@ class Eph:
     def read_feph(self, fn, show_plot=False):
         """
         This reads the "feph" json files written out below in self.filter.  Makes a 'feph' Namespace with
-        2 attributes: 'array' and 'sources'
+        3 attributes: 'filename', 'array' and 'sources'
 
         """
         import json
-        self.feph = Namespace(array=Satellite(satno=[]), sources={})
+        self.feph = Namespace(filename=fn, array=Satellite(satno=[]), sources={})
         parameters = set()
         print(f"Reading {fn}")
         with open(fn, 'r') as fp:
@@ -75,6 +75,7 @@ class Eph:
                         setattr(self.feph.array, key, [value])
                     setattr(self.feph.sources[src], key, value)
         parameters.add('satno')
+        print(f"\t{', '.join(self.feph.array.satno)}")
         print(f"\t{', '.join(list(parameters))}")
         for par in parameters:
             if par[0] == 't':
