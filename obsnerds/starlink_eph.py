@@ -12,7 +12,7 @@ from copy import copy
 ATA = EarthLocation(lat = 40.814871 * u.deg, lon = -121.469001 * u.deg, height = 1019.0 * u.m)  # From SpaceX
 DEGSEC = 1.5
 LATENCY = 30.0
-
+DEFAULT_FEPH = {'offset': 0.0, 'bf_distance': 0.0}
 
 class Satellite:
     def __init__(self, satno, **kwargs):
@@ -70,9 +70,13 @@ class Eph:
         print(f"Reading {fn}")
         with open(fn, 'r') as fp:
             feph_json_input = json.load(fp)
+            self.feph.filters = feph_json_input['Filters']
             for src, data in feph_json_input['Sources'].items():
                 self.feph.array.satno.append(src)
                 self.feph.sources[src] = Satellite(satno=src)
+                for dpar, dval in DEFAULT_FEPH.items():
+                    if dpar not in data:
+                        setattr(self.feph.sources[src], dpar, dval)
                 for key, value in data.items():
                     parameters.add(key)
                     if key[0] == 't': # Is Time format
@@ -144,48 +148,64 @@ class Eph:
                     ra = ra / 15.0
                     print(f"{sorter[key].satno}: [{ra:.4f},{sorter[key].dec}]", file=fp)
 
+    def find_sats_gen(self, efn, start_seconds=200, tlefile='tle/starlink.tle', duration=6.0):
+        self.read_feph(efn)
+        with open('find_sats.sh', 'w') as fp:
+            for src in self.feph.sources:
+                start = self.feph.sources[src].tref.datetime - timedelta(seconds=start_seconds)
+                print(f'find_sats.py -t "{start.isoformat()}" --tle_file {tlefile} -d {duration} --output_file --sat2write {src[1:-1]}', file=fp)
+
+    def boresight_update_view(self, efn):
+        import matplotlib.pyplot as plt
+        self.read_feph(efn)
+        for src in self.feph.sources:
+            plt.plot(self.feph.sources[src].off_times, self.feph.sources[src].off_boresight)
+
     def update_feph_boresight(self, fn):
         """
-        This assumes you've read in the reada/readb stuff
+        This assumes you've read in the reada/readb stuff see step 6 in README.md
 
         """
+        from astropy.coordinates import angular_separation
+        self.read_feph(fn)
         import json
-        self.readfeph(fn)
         with open(fn, 'r') as fp:
-            feph_input_file = json.load(fp)
-        for src in self.sources:
-            satno = int(src[1:-1])  # strip off the first and last letters
-            self.angular_sep(satno, self.sources[src].ra, self.sources[src].dec, ra_unit='deg')
-            suptimes = [np.round(x, 1) for x in (self.sats[satno].times - self.sources[src].tref).to(u.second).value]
-            feph_input_file['Sources'][src]['suptimes'] = suptimes
-            off_boresight = [np.round(x, 3) for x in self.sats[satno].angsep.value]
-            feph_input_file['Sources'][src]['off_boresight'] = off_boresight
-        self.write_feph(fn, feph_input_file)
-
-    def angular_sep(self, satno, ra, dec, ra_unit='hourangle'):
-        from astropy.coordinates import angular_separation
-        ra = ra * getattr(u, ra_unit)
-        dec = dec * u.deg
-        self.sats[satno].angsep = []
-        for i in range(len(self.sats[satno].ra)):
-            self.sats[satno].angsep.append(angular_separation(ra, dec,
-                                           self.sats[satno].ra[i] * u.deg, self.sats[satno].dec[i] * u.deg).to(u.deg).value)
-        self.sats[satno].angsep = np.array(self.sats[satno].angsep) * u.deg
-
-    def angular_speed(self, satno, using='provided'):
-        from astropy.coordinates import angular_separation
-        self.sats[satno].angvel = [0.0]  # Just to keep the number same as times
-        if using[0].lower() == 'p':
-            print('Using provided azel')
-            for i in range(1, len(self.sats[satno].provided.az)):
-                az0 = self.sats[satno].provided.az[i-1] * u.deg
-                el0 = self.sats[satno].provided.el[i-1] * u.deg
-                az1 = self.sats[satno].provided.az[i] * u.deg
-                el1 = self.sats[satno].provided.el[i] * u.deg
-                dt = self.sats[satno].times[i] - self.sats[satno].times[i-1]
-                self.sats[satno].angvel.append(
-                    (angular_separation(az0, el0, az1, el1) / dt).to(u.deg / u.second).value)
-        self.sats[satno].angvel = np.array(self.sats[satno].angvel) * u.deg / u.second  
+            feph_file_dict = json.load(fp)
+        for src in self.feph.sources:
+            satfile = f"{src[:-1]}.txt"  # strip off the last letter
+            try:
+                fp = open(satfile, 'r')
+                print(f"Reading {satfile}")
+            except FileNotFoundError:
+                print(F"{satfile} not found")
+                continue
+            self.feph.sources[src].sopp = Namespace(dt=[], az=[], el=[], dist=[])
+            ctr = 0
+            for line in fp:
+                data = [float(x) for x in line.strip().split(',')[1:]]
+                t = Time(line.split(',')[0])
+                dt = (t - self.feph.sources[src].tref).to('second').value
+                if abs(dt) < 1E-6:
+                    self.feph.sources[src].sopp.d_az = data[0] - self.feph.sources[src].az
+                    self.feph.sources[src].sopp.d_el = data[1] - self.feph.sources[src].el
+                    az0 = self.feph.sources[src].az * u.deg
+                    el0 = self.feph.sources[src].el * u.deg
+                if abs(dt) < 1E-6 or not ctr % 10:
+                    self.feph.sources[src].sopp.dt.append(dt)
+                    self.feph.sources[src].sopp.az.append(data[0])
+                    self.feph.sources[src].sopp.el.append(data[1])
+                    self.feph.sources[src].sopp.dist.append(data[2])
+                ctr += 1
+            for i in range(len(self.feph.sources[src].sopp.az)):  # "Fix" for offset
+                self.feph.sources[src].sopp.az[i] -= self.feph.sources[src].sopp.d_az
+                self.feph.sources[src].sopp.el[i] -= self.feph.sources[src].sopp.d_el
+            self.feph.sources[src].sopp.angsep = []
+            for i in range(len(self.feph.sources[src].sopp.az)):  # "Fix" for offset
+                angsep = float(angular_separation(az0, el0, self.feph.sources[src].sopp.az[i]*u.deg, self.feph.sources[src].sopp.el[i]*u.deg).to(u.deg).value)
+                self.feph.sources[src].sopp.angsep.append(angsep * np.sign(self.feph.sources[src].sopp.dt[i]))
+            feph_file_dict['Sources'][src]['off_times'] = np.round(self.feph.sources[src].sopp.dt, 1).tolist()
+            feph_file_dict['Sources'][src]['off_boresight'] = np.round(self.feph.sources[src].sopp.angsep, 2).tolist()
+        self.write_feph(fn, feph_file_dict)
 
     def get_azel(self, satno=None, observatory=ATA):
         if satno is None:
@@ -204,6 +224,8 @@ class Eph:
         """
         import string
         tags = string.ascii_lowercase
+        if satno == 'dump':
+            satno, ytime, yel = None, None, None
         if satno is None:
             satno = list(self.sats.keys())
         if ytime is not None:

@@ -18,6 +18,7 @@ def toMag(x, use_db=True):
 class Look:
     def __init__(self, freq_unit='MHz'):
         self.freq_unit = freq_unit
+        self.source = None
 
     def read_source(self, fn, src=None):
         st = fn.split('.')[-1]
@@ -97,35 +98,37 @@ class Look:
         self.datamax = np.max(np.abs(self.data))
         print(f"\tmin={self.datamin}, max={self.datamax}")
 
-    def _axt_xaxis(self, max_value=100.0):
+    def _axt_xaxis(self):
         if self.time_axis == 'a':  # actual datetime
             return self.times.datetime, 'Time'
         elif self.time_axis == 'd':  # difference
             return (self.times - self.eph.feph.sources[self.source].tref).to_value('sec'), 'sec'
         elif self.time_axis == 'b':  # boresight
-            x = (self.times - self.eph.feph_sources[self.source].tref).to_value('sec') - self.eph.feph_sources[self.source].offset
-            self.xp = self.eph.feph_sources[self.source].suptimes + [max_value]
-            rate = ((self.eph.feph_sources[self.source].off_boresight[-1] - self.eph.feph_sources[self.source].off_boresight[-2]) /
-                    (self.eph.feph_sources[self.source].suptimes[-1] - self.eph.feph_sources[self.source].suptimes[-2]))
-            bapp = self.eph.feph_sources[self.source].off_boresight[-1] + rate * (max_value - self.eph.feph_sources[self.source].off_boresight[-1])
-            self.yp = np.append(np.sign(self.eph.feph_sources[self.source].suptimes) * np.array(self.eph.feph_sources[self.source].off_boresight), bapp)
+            x = (self.times - self.eph.feph.sources[self.source].tref).to_value('sec') - self.eph.feph.sources[self.source].offset
+            self.xp = self.eph.feph.sources[self.source].off_times
+            self.yp = self.eph.feph.sources[self.source].off_boresight
             b = np.interp(x, self.xp, self.yp)
             return b, 'deg'
+
+    def dashboard_gen(self, feph, lo, ant='2b', taxis='b'):
+        self.get_feph(feph)
+        with open('dash.sh', 'w') as fp:
+            for src in self.eph.feph.sources:
+                print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} --dash -s", file=fp)
+            
 
     def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', feph=False, show_feph=False):
         if feph:
             self.get_feph(feph)
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
-        plt.suptitle(self.source)
+        plt.suptitle(f"{self.source}: {self.eph.feph.sources[self.source].tref.datetime.isoformat()}  ({self.eph.feph.sources[self.source].bf_distance} km)")
         # Water fall plot
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
         axt = plt.subplot2grid((2, 2), (0, 1), rowspan=1, colspan=1)
         axf = plt.subplot2grid((2, 2), (1, 1), rowspan=1, colspan=1)
         if ant:
             self.get_bl(ant, pol=pol)
-        else:
-            ant = 'n/a'
         axwf.imshow(toMag(self.data, use_db))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
@@ -136,17 +139,14 @@ class Look:
         # Time plot
         self.time_axis = time_axis[0].lower()
         offt, xlabel = self._axt_xaxis()
-        if self.lo == 'A':
-            filter = [([1690.0, 1710.0], 'r'), ([1990.0, 1995.0], 'b'), ([1939.0, 1945.0], 'g'), ([1960.0, 1963.0], 'c')]
-        elif self.lo == 'B':
-            filter = [([3740.0, 3760.0], 'r'), ([3975.0, 3990.0], 'b')]
-        used_filter = []
-        for filt in filter:
-            if filt[0][1] < self.freqs[0] or filt[0][0] > self.freqs[-1]:
+        filter = self.eph.feph.filters[self.lo]
+        used_filter = {}
+        for clr, filt in filter.items():
+            if filt[1] < self.freqs[0] or filt[0] > self.freqs[-1]:
                 continue
-            used_filter.append(filt)
-            tax2 = self.get_sum(over='freq', dmin=filt[0][0], dmax=filt[0][1], use_db=use_db)
-            axt.plot(offt, tax2, label=f"{filt[0][0]}-{filt[0][1]}", color=filt[1])
+            used_filter[clr] = filt
+            tax2 = self.get_sum(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
+            axt.plot(offt, tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
         if show_feph:
             self.plot_feph_times(axt)
         axt.legend()
@@ -160,8 +160,8 @@ class Look:
             axf.plot(self.freqs, toMag(self.data[i], use_db), '0.8')
         axf.set_xlabel(self.freq_unit)
         try:
-            dmin = self.eph.feph_sources[self.source].t0.jd
-            dmax = self.eph.feph_sources[self.source].t1.jd
+            dmin = self.eph.feph.sources[self.source].t0.jd
+            dmax = self.eph.feph.sources[self.source].t1.jd
             if dmin < self.times.jd[0]:
                 dmin = self.times.jd[0]
         except AttributeError:
@@ -172,9 +172,9 @@ class Look:
         if use_db:
             axf.set_ylabel('dB')
         axmin, axmax = axf.axis()[2], axf.axis()[3]
-        for filt in used_filter:
-            axf.plot([filt[0][0], filt[0][0]], [axmin, axmax], color=filt[1])
-            axf.plot([filt[0][1], filt[0][1]], [axmin, axmax], color=filt[1])
+        for clr, filt in used_filter.items():
+            axf.plot([filt[0], filt[0]], [axmin, axmax], color=clr)
+            axf.plot([filt[1], filt[1]], [axmin, axmax], color=clr)
         axf.set_ylim(bottom=axmin, top=axmax)
         if save:
             fn = f"{self.source}_{ant}_{pol}.png"

@@ -4,7 +4,6 @@ from astropy.time import Time
 import numpy as np
 import yaml
 import matplotlib.pyplot as plt
-from copy import copy
 from argparse import Namespace
 from . import onutil
 

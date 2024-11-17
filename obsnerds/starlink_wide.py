@@ -15,7 +15,7 @@ class WideBand:
             self.looks[key] = starlink_look.Look()
             found_it = self.looks[key].read_npz(fil)
             if not found_it:
-                del(self.look[key])
+                del(self.looks[key])
                 continue
             self.looks[key].source = source
             self.looks[key].lo = lo
@@ -30,7 +30,7 @@ class WideBand:
         for key in self.fileorder:
             print(f"{key}:  {self.looks[key].freqs[0]} - {self.looks[key].freqs[-1]}")
 
-    def concat(self, ant='2b', pol='xx'):
+    def concat(self, ant, pol='xx'):
         self.ant = ant
         self.pol = pol
         self.lookall.freqs = []
