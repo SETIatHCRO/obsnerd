@@ -188,6 +188,8 @@ class Eph:
                 if abs(dt) < 1E-6:
                     self.feph.sources[src].sopp.d_az = data[0] - self.feph.sources[src].az
                     self.feph.sources[src].sopp.d_el = data[1] - self.feph.sources[src].el
+                    if abs(self.feph.sources[src].sopp.d_az) > 0.1 or abs(self.feph.sources[src].sopp.d_az) > 0.1:
+                        print(f"{src} has large excursions:  {self.feph.sources[src].sopp.d_az}, {self.feph.sources[src].sopp.d_el}")
                     az0 = self.feph.sources[src].az * u.deg
                     el0 = self.feph.sources[src].el * u.deg
                 if abs(dt) < 1E-6 or not ctr % 10:
