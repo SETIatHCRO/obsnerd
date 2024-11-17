@@ -123,7 +123,7 @@ class Look:
         with open('dash.sh', 'w') as fp:
             for src in self.eph.feph.sources:
                 print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} --dash -s", file=fp)
-            
+
     def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', feph=False, show_feph=False):
         if feph:
             self.get_feph(feph)
