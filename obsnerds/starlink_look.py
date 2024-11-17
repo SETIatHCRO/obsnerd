@@ -109,6 +109,14 @@ class Look:
             self.yp = self.eph.feph.sources[self.source].off_boresight
             b = np.interp(x, self.xp, self.yp)
             return b, 'deg'
+        
+    def _invert_axis(self, dat, num=8, precision=-1):
+        idat = list(np.arange(len(dat)))
+        xstart = np.round(np.floor(dat[0]), precision)
+        xstep = np.round((dat[-1] - dat[0]) / num, precision)
+        x = [int(xx) for xx in np.arange(xstart, dat[-1], xstep)]
+        m = np.round(np.interp(x, dat, idat), 0)
+        return m, x
 
     def dashboard_gen(self, feph, lo, ant='2b', taxis='b'):
         self.get_feph(feph)
@@ -116,10 +124,14 @@ class Look:
             for src in self.eph.feph.sources:
                 print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} --dash -s", file=fp)
             
-
     def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', feph=False, show_feph=False):
         if feph:
             self.get_feph(feph)
+        self.time_axis = time_axis[0].lower()
+        x_axis_time, xlabel = self._axt_xaxis()
+        x_ticks, x_labels = self._invert_axis(self.freqs)
+        y_ticks, y_labels = self._invert_axis(x_axis_time)
+
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
         plt.suptitle(f"{self.source}: {self.eph.feph.sources[self.source].tref.datetime.isoformat()}  ({self.eph.feph.sources[self.source].bf_distance} km)")
@@ -132,13 +144,11 @@ class Look:
         axwf.imshow(toMag(self.data, use_db))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
-        axwf.set_ylabel('Time')
-        axwf.set_xticks([])
-        axwf.set_yticks([])
+        axwf.set_ylabel(xlabel)
+        axwf.set_xticks(x_ticks, x_labels)
+        axwf.set_yticks(y_ticks, y_labels)
 
         # Time plot
-        self.time_axis = time_axis[0].lower()
-        offt, xlabel = self._axt_xaxis()
         filter = self.eph.feph.filters[self.lo]
         used_filter = {}
         for clr, filt in filter.items():
@@ -146,7 +156,7 @@ class Look:
                 continue
             used_filter[clr] = filt
             tax2 = self.get_sum(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
-            axt.plot(offt, tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
+            axt.plot(x_axis_time, tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
         if show_feph:
             self.plot_feph_times(axt)
         axt.legend()
