@@ -181,11 +181,16 @@ class Eph:
                 continue
             self.feph.sources[src].sopp = Namespace(dt=[], az=[], el=[], dist=[])
             ctr = 0
+            center_found = False
+            min_dt_off = 1E6
             for line in fp:
                 data = [float(x) for x in line.strip().split(',')[1:]]
                 t = Time(line.split(',')[0])
                 dt = (t - self.feph.sources[src].tref).to('second').value
+                if abs(dt) < abs(min_dt_off):
+                    min_dt_off = dt
                 if abs(dt) < 1E-6:
+                    center_found = True
                     self.feph.sources[src].sopp.d_az = data[0] - self.feph.sources[src].az
                     self.feph.sources[src].sopp.d_el = data[1] - self.feph.sources[src].el
                     if abs(self.feph.sources[src].sopp.d_az) > 0.1 or abs(self.feph.sources[src].sopp.d_az) > 0.1:
@@ -198,16 +203,22 @@ class Eph:
                     self.feph.sources[src].sopp.el.append(data[1])
                     self.feph.sources[src].sopp.dist.append(data[2])
                 ctr += 1
-            for i in range(len(self.feph.sources[src].sopp.az)):  # "Fix" for offset
-                self.feph.sources[src].sopp.az[i] -= self.feph.sources[src].sopp.d_az
-                self.feph.sources[src].sopp.el[i] -= self.feph.sources[src].sopp.d_el
-            self.feph.sources[src].sopp.angsep = []
-            for i in range(len(self.feph.sources[src].sopp.az)):  # "Fix" for offset
-                angsep = float(angular_separation(az0, el0, self.feph.sources[src].sopp.az[i]*u.deg, self.feph.sources[src].sopp.el[i]*u.deg).to(u.deg).value)
-                self.feph.sources[src].sopp.angsep.append(angsep * np.sign(self.feph.sources[src].sopp.dt[i]))
-            feph_file_dict['Sources'][src]['off_times'] = np.round(self.feph.sources[src].sopp.dt, 1).tolist()
-            feph_file_dict['Sources'][src]['off_boresight'] = np.round(self.feph.sources[src].sopp.angsep, 2).tolist()
-            feph_file_dict['Sources'][src]['off_distance'] = np.round(self.feph.sources[src].sopp.dist, 1).tolist()
+            if center_found:
+                for i in range(len(self.feph.sources[src].sopp.az)):  # "Fix" for offset
+                    self.feph.sources[src].sopp.az[i] -= self.feph.sources[src].sopp.d_az
+                    self.feph.sources[src].sopp.el[i] -= self.feph.sources[src].sopp.d_el
+                self.feph.sources[src].sopp.angsep = []
+                for i in range(len(self.feph.sources[src].sopp.az)):  # "Fix" for offset
+                    angsep = float(angular_separation(az0, el0, self.feph.sources[src].sopp.az[i]*u.deg, self.feph.sources[src].sopp.el[i]*u.deg).to(u.deg).value)
+                    self.feph.sources[src].sopp.angsep.append(angsep * np.sign(self.feph.sources[src].sopp.dt[i]))
+                feph_file_dict['Sources'][src]['off_times'] = np.round(self.feph.sources[src].sopp.dt, 1).tolist()
+                feph_file_dict['Sources'][src]['off_boresight'] = np.round(self.feph.sources[src].sopp.angsep, 2).tolist()
+                feph_file_dict['Sources'][src]['off_distance'] = np.round(self.feph.sources[src].sopp.dist, 1).tolist()
+                feph_file_dict['Sources'][src]['off_az_offset'] = self.feph.sources[src].sopp.d_az
+                feph_file_dict['Sources'][src]['off_el_offset'] = self.feph.sources[src].sopp.d_el
+                feph_file_dict['Sources'][src]['off_min_dt'] = min_dt_off
+            else:
+                print(f"Center was not found - min dt offset was {min_dt_off}")
         self.write_feph(fn, feph_file_dict)
 
     def get_azel(self, satno=None, observatory=ATA):
