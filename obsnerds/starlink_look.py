@@ -104,9 +104,8 @@ class Look:
             for src in self.eph.feph.sources:
                 print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
 
-    def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', feph=False, show_feph=False):
-        if feph:
-            self.get_feph(feph)
+    def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', show_feph=False):
+        self.get_feph()
         self.time_axis = time_axis[0].lower()
         x_axis_time, xlabel = self._axt_xaxis()
         x_ticks, x_labels = self._invert_axis(self.freqs)
@@ -272,6 +271,6 @@ class Look:
             ax.plot([x, x], [dmin, dmax], lsc, linewidth=2)
         ax.set_ylim(bottom=dmin, top=dmax)
 
-    def get_feph(self, fn):
+    def get_feph(self):
         self.eph = starlink_eph.Eph()
-        self.eph.read_feph(fn, source=self.source)
+        self.eph.read_feph(source=self.source)

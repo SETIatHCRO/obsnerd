@@ -8,11 +8,21 @@ from datetime import datetime, timedelta
 from copy import copy
 
 
-#ATA = EarthLocation(lat = 40.8171 * u.deg, lon = -121.469 * u.deg, height = 1050.0 * u.m)
-ATA = EarthLocation(lat = 40.814871 * u.deg, lon = -121.469001 * u.deg, height = 1019.0 * u.m)  # From SpaceX
-DEGSEC = 1.5
-LATENCY = 30.0
-DEFAULT_FEPH = {'offset': 0.0, 'bf_distance': 0.0}
+class Observatory:
+    def __init__(self, name, **kwargs):
+        self.name = name
+        for key, val in kwargs:
+            setattr(self, key, val)
+
+ATA = Observatory('ATA',
+                  location = EarthLocation(lat = 40.814871 * u.deg, lon = -121.469001 * u.deg, height = 1019.0 * u.m),  # From SpaceX
+                  slew_speed = 1.5,  # deg/sec
+                  startup = 15.0,  # number of seconds to actually start taking dat after started, sec
+                  latency = 30.0  # time to acquire etc before/after slew, sec
+)
+DEFAULT_FEPH_PAR = {'source_file': 'feph_files.json', 'offset': 0.0, 'bf_distance': 0.0}
+
+
 
 class Satellite:
     def __init__(self, satno, **kwargs):
@@ -28,8 +38,16 @@ class Satellite:
 
 
 class Eph:
-    def __init__(self):
-        print("Handle Starlink observation ephemerides etc")
+    def __init__(self, observatory=ATA):
+        """
+        Parameters
+        ----------
+        observatory : class Observatory
+            Observatory information
+
+        """
+        self.observatory = observatory
+        print(f"Handle Starlink observation ephemerides etc for {observatory.name}")
 
     def read_SpaceX(self, fn, ftype='c'):
         """
@@ -47,34 +65,37 @@ class Eph:
         self.get_azel()
 
 
-    def read_feph(self, fn, source=None, show_plot=False):
+    def read_feph(self, source):
         """
-        This reads the "feph" json files written out below in self.filter.  Makes a 'feph' Namespace with
-        3 attributes: 'filename', 'array' and 'sources'
+        This reads the "feph" json files written out below in self.filter/self.write_feph.
+        Makes a 'feph' Namespace with 3 attributes: 'filename', 'array' and 'sources'
 
+        Parameter
+        ---------
+        source : str or None
+            If a .json extension, reads that file.  If not, it checks that source.
+        
         """
         import json
-        if fn is None or fn.lower() == 'none':
-            return
-        if fn.lower() == 'auto':
-            if source is None:
-                raise ValueError("Need a source name for auto feph")
-            with open('feph_files.json', 'r') as fp:
+        if source.endswith('.json'):
+            ffn = source
+        else:
+            with open(DEFAULT_FEPH_PAR['source_file'], 'r') as fp:
                 feph_file_list = json.load(fp)
                 for ffn, ffl in feph_file_list.items():
                     if source in ffl:
-                        fn = ffn
                         break
-        self.feph = Namespace(filename=fn, array=Satellite(satno=[]), sources={})
+        self.feph = Namespace(filename=ffn, array=Satellite(satno=[]), sources={})
+        
         parameters = set()
-        print(f"Reading {fn}")
-        with open(fn, 'r') as fp:
+        print(f"Reading {self.feph.filename}")
+        with open(self.feph.filename, 'r') as fp:
             feph_json_input = json.load(fp)
             self.feph.filters = feph_json_input['Filters']
             for src, data in feph_json_input['Sources'].items():
                 self.feph.array.satno.append(src)
                 self.feph.sources[src] = Satellite(satno=src)
-                for dpar, dval in DEFAULT_FEPH.items():
+                for dpar, dval in DEFAULT_FEPH_PAR.items():
                     if dpar not in data:
                         setattr(self.feph.sources[src], dpar, dval)
                 for key, value in data.items():
@@ -96,19 +117,17 @@ class Eph:
             if par[0] == 't':
                 value = Time(copy(getattr(self.feph.array, par)))
                 setattr(self.feph.array, par, value)
-                
-        if show_plot:
-            plt.plot(self.feph.array.tref.datetime, self.feph.array.az, 'o')
-            plt.plot(self.feph.array.tref.datetime, self.feph.array.el, 'x')
 
-    def write_sorted_obs_file(self, obslen=6.0, startup=15.0, tz=0.0, fn='observe.dat', fmt=2):
+    def write_sorted_obs_file(self, obslen=6.0, tz=0.0, fn='observe.dat', fmt=2):
         """
         obslen : float
             Length of observation in minutes
-        startup : float
-            Number of seconds it takes to start taking data
         tz : float
             Hours from UTC (-8.0 for PST)
+        fn : str
+            Name of output file
+        fmt : int
+            Just a way to keep track of arbitrary output format
 
         """
         from copy import copy
@@ -126,7 +145,7 @@ class Eph:
             for i, key in enumerate(sorted(sorter.keys())):
                 if i:
                     daz = sorter[key].az - prev_az
-                    acquire = abs(daz) / DEGSEC + LATENCY
+                    acquire = abs(daz) / self.observatory.slew_speed + self.observatory.latency
                     delay = (key - prev_time).total_seconds() - 60.0 * obslen
                     pause = delay - acquire
                 else:
@@ -137,7 +156,7 @@ class Eph:
                     print(f"Not enough to acquire {sorter[key].satno}")
                 prev_az = sorter[key].az
                 prev_time = copy(key)
-                startat = key - timedelta(hours=-1.0*tz, minutes=obslen/2.0, seconds=startup)
+                startat = key - timedelta(hours=-1.0*tz, minutes=obslen/2.0, seconds=self.observatory.startup)
                 if fmt == 1:
                     print(f"{sorter[key].satno},{pause:.1f},{obslen*60.0:.1f},{startat.isoformat()},{key.isoformat()},", end='', file=fp)
                     print(f"{sorter[key].ra},{sorter[key].dec},{sorter[key].az},{sorter[key].el}", file=fp)
@@ -163,7 +182,7 @@ class Eph:
 
     def update_feph_boresight(self, fn):
         """
-        This assumes you've read in the reada/readb stuff see step 6 in README.md
+        You need to have run SOPP and written satellite output files.
 
         """
         from astropy.coordinates import angular_separation
@@ -221,11 +240,11 @@ class Eph:
                 print(f"Center was not found - min dt offset was {min_dt_off}")
         self.write_feph(fn, feph_file_dict)
 
-    def get_azel(self, satno=None, observatory=ATA):
+    def get_azel(self, satno=None):
         if satno is None:
             satno = list(self.sats.keys())
         for this_satno in satno:
-            aa = AltAz(location=observatory, obstime=self.sats[this_satno].times)
+            aa = AltAz(location=self.observatory.location, obstime=self.sats[this_satno].times)
             coord = SkyCoord(self.sats[this_satno].ra * u.deg, self.sats[this_satno].dec * u.deg)
             altazsky = coord.transform_to(aa)
             self.sats[this_satno].az = altazsky.az.value
