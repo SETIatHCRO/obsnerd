@@ -60,26 +60,6 @@ class Look:
         self.times = Time(self.npzfile['times'], format='jd')
         return True
 
-    def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
-        """
-        Have to read_uvh5 first
-
-        """
-        if ants is None:
-            ants = self.ant_names
-            antstr = 'all'
-        else:
-            antstr = ','.join(ants)
-        fn = f"{self.source}.npz"
-        outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fn}
-        print(f"Dumping autos in {self.fn} for {antstr} to {fn} for {pols}")
-        for ant in self.ant_names:
-            for pol in pols:
-                self.get_bl(ant, pol=pol)
-                outdata[f"{ant}{pol}"] = copy(self.data)
-        outdata['times'] = self.times.jd
-        np.savez(fn, **outdata)
-
     def get_bl(self, a, b=None, pol='xx'):
         self.a = a
         self.b = b
@@ -118,11 +98,11 @@ class Look:
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
-    def dashboard_gen(self, feph, lo, ant='2b', taxis='b'):
+    def dashboard_gen(self, feph, lo, pol='xx', ant='2b', taxis='b'):
         self.get_feph(feph)
         with open('dash.sh', 'w') as fp:
             for src in self.eph.feph.sources:
-                print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} --dash -s", file=fp)
+                print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
 
     def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', feph=False, show_feph=False):
         if feph:
