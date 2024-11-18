@@ -207,6 +207,7 @@ class Eph:
                 self.feph.sources[src].sopp.angsep.append(angsep * np.sign(self.feph.sources[src].sopp.dt[i]))
             feph_file_dict['Sources'][src]['off_times'] = np.round(self.feph.sources[src].sopp.dt, 1).tolist()
             feph_file_dict['Sources'][src]['off_boresight'] = np.round(self.feph.sources[src].sopp.angsep, 2).tolist()
+            feph_file_dict['Sources'][src]['off_distance'] = np.round(self.feph.sources[src].sopp.dist, 1).tolist()
         self.write_feph(fn, feph_file_dict)
 
     def get_azel(self, satno=None, observatory=ATA):

@@ -49,4 +49,7 @@ class WideBand:
         Shortcut to the look dashboard with False antenna since self.lookall.data made in concat
 
         """
-        self.lookall.dashboard(ant=False, pol=self.pol, use_db=use_db, save=save, time_axis=time_axis, feph=feph, show_feph=show_feph)
+        try:
+            self.lookall.dashboard(ant=False, pol=self.pol, use_db=use_db, save=save, time_axis=time_axis, feph=feph, show_feph=show_feph)
+        except AttributeError:
+            print("Run concat first you dummy!")
