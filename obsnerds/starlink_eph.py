@@ -11,7 +11,7 @@ from copy import copy
 class Observatory:
     def __init__(self, name, **kwargs):
         self.name = name
-        for key, val in kwargs:
+        for key, val in kwargs.items():
             setattr(self, key, val)
 
 ATA = Observatory('ATA',

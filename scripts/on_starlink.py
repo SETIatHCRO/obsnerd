@@ -43,6 +43,6 @@ if __name__ == '__main__':
         wide = starlink_wide.WideBand(source=args.source, lo=args.lo, cnode=args.cnode)
         wide.concat(ant=args.ants[0], pol=args.pols[0])
         if args.dash:
-            wide.dashboard(save=args.save, time_axis=args.time_axis, feph=args.feph, show_feph=args.show_feph)
+            wide.dashboard(save=args.save, time_axis=args.time_axis, show_feph=args.show_feph)
             if not args.save:
                 plt.show()
