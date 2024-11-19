@@ -3,7 +3,7 @@ from astropy.time import Time
 import numpy as np
 import matplotlib.pyplot as plt
 from obsnerds import starlink_eph
-from copy import copy
+from datetime import datetime
 
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 
@@ -58,9 +58,10 @@ class Look:
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
-        if self.npzfile['freq_unit'] != self.freq_unit:
-            print("Watch your frequency units!")
-        self.freq_unit = self.npzfile['freq_unit']
+        try:
+            self.freq_unit = self.npzfile['freq_unit']
+        except KeyError:
+            pass
         return True
 
     def get_bl(self, a, b=None, pol='xx'):
@@ -94,6 +95,8 @@ class Look:
             return b, 'deg'
         
     def _invert_axis(self, dat, num=8, precision=-1):
+        if isinstance(dat[0], datetime):
+            dat = (self.times.jd - self.times[0].jd) * 24.0 * 3600.0
         idat = list(np.arange(len(dat)))
         xstart = np.round(np.floor(dat[0]), precision)
         xstep = np.round((dat[-1] - dat[0]) / num, precision)

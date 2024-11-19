@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 from os.path import join
 from os import walk
 

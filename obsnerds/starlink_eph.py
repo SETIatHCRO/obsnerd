@@ -295,11 +295,12 @@ class Eph:
                     #print(f"{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}", file=fp)
                     ctr += 1
         print(f"{ctr} entries")
-        now = datetime.now()
-        fn = f"feph_{now.strftime('%Y%m%dT%H%M')}.json"
-        self.write_feph(fn=fn, feph_dict=fephjson)
+        self.write_feph(fn=None, feph_dict=fephjson)
 
-    def write_feph(self, fn, feph_dict):
+    def write_feph(self, fn=None, feph_dict={}):
+        if fn is None:
+            now = datetime.now()
+            fn = fn = f"feph_{now.strftime('%Y%m%dT%H%M')}.json"
         import json
         print(f"Writing {fn}")
         with open(fn, 'w') as fp:
