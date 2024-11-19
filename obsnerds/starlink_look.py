@@ -105,12 +105,16 @@ class Look:
         return m, x
 
     def dashboard_gen(self, feph, lo, pol='xx', ant='2b', taxis='b'):
-        self.get_feph(feph)
+        self.source = feph
+        self.get_feph()
         with open('dash.sh', 'w') as fp:
             for src in self.eph.feph.sources:
                 print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
 
     def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', show_feph=False):
+        if self.source is None:
+            print("Need to read in some data.")
+            return
         self.get_feph()
         self.time_axis = time_axis[0].lower()
         x_axis_time, xlabel = self._axt_xaxis()
