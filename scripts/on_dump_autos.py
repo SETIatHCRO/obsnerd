@@ -7,8 +7,9 @@ FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 
 
 class Dump:
-    def __init__(self, fn):
+    def __init__(self, fn, freq_unit='MHz'):
         self.fnuvh5 = fn
+        self.freq_unit = freq_unit
         self.read_uvh5()
 
     def read_uvh5(self):
@@ -29,7 +30,7 @@ class Dump:
         else:
             antstr = ','.join(ants)
         fn = f"{self.source}.npz"
-        outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fn, 'freq_unit': self.freq_unit}
+        outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
         print(f"Dumping autos in {self.fnuvh5} for {antstr} to {fn} for {pols}")
         for ant in self.ant_names:
             for pol in pols:

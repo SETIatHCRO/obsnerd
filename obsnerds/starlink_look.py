@@ -58,6 +58,7 @@ class Look:
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
+        self.freq_unit = self.npzfile['freq_unit']
         return True
 
     def get_bl(self, a, b=None, pol='xx'):
