@@ -15,10 +15,8 @@ for dinfo in walk(base_path):
         lolo, cnode = data[-1].split('.')
         lo = lolo[2:]
         src = data[-2].split('_')[-2]
-        if src in obs_ctr:
-            obs_ctr[src] += 1
-        else:
-            obs_ctr[src] = 1
+        obs_ctr.setdefault(src, 1)
+        obs_ctr[src] += 1
         obsid = f"{src}-{obs_ctr[src]}_{lo}_{cnode}"
         for fn in dinfo[2]:
             if fn.startswith('uvh5_'):

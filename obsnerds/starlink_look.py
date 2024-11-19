@@ -58,6 +58,8 @@ class Look:
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
+        if self.npzfile['freq_unit'] != self.freq_unit:
+            print("Watch your frequency units!")
         self.freq_unit = self.npzfile['freq_unit']
         return True
 
