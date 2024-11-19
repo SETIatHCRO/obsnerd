@@ -63,6 +63,6 @@ if __name__ == '__main__':
     args = ap.parse_args()
 
     if args.output is None:
-        args.output = '.'.join(args.filename.split('.')[:-1]) + '.npz'
+        args.output = '.'.join(args.filename.split('.')[:-1])
     sl = Dump(args.filename)
     sl.dump_autos(args.output)
