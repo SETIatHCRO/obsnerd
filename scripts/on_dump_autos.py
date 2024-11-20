@@ -4,11 +4,17 @@ import numpy as np
 from copy import copy
 
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
+UVH5_SRC_IND = 4
 
 
 class Dump:
-    def __init__(self, fn, freq_unit='MHz'):
+    def __init__(self, fn, lo, cnode, freq_unit='MHz'):
         self.fnuvh5 = fn
+        self.lo = lo
+        self.cnode = cnode
+        self.source = fn.split('_')[UVH5_SRC_IND]  # Current standard format
+        if self.source[0] == 'S':
+            self.source = self.source[:-1]
         self.freq_unit = freq_unit
         self.read_uvh5()
 
@@ -22,24 +28,28 @@ class Dump:
             self.ant_map[antna] = antno
         self.freqs = self.uv.freq_array[0] / FREQ_CONVERT[self.freq_unit]
 
-    def dump_autos(self, fnout, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
-        self.source = fnout  # For better or worse, these are the same
+    def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
         if ants is None:
             ants = self.ant_names
             antstr = 'all'
         else:
             antstr = ','.join(ants)
-        fn = f"{self.source}.npz"
         outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
-        print(f"Dumping autos in {self.fnuvh5} for {antstr} to {fn} for {pols}")
+        print(f"Dumping autos in {self.fnuvh5} for {antstr} {pols}", end=' ... ')
         for ant in self.ant_names:
             for pol in pols:
                 self.get_bl(ant, pol=pol)
                 outdata[f"{ant}{pol}"] = copy(self.data)
-        outdata['times'] = self.times.jd
-        np.savez(fn, **outdata)
+        outdata['times'] = self.times.jd  # This assumes that all times in the UVH5 file are the same...
+        obsrec = f"{self.source}_{outdata['times'][0]:.4f}_{self.lo}_{self.cnode}.npz"
+        print(f"writing {obsrec}")
+        np.savez(obsrec, **outdata)
 
     def get_bl(self, a, b=None, pol='xx'):
+        """
+        Pulled from starlink_eph to be stand alone
+
+        """
         self.a = a
         self.b = b
         self.pol = pol
@@ -58,11 +68,11 @@ class Dump:
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument('filename', help="Name of file to dump.")
-    ap.add_argument('-o', '--output', help="Name of npz output file (default is input)", default=None)
+    ap.add_argument('filename', help="Name of UVH5 file to dump.")
+    ap.add_argument('--lo', help='LO', choices=['A', 'B'], default='A')
+    ap.add_argument('--cnode', help='CNODE', choices=['C0352', 'C0544', 'C0736', 'C0928',  'C1120',  'C1312',  'C1504', 'C0352',
+                                                      'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504'], default='C0928')
     args = ap.parse_args()
 
-    if args.output is None:
-        args.output = '.'.join(args.filename.split('.')[:-1])
-    sl = Dump(args.filename)
-    sl.dump_autos(args.output)
+    sl = Dump(args.filename, args.lo, args.cnode)
+    sl.dump_autos()

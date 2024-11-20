@@ -1,5 +1,5 @@
 from astropy.time import Time, TimeDelta
-from obsnerds.starlink_eph import Satellite
+from obsnerds.starlink_eph import ObsData
 import numpy as np
 
 """
@@ -18,7 +18,7 @@ def reada(fn):
         for line in fp:
             if line[0] != '(':
                 this_sat = int(line.strip())
-                sats_inp[this_sat] = Satellite(satno=line.strip())
+                sats_inp[this_sat] = ObsData(name=line.strip())
             elif line[0] == '(':
                 for _E in line.strip().split('('):
                     if len(_E):
@@ -48,7 +48,7 @@ def readb(fn):
         for line in fp:
             if not line[0].isspace():
                 this_sat = int(line.strip())
-                sats_inp[this_sat] = Satellite(satno=line.strip())
+                sats_inp[this_sat] = ObsData(name=line.strip())
             else:
                 t, tstr, rastr, ra, decstr, dec, azstr, az, elstr, el = line.split()
                 sats_inp[this_sat].times.append(T0 + TimeDelta(float(t), format='sec'))
@@ -79,11 +79,11 @@ def readc(fn):
     sats_inp = {}
     with open(fn, 'r') as fp:
         for line in fp:
-            if '#Satellite' in line:
+            if '#ObsData' in line:
                 continue
             data = line.split(',')
             this_sat = int(data[0])
-            sats_inp[this_sat] = Satellite(satno=this_sat, norad=int(data[1]))
+            sats_inp[this_sat] = ObsData(name=this_sat, norad=int(data[1]))
             da = data[4].split()[0].split('/')
             day = f"20{da[2]}-{da[0]}-{da[1]}"
             sats_inp[this_sat].times = [Time(f"{day}T{data[8]}")]

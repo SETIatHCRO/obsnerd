@@ -18,9 +18,9 @@ def toMag(x, use_db=True):
 class Look:
     def __init__(self, freq_unit='MHz'):
         self.freq_unit = freq_unit
-        self.source = None
+        self.obsrec = None
 
-    def read_source(self, fn, src=None):
+    def read_obsrec(self, fn, src=None):
         st = fn.split('.')[-1]
         if st == 'uvh5':
             self.read_uvh5(fn=fn, src=src)
@@ -34,9 +34,9 @@ class Look:
         self.file_type = 'uvh5'
         self.fn = fn
         if src is None:
-            self.source = self.fn.split('_')[4]
+            self.obsrec = self.fn.split('_')[4]
         else:
-            self.source = src
+            self.obsrec = src
         self.uv = UVData()
         self.uv.read(self.fn)
         self.ant_numbers = self.uv.get_ants()
@@ -54,7 +54,7 @@ class Look:
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        self.source, self.lo, self.cnode = self.fn.split('_')
+        self.obsid, self.lo, self.cnode = self.fn.split('_')
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
@@ -86,11 +86,11 @@ class Look:
         if self.time_axis == 'a':  # actual datetime
             return self.times.datetime, 'Time'
         elif self.time_axis == 'd':  # difference
-            return (self.times - self.eph.feph.sources[self.source].tref).to_value('sec'), 'sec'
+            return (self.times - self.eph.feph.obsid[self.obsrec].tref).to_value('sec'), 'sec'
         elif self.time_axis == 'b':  # boresight
-            x = (self.times - self.eph.feph.sources[self.source].tref).to_value('sec') - self.eph.feph.sources[self.source].offset
-            self.xp = self.eph.feph.sources[self.source].off_times
-            self.yp = self.eph.feph.sources[self.source].off_boresight
+            x = (self.times - self.eph.feph.obsid[self.obsrec].tref).to_value('sec') - self.eph.feph.obsid[self.obsrec].offset
+            self.xp = self.eph.feph.obsid[self.obsrec].off_times
+            self.yp = self.eph.feph.obsid[self.obsrec].off_boresight
             b = np.interp(x, self.xp, self.yp)
             return b, 'deg'
         
@@ -105,14 +105,14 @@ class Look:
         return m, x
 
     def dashboard_gen(self, feph, lo, pol='xx', ant='2b', taxis='b'):
-        self.source = feph
+        self.obsid = feph
         self.get_feph()
         with open('dash.sh', 'w') as fp:
-            for src in self.eph.feph.sources:
+            for src in self.eph.feph.obsid:
                 print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
 
     def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', show_feph=False):
-        if self.source is None:
+        if self.obsid is None:
             print("Need to read in some data.")
             return
         self.get_feph()
@@ -123,7 +123,7 @@ class Look:
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
-        plt.suptitle(f"{self.source}: {self.eph.feph.sources[self.source].tref.datetime.isoformat()}  ({self.eph.feph.sources[self.source].bf_distance} km)")
+        plt.suptitle(f"{self.obsid}: {self.eph.feph.obsid[self.obsid].tref.datetime.isoformat()}  ({self.eph.feph.obsid[self.obsid].bf_distance} km)")
         # Water fall plot
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
         axt = plt.subplot2grid((2, 2), (0, 1), rowspan=1, colspan=1)
@@ -159,8 +159,8 @@ class Look:
             axf.plot(self.freqs, toMag(self.data[i], use_db), '0.8')
         axf.set_xlabel(self.freq_unit)
         try:
-            dmin = self.eph.feph.sources[self.source].t0.jd
-            dmax = self.eph.feph.sources[self.source].t1.jd
+            dmin = self.eph.feph.obsid[self.obsid].t0.jd
+            dmax = self.eph.feph.obsid[self.obsid].t1.jd
             if dmin < self.times.jd[0]:
                 dmin = self.times.jd[0]
         except AttributeError:
@@ -176,7 +176,7 @@ class Look:
             axf.plot([filt[1], filt[1]], [axmin, axmax], color=clr)
         axf.set_ylim(bottom=axmin, top=axmax)
         if save:
-            fn = f"{self.source}_{ant}_{pol}.png"
+            fn = f"{self.obsid}_{ant}_{pol}.png"
             plt.savefig(fn)
 
     def get_sum(self, over='freq', dmin=1990.0, dmax=1995.0, norm=False, plotting='amplitude', use_db=True):
@@ -215,13 +215,13 @@ class Look:
                 axs[i][j].set_xticks([])
                 axs[i][j].set_yticks([])
                 ctr += 1
-        fig.suptitle(f"{self.source}:{pol}")
+        fig.suptitle(f"{self.obsid}:{pol}")
         if save:
-            fn = f"{self.source}_{pol}.png"
+            fn = f"{self.obsid}_{pol}.png"
             plt.savefig(fn)
 
     def plot_wf(self, plotting='amplitude', use_db=True):
-        ptitle = (f'WF: {self.source} - ({self.a},{self.b}){self.pol}')
+        ptitle = (f'WF: {self.obsid} - ({self.a},{self.b}){self.pol}')
         fig, ax = plt.subplots()
         ax.set_title(ptitle)
         if plotting[0].lower() == 'a':
@@ -230,7 +230,7 @@ class Look:
         ax.set_aspect('auto')
 
     def plot_freqs(self, ch='all', plotting='amplitude', use_db=True):
-        plt.figure(f'Freqs: {self.source} - ({self.a}, {self.b})')
+        plt.figure(f'Freqs: {self.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.times)):
             if plotting[0].lower() == 'a':
                 pdata = toMag(self.data[i], use_db)
@@ -238,7 +238,7 @@ class Look:
         plt.xlabel(self.freq_unit)
     
     def plot_times(self, trange='all', plotting='amplitude', use_db=True):
-        plt.figure(f'Times: {self.source} - ({self.a}, {self.b})')
+        plt.figure(f'Times: {self.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.freqs)):
             if plotting[0].lower() == 'a':
                 pdata = toMag(self.data[:, i], use_db)
@@ -249,17 +249,17 @@ class Look:
             return
         dmin = ax.axis()[2]
         dmax = ax.axis()[3]
-        src_eph = self.eph.feph.sources[self.source]
+        src_eph = self.eph.feph.obsid[self.obsid]
         try:
-            tref = self.eph.feph.sources[self.source].tref
+            tref = self.eph.feph.obsid[self.obsid].tref
         except AttributeError:
             tref = self.times[len(self.times // 2)]
         try:
-            t0 = self.eph.feph.sources[self.source].t0
+            t0 = self.eph.feph.obsid[self.obsid].t0
         except AttributeError:
             t0 = self.times[0]
         try:
-            t1 = self.eph.feph.sources[self.source].t1
+            t1 = self.eph.feph.obsid[self.obsid].t1
         except AttributeError:
             t1 = self.times[-1]
         if self.time_axis == 'a':  # absolute
@@ -283,4 +283,4 @@ class Look:
 
     def get_feph(self):
         self.eph = starlink_eph.Eph()
-        self.eph.read_feph(source=self.source)
+        self.eph.read_feph(obsid=self.obsid)

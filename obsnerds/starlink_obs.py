@@ -1,13 +1,13 @@
 from . import starlink_look
 import numpy as np
 
-class WideBand:
-    def __init__(self, source, lo, cnode=[352, 544, 736, 928, 1120, 1312, 1504]):
+class Obs:
+    def __init__(self, obsid, lo, cnode=[352, 544, 736, 928, 1120, 1312, 1504]):
         self.filelist = []
         for cn in cnode:
-            self.filelist.append(f"{source}_{lo}_C{cn:04d}.npz")
+            self.filelist.append(f"{obsid}_{lo}_C{cn:04d}.npz")
         self.lookall = starlink_look.Look()  # This will use the methods to plot for concatenated
-        self.lookall.source = source
+        self.lookall.obsid = obsid
         self.lookall.lo = lo
         self.looks = {}
         for fil in self.filelist:
@@ -17,7 +17,7 @@ class WideBand:
             if not found_it:
                 del(self.looks[key])
                 continue
-            self.looks[key].source = source
+            self.looks[key].obsid = obsid
             self.looks[key].lo = lo
         ford = {}
         for key, lk in self.looks.items():

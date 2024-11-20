@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import argparse
 ap = argparse.ArgumentParser()
-from obsnerds import starlink_look, starlink_wide
+from obsnerds import starlink_look, starlink_obs
 
 if __name__ == '__main__':
     ap.add_argument('source', help="Name of data file (.npz or .uvh5) for single band or <source> for wide (then lo/cnode).")
@@ -40,7 +40,7 @@ if __name__ == '__main__':
             if not args.save:
                 plt.show()
     else:
-        wide = starlink_wide.WideBand(source=args.source, lo=args.lo, cnode=args.cnode)
+        wide = starlink_obs.Obs(source=args.source, lo=args.lo, cnode=args.cnode)
         wide.concat(ant=args.ants[0], pol=args.pols[0])
         if args.dash:
             wide.dashboard(save=args.save, time_axis=args.time_axis, show_feph=args.show_feph)
