@@ -4,7 +4,7 @@ from os import walk, listdir
 import argparse
 
 
-def generate(base_path, query=False):
+def generate(base_path, query=False, script_filename='dump_autos.sh'):
     if query:
         print(f"Available observation dates in {base_path}:")
         for x in listdir(base_path):
@@ -24,7 +24,7 @@ def generate(base_path, query=False):
                     dfn = join(dinfo[0], fn)
                     files[obsid] = [dfn, lo, cnode]
                 
-    with open('dump_auto.sh', 'w') as fp:
+    with open(script_filename, 'w') as fp:
         for src, data in files.items():
             print(f"python on_dump_autos.py {data[0]} --lo {data[1]} --cnode {data[2]}", file=fp)
 
@@ -32,9 +32,10 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('date', help='Date-name of directory or ? to list options')
     ap.add_argument('--base_dir', help='Base directory', default='/mnt/primary/ata/projects/p054/')
+    ap.add_argument('--script', help="Name of script file", default='dump_autos.sh')
     args = ap.parse_args()
 else:
-    args = argparse.Namespace(date='2024-11-19-03:22:01', base_dir='/mnt/primary/ata/projects/p054/')
+    args = argparse.Namespace(date='2024-11-19-03:22:01', base_dir='/mnt/primary/ata/projects/p054/', script='dump_autos.sh')
 
 if args.date == '?':
     base_path = args.base_dir
@@ -42,4 +43,4 @@ if args.date == '?':
 else:
     base_path = join(args.base_dir, args.date)
     query = False
-generate(base_path=base_path, query=query)
+generate(base_path=base_path, query=query, script_filename=args.script)
