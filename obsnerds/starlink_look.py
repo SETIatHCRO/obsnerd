@@ -109,16 +109,40 @@ class Look:
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
-    def dashboard_gen(self, feph, lo, pol='xx', ant='2b', taxis='b'):
-        self.obsid = feph
+    def dashboard_gen(self, obsid, lo='A', pol='xx', ant='2b', taxis='b'):
+        """
+        Parameters
+        ----------
+        obsid : str
+            Can either be an obsid or a source in the feph, or a json filename
+        lo : str
+            LO to use [A/B]
+        pol : str
+            pol to use [xx,yy,xy,yz]
+        taxis : str
+            t/x axis to use in plot [a/b/d]
+    
+        """
+        self.obsid = obsid
         self.get_feph()
         with open('dash.sh', 'w') as fp:
-            for src in self.eph.feph.obsid:
-                print(f"on_starlink.py {src} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
+            for obsid in self.eph.feph.obsid:
+                print(f"on_starlink.py {obsid} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
 
-    def dashboard(self, ant, pol='xx', use_db=True, save=False, time_axis='diff', show_feph=False):
+    def dashboard(self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_feph=False):
+        """
+        Parameters
+        ----------
+        ant : str
+            antenna to use
+        pol : str
+            pol to use [xx,yy,xy,yz]
+        taxis : str
+            t/x axis to use in plot [a/b/d]
+    
+        """
         if self.obsid is None:
-            print("Need to read in some data.")
+            print("Need to read in some data first!")
             return
         self.get_feph()
         self.time_axis = time_axis[0].lower()

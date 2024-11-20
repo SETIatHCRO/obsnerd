@@ -303,8 +303,7 @@ class Eph:
 
     def write_feph(self, fn=None, feph_dict={}):
         if fn is None:
-            now = datetime.now()
-            fn = fn = f"feph_{now.strftime('%Y%m%dT%H%M')}.json"
+            fn = fn = f"feph_{f"{Time.now().jd - 2400000.5:.4f}"}.json"
         import json
         print(f"Writing {fn}")
         with open(fn, 'w') as fp:
