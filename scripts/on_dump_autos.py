@@ -41,7 +41,8 @@ class Dump:
                 self.get_bl(ant, pol=pol)
                 outdata[f"{ant}{pol}"] = copy(self.data)
         outdata['times'] = self.times.jd  # This assumes that all times in the UVH5 file are the same...
-        obsrec = f"{self.source}_{outdata['times'][0]:.4f}_{self.lo}_{self.cnode}.npz"
+        mjd = outdata['times'][0] - 2400000.5
+        obsrec = f"{self.source}_{mjd:.4f}_{self.lo}_{self.cnode}.npz"
         print(f"writing {obsrec}")
         np.savez(obsrec, **outdata)
 

@@ -54,12 +54,13 @@ class Look:
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        self.obsid, self.lo, self.cnode = self.fn.split('_')
+        src, jd, self.lo, self.cnode = self.fn.split('_')
+        self.obsid = f"{src}_{jd}"
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
         try:
-            self.freq_unit = self.npzfile['freq_unit']
+            self.freq_unit = str(self.npzfile['freq_unit'])
         except KeyError:
             pass
         return True
