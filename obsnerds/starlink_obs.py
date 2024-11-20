@@ -2,23 +2,28 @@ from . import starlink_look
 import numpy as np
 
 class Obs:
-    def __init__(self, obsid, lo, cnode=[352, 544, 736, 928, 1120, 1312, 1504]):
-        self.filelist = []
-        for cn in cnode:
-            self.filelist.append(f"{obsid}_{lo}_C{cn:04d}.npz")
+    def __init__(self, obsid, lo='A', cnode=[352, 544, 736, 928, 1120, 1312, 1504], tag='npz'):
+        self.obsrec_list = []
         self.lookall = starlink_look.Look()  # This will use the methods to plot for concatenated
         self.lookall.obsid = obsid
         self.lookall.lo = lo
+        if isinstance(cnode[0], str) and cnode[0][0] == 'C':
+            cnodes = cnode
+        else:
+            cnodes = [f"C{int(x):04d}" for x in cnode]
+        self.obsrec_list = [f"{self.lookall.obsid}_{self.lookall.lo}_{x}" for x in cnodes]
+
         self.looks = {}
-        for fil in self.filelist:
-            key = fil.split('.')[0]
-            self.looks[key] = starlink_look.Look()
-            found_it = self.looks[key].read_npz(fil)
+        for obsrec, cno in zip(self.obsrec_list, cnodes):
+            self.looks[obsrec] = starlink_look.Look()
+            found_it = self.looks[obsrec].read_npz(f"{obsrec}.{tag}")
             if not found_it:
-                del(self.looks[key])
+                del(self.looks[obsrec])
                 continue
-            self.looks[key].obsid = obsid
-            self.looks[key].lo = lo
+            self.looks[obsrec].obsid = obsid
+            self.looks[obsrec].obsrec = obsrec
+            self.looks[obsrec].lo = lo
+            self.looks[obsrec].cnode = cno
         ford = {}
         for key, lk in self.looks.items():
             ford[str(lk.freqs[0])] = key

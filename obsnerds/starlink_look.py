@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from obsnerds import starlink_eph
 from datetime import datetime
+import os.path as path
 
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 
@@ -19,6 +20,7 @@ class Look:
     def __init__(self, freq_unit='MHz'):
         self.freq_unit = freq_unit
         self.obsrec = None
+        self.obsid = None
 
     def read_obsrec(self, fn, src=None):
         st = fn.split('.')[-1]
@@ -31,6 +33,7 @@ class Look:
 
     def read_uvh5(self, fn, src=None):
         print(f"Reading {fn}")
+        print("THIS ISN'T QUITE RIGHT WITH NEW TERMINOLOGY ETC")
         self.file_type = 'uvh5'
         self.fn = fn
         if src is None:
@@ -54,8 +57,9 @@ class Look:
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        src, jd, self.lo, self.cnode = self.fn.split('_')
-        self.obsid = f"{src}_{jd}"
+        self.obsrec = path.splitext(self.fn)[0]
+        self.source, mjd, self.lo, self.cnode = self.obsrec.split('_')
+        self.obsid = f"{self.source}_{mjd}"
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
@@ -87,11 +91,11 @@ class Look:
         if self.time_axis == 'a':  # actual datetime
             return self.times.datetime, 'Time'
         elif self.time_axis == 'd':  # difference
-            return (self.times - self.eph.feph.obsid[self.obsrec].tref).to_value('sec'), 'sec'
+            return (self.times - self.eph.feph.obsid[self.obsid].tref).to_value('sec'), 'sec'
         elif self.time_axis == 'b':  # boresight
-            x = (self.times - self.eph.feph.obsid[self.obsrec].tref).to_value('sec') - self.eph.feph.obsid[self.obsrec].offset
-            self.xp = self.eph.feph.obsid[self.obsrec].off_times
-            self.yp = self.eph.feph.obsid[self.obsrec].off_boresight
+            x = (self.times - self.eph.feph.obsid[self.obsid].tref).to_value('sec') - self.eph.feph.obsid[self.obsid].offset
+            self.xp = self.eph.feph.obsid[self.obsid].off_times
+            self.yp = self.eph.feph.obsid[self.obsid].off_boresight
             b = np.interp(x, self.xp, self.yp)
             return b, 'deg'
         

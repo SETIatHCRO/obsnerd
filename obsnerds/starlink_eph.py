@@ -86,6 +86,9 @@ class Eph:
                 for ffn, ffl in feph_file_list.items():
                     if obsid in ffl:
                         break
+                else:
+                    print(f"No feph found for {obsid}")
+                    return
         self.feph = Namespace(filename=ffn, array=ObsData(name=[]), obsid={})
         
         parameters = set()
