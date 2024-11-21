@@ -313,3 +313,7 @@ class Look:
     def get_feph(self):
         self.eph = starlink_eph.Eph()
         self.eph.read_feph(obsid=self.obsid)
+
+    def put_feph(self, fn, fdict):
+        self.eph = starlink_eph.Eph()
+        self.eph.write_feph(fn, fdict)
