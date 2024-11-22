@@ -10,7 +10,7 @@ ap.add_argument('-f', '--frequency', help='Frequency to search in MHz', type=flo
 ap.add_argument('-b', '--bandwidth', help="Bandwidth in MHz [20]", type=float, default=20.0)
 ap.add_argument('-s', '--search', help="String to search for", default=False)
 ap.add_argument('-x', '--exclude', help="If str, exclude if string is present", default=False)
-ap.add_argument('-o', '--orbit', help='Orbit type: (all, geo, meo, leo) [all]', choices=['all', 'geo', 'meo', 'leo'], default='all')
+ap.add_argument('-o', '--orbit', help='Orbit type: (geo, meo, leo) [all]', choices=['geo', 'meo', 'leo'], default=None)
 ap.add_argument('-e', '--el_limit', help="Lower horizon elevation [20.0]", type=float, default=20.0)
 ap.add_argument('-a', '--az_limit', help="Azimuth range [0,360]", default='0,360')
 ap.add_argument('--time_resolution', help="Time resolution of track in seconds", type=int, default=1)
