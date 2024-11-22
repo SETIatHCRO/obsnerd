@@ -18,6 +18,7 @@ ap.add_argument('--tz', help='Time zone (hours offset from UTC) [0]', type=float
 ap.add_argument('--tle_file', help='Name of tle file', default='tle/active.tle')
 ap.add_argument('--ftype', help='search horizon or beam', choices=['horizon', 'beam'], default='horizon')
 ap.add_argument('--output_file', help="Flag to write out ephemerides", action='store_true')
+ap.add_argument('--sat2write', help="String in satellite name to write out.", default=None)
 args = ap.parse_args()
 
 az_limit = [float(x) for x in args.az_limit.split(',')]
@@ -36,4 +37,6 @@ if __name__ == '__main__':
             time_resolution=args.time_resolution,
             tle_file = args.tle_file,
             timezone = args.tz,
-            output_file = args.output_file)
+            output_file = args.output_file,
+            sat2write=args.sat2write
+            )

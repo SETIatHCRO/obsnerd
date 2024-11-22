@@ -9,6 +9,8 @@ import datetime
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 from . import onutil
+import pandas as pd
+import numpy as np
 
 
 
@@ -16,7 +18,7 @@ from . import onutil
 def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
          el_limit=0.0, ftype='horizon', search_for=False, orbit_type=None, exclude=False, time_resolution=1,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 60.0,
-         tle_file='tle/active.tle', timezone=None, output_file=False):
+         tle_file='tle/active.tle', timezone=None, output_file=False, sat2write=None):
     """
     Parameters
     ----------
@@ -30,10 +32,6 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         Bandwidth in MHz
     az_limit : list of float
         Az limits in degrees
-    el_limit : float
-        El lower limit in degrees
-    ftype : str
-        Search type 'beam' or 'horizon'
     search_for : str or bool
         If str, only allow if str in satellite name
     orbit_type : str
@@ -54,9 +52,10 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         Name of tle file to use
     timezone : float or None or datetime.timezone
         timezone to use (hours to UTC)
-    output_file : str or False
-        If str, name of ephemerides file
+    output_file : bool
         If False don't write
+    sat2write : str or None
+        If str, then write out the file if satellite name contains this string
 
     """
 
@@ -68,11 +67,22 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         .add_filter(filters.filter_name_does_not_contain(exclude))
         .add_filter(filters.filter_orbit_is(orbit_type))
     )
+    print("Verify filterer is ok SE63")
+    # filterer = Filterer()
+    # """
+    # if frequency is not None:
+    #     filterer.add_filter(filters.filter_frequency(FrequencyRange(bandwidth=bandwidth, frequency=frequency)))
+    # """
+    # if search_for:
+    #     filterer.add_filter(filters.filter_name_contains(search_for))
+    # if exclude:
+    #     filterer.add_filter(filters.filter_name_does_not_contain(exclude))
+    # if orbit_type in ['leo', 'meo', 'geo']:
+    #     filterer.add_filter(getattr(filters, f"filter_is_{orbit_type}")())
 
     # Observation Window
     starttime = onutil.make_datetime(date=start, tz=timezone)
     stoptime = starttime + datetime.timedelta(minutes=duration)
-
     configuration = (
         ConfigurationBuilder()
         .set_facility(
@@ -134,11 +144,18 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
 
     shownctr = 0
     jcadence = int(row_cadence / time_resolution)
+
+    ### Frequency info incorporated
+    freqData = pd.read_csv('SatList.csv')
+
     for i, window in enumerate(events, start=1):
 
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
         az, el, tae, dist = [], [], [], []
         table_data = []
+
+        if sat2write is not None and sat2write not in window.satellite.name:
+            continue
 
         for j, pos in enumerate(window.positions):
             if pos.position.azimuth < az_limit[0] or pos.position.azimuth > az_limit[1]:
@@ -152,12 +169,38 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                 table_data.append(table_row)
         if len(table_data):
             if output_file:
+
+            # Query for frequency info
+            indFreq = [] 
+            try:
+                indFreq_id = freqData.query("ID=={}".format(str(window.satellite.tle_information.satellite_number)))["Frequency [MHz]"].values
+                indFreq_name = freqData.query("Name=='{}'".format(str(window.satellite.name)))["Frequency [MHz]"].values
+                indFreq_ur = list(set(list(indFreq_id) + list(indFreq_name)))
+                for freq in indFreq_ur:
+                    if(type(freq) != float):
+                        indFreq += [float(freq)]
+            except:
+                indFreq = window.satellite.frequency
+            if (frequency != 1575.0):
+                #print(frequency)
+                #print(type(frequency))
+                #print(bandwidth)
+                if (len(indFreq) == 0):
+                    continue
+                freqBools = [((x > (frequency - (bandwidth/2.))) and (x < (frequency + (bandwidth/2.)))) for x in indFreq]
+                #print(freqBools)
+                if (True not in freqBools):
+                    continue
+		
+
+            if sat2write is None or sat2write in window.satellite.name:
                 fnout = f"{window.satellite.name.replace(' ', '')}.txt"
                 print(f"Writing {fnout}")
                 with open(fnout, 'w') as fpof:
                     for _t, _a, _e, _d in zip(tae, az, el, dist):
-                        print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{1.0/_d}", file=fpof)
-            print('Frequency information:  ', window.satellite.frequency)
+                        print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
+            print('Frequency information:  ', window.satellite.frequency, indFreq)
+
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             shownctr += 1
             plt.figure('AzEl Trajectory')
@@ -169,9 +212,8 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
-            if output_file:
-                fpof.close()
-            output_file = None  # Just write out the first one
+            if sat2write is None and output_file:
+                output_file = None  # Just write out the first one if no satellite name
     ps4 = f" and {search_for}" if search_for else ""
     print(f"Showing {shownctr} entries for {orbit_type}{ps4}")
     plt.figure('AzEl Trajectory')

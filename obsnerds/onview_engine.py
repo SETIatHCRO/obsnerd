@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-import yaml
 from astropy.time import Time
 from datetime import timedelta, datetime
 from copy import copy
