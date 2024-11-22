@@ -12,21 +12,23 @@ def generate(base_path, query=False, script_filename='dump_autos.sh'):
         return
     print(f"Retrieving from {base_path}")
     files = {}
-    for dinfo in walk(base_path):
-        if base_path in dinfo[0] and '/Lo' in dinfo[0]:
-            data = dinfo[0].split('/')
-            lolo, cnode = data[-1].split('.')
+    for basedir, _, filelist in walk(base_path):
+        if base_path in basedir and '/Lo' in basedir:
+            lolo, cnode = basedir.split('/')[-1].split('.')
             lo = lolo[2:]
-            src = data[-2].split('_')[-2]
-            obsid = f"{src}_{lo}_{cnode}"
-            for fn in dinfo[2]:
+            for fn in filelist:
                 if fn.startswith('uvh5_'):
-                    dfn = join(dinfo[0], fn)
-                    files[obsid] = [dfn, lo, cnode]
+                    _, mjd1, mjd2, _, src, _ = fn.split('_')
+                    mjd = float(f"{mjd1}.{mjd2}")
+                    obsid = f"{src}_{mjd:.4f}"
+                    obsrec = f"{obsid}_{lo}_{cnode}"
+                    dfn = join(basedir, fn)
+                    files[obsrec] = [dfn, lo, cnode]
                 
     with open(script_filename, 'w') as fp:
-        for src, data in files.items():
+        for obsrec, data in files.items():
             print(f"python on_dump_autos.py {data[0]} --lo {data[1]} --cnode {data[2]}", file=fp)
+            print(f"Adding {obsrec}")
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()

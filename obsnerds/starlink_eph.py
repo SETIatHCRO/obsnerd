@@ -14,8 +14,13 @@ class Observatory:
         for key, val in kwargs.items():
             setattr(self, key, val)
 
+# From Wael
+latitude = "40:49:02.75"
+longitude = "-121:28:14.65"
+altitude = 1019.222
 ATA = Observatory('ATA',
-                  location = EarthLocation(lat = 40.814871 * u.deg, lon = -121.469001 * u.deg, height = 1019.0 * u.m),  # From SpaceX
+                  # location = EarthLocation(lat = 40.814871 * u.deg, lon = -121.469001 * u.deg, height = 1019.0 * u.m),  # From SpaceX
+                  location = EarthLocation(lat = 40.81743055556 * u.deg, lon = -121.5292638889 * u.deg, height = 1019.222 * u.m),  # From Wael
                   slew_speed = 1.5,  # deg/sec
                   startup = 15.0,  # number of seconds to actually start taking dat after started, sec
                   latency = 30.0  # time to acquire etc before/after slew, sec
