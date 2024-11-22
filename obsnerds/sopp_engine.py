@@ -18,7 +18,7 @@ import numpy as np
 def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
          el_limit=0.0, ftype='horizon', search_for=False, orbit_type='all', exclude=False, time_resolution=1,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 60.0,
-         tle_file='tle/active.tle', timezone=None, output_file=False):
+         tle_file='tle/active.tle', timezone=None, output_file=False, sat2write=None):
     """
     Parameters
     ----------
@@ -52,9 +52,10 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         Name of tle file to use
     timezone : float or None or datetime.timezone
         timezone to use (hours to UTC)
-    output_file : str or False
-        If str, name of ephemerides file
+    output_file : bool
         If False don't write
+    sat2write : str or None
+        If str, then write out the file if satellite name contains this string
 
     """
 
@@ -144,6 +145,9 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
         az, el, tae, dist = [], [], [], []
         table_data = []
 
+        if sat2write is not None and sat2write not in window.satellite.name:
+            continue
+
         for j, pos in enumerate(window.positions):
             if pos.position.altitude < el_limit:
                 continue
@@ -158,11 +162,6 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                 table_data.append(table_row)
         if len(table_data):
             if output_file:
-                fnout = f"{window.satellite.name.replace(' ', '')}.txt"
-                print(f"Writing {fnout}")
-                with open(fnout, 'w') as fpof:
-                    for _t, _a, _e, _d in zip(tae, az, el, dist):
-                        print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{1.0/_d}", file=fpof)
 
             # Query for frequency info
             indFreq = [] 
@@ -186,7 +185,15 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                 if (True not in freqBools):
                     continue
 		
-            print('Frequency information:  ', indFreq)
+
+            if sat2write is None or sat2write in window.satellite.name:
+                fnout = f"{window.satellite.name.replace(' ', '')}.txt"
+                print(f"Writing {fnout}")
+                with open(fnout, 'w') as fpof:
+                    for _t, _a, _e, _d in zip(tae, az, el, dist):
+                        print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
+            print('Frequency information:  ', window.satellite.frequency, indFreq)
+
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             shownctr += 1
             plt.figure('AzEl Trajectory')
@@ -198,9 +205,8 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
-            if output_file:
-                fpof.close()
-            output_file = None  # Just write out the first one
+            if sat2write is None and output_file:
+                output_file = None  # Just write out the first one if no satellite name
     ps4 = f" and {search_for}" if search_for else ""
     print(f"Showing {shownctr} entries for {orbit_type}{ps4}")
     plt.figure('AzEl Trajectory')
