@@ -3,7 +3,7 @@ from astropy.coordinates import EarthLocation, AltAz, SkyCoord
 import numpy as np
 import astropy.units as u
 from argparse import Namespace
-from datetime import datetime, timedelta
+from datetime import timedelta
 from copy import copy
 
 
