@@ -82,7 +82,7 @@ class Eph:
             If a .json extension, reads that file.  If not, it checks that obsid as found in the obsid_file
         
         """
-        self.feph = Namespace(filename=ffn, array=ObsData(name=[]), obsid={})
+        self.feph = Namespace(filename=obsid, array=ObsData(name=[]), obsid={})
         import json
         if obsid.endswith('.json'):
             ffn = obsid
