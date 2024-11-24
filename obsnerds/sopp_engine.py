@@ -168,8 +168,6 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
                 table_row = [pos.time.strftime('%Y-%m-%dT%H:%M:%S.%f'), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
         if len(table_data):
-            if output_file:
-
             # Query for frequency info
             indFreq = [] 
             try:

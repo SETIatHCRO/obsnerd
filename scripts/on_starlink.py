@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     if source_type in ['uvh5', 'npz']:  # Single file as source
         look = starlink_look.Look()
-        look.read_source(args.source)
+        look.read_obsrec(args.source)
 
         if args.waterfall:
             for pol in args.pols:
