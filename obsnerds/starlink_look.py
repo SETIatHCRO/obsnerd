@@ -152,7 +152,10 @@ class Look:
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
-        plt.suptitle(f"{self.obsid}: {self.eph.feph.obsid[self.obsid].tref.datetime.isoformat()}  ({self.eph.feph.obsid[self.obsid].bf_distance} km)")
+        try:
+            plt.suptitle(f"{self.obsid}: {self.eph.feph.obsid[self.obsid].tref.datetime.isoformat()}  ({self.eph.feph.obsid[self.obsid].bf_distance} km)")
+        except (AttributeError, KeyError):
+            pass
         # Water fall plot
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
         axt = plt.subplot2grid((2, 2), (0, 1), rowspan=1, colspan=1)
