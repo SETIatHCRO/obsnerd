@@ -5,6 +5,7 @@ import astropy.units as u
 from argparse import Namespace
 from datetime import timedelta
 from copy import copy
+import json
 
 
 class Observatory:
@@ -25,11 +26,8 @@ ATA = Observatory('ATA',
                   startup = 15.0,  # number of seconds to actually start taking dat after started, sec
                   latency = 30.0  # time to acquire etc before/after slew, sec
 )
-DEFAULT_FEPH_PAR = {'obsid_file': 'feph_files.json', 'offset': 0.0, 'bf_distance': 0.0}
 
-
-
-class ObsData:
+class ObservationData:
     def __init__(self, name, **kwargs):
         self.name = name
         self.times = []
@@ -37,44 +35,34 @@ class ObsData:
         self.dec = []
         self.az = []
         self.el = []
-        self.provided = Namespace(times=[], az=[], el=[])
         for key, val in kwargs.items():
             setattr(self, key, val)
 
 
-class Eph:
-    def __init__(self, observatory=ATA):
+class Base:
+    def __init__(self, observatory=ATA, obsmeta_file='obsmeta.json'):
         """
         Parameters
         ----------
         observatory : class Observatory
             Observatory information
+        obsmeta_file : str
+            Name of file containing meta data about the obsfile json files.
 
         """
         self.observatory = observatory
-        print(f"Handle Starlink observation ephemerides etc for {observatory.name}")
+        self.obsmeta_file = obsmeta_file
+        try:
+            with open(obsmeta_file, 'r') as fp:
+                self.obsmeta_data = json.load(fp)
+        except FileNotFoundError:
+            self.obsmeta_data = {}
+        print(f"Handle observation ephemerides, tools etc for {observatory.name}")
 
-    def read_SpaceX(self, fn, ftype='c'):
+    def read_obsinfo(self, obs):
         """
-        Since the files from SpaceX vary so much, pull the readers out but produce common self.sats dictionary.
-
-        """
-        from . import starlink_input
-        self.SpaceX = fn
-        self.sats = getattr(starlink_input, f"read{ftype}")(fn)
-        # if ftype == 'a':
-        #     self.sats = starlink_input.reada(fn)
-        # if ftype == 'b':
-        #     self.sats = starlink_input.readb(fn)
-        # if ftype == 'c':
-        #     self.sats = starlink_input.readc(fn)
-        self.get_azel()
-
-
-    def read_feph(self, obsid):
-        """
-        This reads the "feph" json files written out below in self.filter/self.write_feph.
-        Makes a 'feph' Namespace with 3 attributes: 'filename', 'array' and 'obsid'
+        This reads the observation meta json files generated.
+        Makes an 'obsinfo' Namespace with 3 attributes: 'filename', 'array' and 'obsid'
 
         Parameter
         ---------
@@ -82,31 +70,36 @@ class Eph:
             If a .json extension, reads that file.  If not, it checks that obsid as found in the obsid_file
         
         """
-        self.feph = Namespace(filename=obsid, array=ObsData(name=[]), obsid={})
+        self.obsinfo = Namespace(array=ObservationData(name=[]), obsid={}, dir_data='.')
         import json
-        if obsid.endswith('.json'):
-            ffn = obsid
+        if obs.endswith('.json'):
+            self.obsinfo.filename = obs  # Assume that this is a full obsinfo filepath/name
         else:
-            with open(DEFAULT_FEPH_PAR['obsid_file'], 'r') as fp:
-                feph_file_list = json.load(fp)
-                for ffn, ffl in feph_file_list.items():
-                    if obsid in ffl:
-                        break
-                else:
-                    print(f"No feph found for {obsid}")
-                    return
+            from os.path import join
+            dir2use = '.'
+            for key, val in self.obsmeta_data.items():
+                if key == 'dir_obsinfo':
+                    dir2use = val
+                elif obs in val:
+                    self.obsinfo.filename = join(dir2use, key)
+                    break
+            else:
+                self.obsinfo.filename = None
+                print(f"No obs file found for {obs}")
+                return
         
-        parameters = set()
-        print(f"Reading {self.feph.filename}")
-        with open(self.feph.filename, 'r') as fp:
-            feph_json_input = json.load(fp)
-            self.feph.filters = feph_json_input['Filters']
-            for src, data in feph_json_input['Sources'].items():
-                self.feph.array.name.append(src)
-                self.feph.obsid[src] = ObsData(name=src)
-                for dpar, dval in DEFAULT_FEPH_PAR.items():
-                    if dpar not in data:
-                        setattr(self.feph.obsid[src], dpar, dval)
+        parameters = {'name'}
+        self.obsinfo.obsinfo_keys = ['obsinfo_keys']
+        print(f"Reading {self.obsinfo.filename}")
+        with open(self.obsinfo.filename, 'r') as fp:
+            json_input = json.load(fp)
+            for key, val in json_input.items():  # Get non-'Sources' info
+                self.obsinfo.obsinfo_keys.append(key)
+                if key != 'Sources':
+                    setattr(self.obsinfo, key.lower(), val)
+            for src, data in json_input['Sources'].items():
+                self.obsinfo.array.name.append(src)
+                self.obsinfo.obsid[src] = ObservationData(name=src)
                 for key, value in data.items():
                     parameters.add(key)
                     if key[0] == 't': # Is Time format
@@ -115,17 +108,16 @@ class Eph:
                         except ValueError:
                             raise ValueError(f"Parameters starting with 't' must be astropy.time.Time format:  {key}: {value}")
                     try:
-                        getattr(self.feph.array, key).append(value)
+                        getattr(self.obsinfo.array, key).append(value)
                     except AttributeError:
-                        setattr(self.feph.array, key, [value])
-                    setattr(self.feph.obsid[src], key, value)
-        parameters.add('name')
-        print(f"\t{', '.join(self.feph.array.name)}")
+                        setattr(self.obsinfo.array, key, [value])
+                    setattr(self.obsinfo.obsid[src], key, value)
+        print(f"\t{', '.join(self.obsinfo.array.name)}")
         print(f"\t{', '.join(list(parameters))}")
         for par in parameters:
             if par[0] == 't':
-                value = Time(copy(getattr(self.feph.array, par)))
-                setattr(self.feph.array, par, value)
+                value = Time(copy(getattr(self.obsinfo.array, par)))
+                setattr(self.obsinfo.array, par, value)
 
     def write_sorted_obs_file(self, obslen=6.0, tz=0.0, fn='observe.dat', fmt=2):
         """
@@ -143,7 +135,7 @@ class Eph:
         sorter = {}
     
         for src, data in self.obsid.items():
-            sorter[data.tref.datetime] = ObsData(name=src, ra=data.ra, dec=data.dec, az=data.az, el=data.el)
+            sorter[data.tref.datetime] = ObservationData(name=src, ra=data.ra, dec=data.dec, az=data.az, el=data.el)
         with open(fn, 'w') as fp:
             if fmt == 1:
                 print("#Source,pause[s],obs[s],start,ref,ra,dec,az,el", file=fp)
@@ -259,58 +251,14 @@ class Eph:
             self.sats[this_name].az = altazsky.az.value
             self.sats[this_name].el = altazsky.alt.value
 
-    def filter(self, name=None, ytime=['2024-11-06T23:00:00', '2024-11-15T01:00:00'], yel=[30, 70]):
-        """
-        use None, None, None to write out everything.
-
-        """
-        import string
-        tags = string.ascii_lowercase
-        if name == 'dump':
-            name, ytime, yel = None, None, None
-        if name is None:
-            name = list(self.sats.keys())
-        if ytime is not None:
-            ytime[0] = Time(ytime[0], format='isot')
-            ytime[1] = Time(ytime[1], format='isot')
-        fephjson = {'Sources': {}}
-        ctr = 0
-        for this_sat in name:
-            for i in range(len(self.sats[this_sat].times)):
-                use_it = True
-                if ytime is not None:
-                    this_time = self.sats[this_sat].times[i]
-                    if this_time < ytime[0] or this_time > ytime[1]:
-                        use_it = False
-                if use_it and yel is not None:
-                    this_el = self.sats[this_sat].el[i]
-                    if this_el < yel[0] or this_el > yel[1]:
-                        use_it = False
-                obsid_name = f"S{this_sat}{tags[i]}"
-                if use_it:
-                    fephjson['Sources'][obsid_name] = {
-                        'sat': this_sat,
-                        'az': self.sats[this_sat].az[i],
-                        'el': self.sats[this_sat].el[i],
-                        'ra': self.sats[this_sat].ra[i],
-                        'dec': self.sats[this_sat].dec[i],
-                        'tref': self.sats[this_sat].times[i].datetime.isoformat(),
-                        'norad': self.sats[this_sat].norad[i],
-                        'bf_distance': self.sats[this_sat].bf_distance[i]
-                    }
-                    #print(f"S{this_sat}{tags[i]},{self.sats[this_sat].ra[i] / 15.0:.6f},{self.sats[this_sat].dec[i]:.6f}", file=fp)
-                    print(f"S{this_sat}{tags[i]},{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}")
-                    #print(f"S{this_sat}{tags[i]},{self.sats[this_sat].times[i].datetime},{self.sats[this_sat].ra[i] / 15.0:.6f},{self.sats[this_sat].dec[i]:.6f},", file=fp, end='')
-                    #print(f"{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}", file=fp)
-                    ctr += 1
-        print(f"{ctr} entries")
-        self.write_feph(fn=None, feph_dict=fephjson)
-
-    def write_feph(self, fn=None, feph_dict={}):
+    def write_obsinfo(self, fn=None, package='obsinfo'):
+        if isinstance(package, str):
+            print("Package up self.obsinfo into dict...not done yet")
+            return
         if fn is None:
             mjd = float(Time.now().jd) - 2400000.5
             fn = f"feph_{mjd:.4f}.json"
         import json
         print(f"Writing {fn}")
         with open(fn, 'w') as fp:
-            json.dump(feph_dict, fp, indent=2)
+            json.dump(package, fp, indent=2)

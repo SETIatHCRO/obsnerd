@@ -2,7 +2,7 @@ from pyuvdata import UVData
 from astropy.time import Time
 import numpy as np
 import matplotlib.pyplot as plt
-from obsnerds import starlink_eph
+from obsnerds import obs_base
 from datetime import datetime
 import os.path as path
 
@@ -17,10 +17,11 @@ def toMag(x, use_db=True):
 
 
 class Look:
-    def __init__(self, freq_unit='MHz'):
+    def __init__(self, freq_unit='MHz', dir_data='.'):
         self.freq_unit = freq_unit
         self.obsrec = None
         self.obsid = None
+        self.dir_data = dir_data
 
     def read_obsrec(self, fn, src=None):
         st = fn.split('.')[-1]
@@ -35,7 +36,7 @@ class Look:
         print(f"Reading {fn}")
         print("THIS ISN'T QUITE RIGHT WITH NEW TERMINOLOGY ETC")
         self.file_type = 'uvh5'
-        self.fn = fn
+        self.fn = path.join(self.dir_data, fn)
         if src is None:
             self.obsrec = self.fn.split('_')[4]
         else:
@@ -51,15 +52,16 @@ class Look:
 
     def read_npz(self, fn):
         self.file_type = 'npz'
-        self.fn = fn
+        self.obsrec = path.splitext(fn)[0]
+        self.source, mjd, self.lo, self.cnode = self.obsrec.split('_')
+        self.obsid = f"{self.source}_{mjd}"
+        self.get_obsinfo()
+        self.fn = path.join(self.obs.obsinfo.dir_data, fn)
         try:
             self.npzfile = np.load(self.fn)
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        self.obsrec = path.splitext(self.fn)[0]
-        self.source, mjd, self.lo, self.cnode = self.obsrec.split('_')
-        self.obsid = f"{self.source}_{mjd}"
         self.ant_names = list(self.npzfile['ants'])
         self.freqs = list(self.npzfile['freqs'])
         self.times = Time(self.npzfile['times'], format='jd')
@@ -91,11 +93,11 @@ class Look:
         if self.time_axis == 'a':  # actual datetime
             return self.times.datetime, 'Time'
         elif self.time_axis == 'd':  # difference
-            return (self.times - self.eph.feph.obsid[self.obsid].tref).to_value('sec'), 'sec'
+            return (self.times - self.obs.obsinfo.obsid[self.obsid].tref).to_value('sec'), 'sec'
         elif self.time_axis == 'b':  # boresight
-            x = (self.times - self.eph.feph.obsid[self.obsid].tref).to_value('sec') - self.eph.feph.obsid[self.obsid].offset
-            self.xp = self.eph.feph.obsid[self.obsid].off_times
-            self.yp = self.eph.feph.obsid[self.obsid].off_boresight
+            x = (self.times - self.obs.obsinfo.obsid[self.obsid].tref).to_value('sec') - self.obs.obsinfo.obsid[self.obsid].offset
+            self.xp = self.obs.obsinfo.obsid[self.obsid].off_times
+            self.yp = self.obs.obsinfo.obsid[self.obsid].off_boresight
             b = np.interp(x, self.xp, self.yp)
             return b, 'deg'
         
@@ -114,7 +116,7 @@ class Look:
         Parameters
         ----------
         obsid : str
-            Can either be an obsid or a source in the feph, or a json filename
+            Can either be an obsid or a source in the obsinfo, or a json filename
         lo : str
             LO to use [A/B]
         pol : str
@@ -124,12 +126,12 @@ class Look:
     
         """
         self.obsid = obsid
-        self.get_feph()
+        self.get_obsinfo()
         with open('dash.sh', 'w') as fp:
-            for obsid in self.eph.feph.obsid:
+            for obsid in self.obs.obsinfo.obsid:
                 print(f"on_starlink.py {obsid} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
 
-    def dashboard(self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_feph=False):
+    def dashboard(self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_obsinfo=False):
         """
         Parameters
         ----------
@@ -144,7 +146,7 @@ class Look:
         if self.obsid is None:
             print("Need to read in some data first!")
             return
-        self.get_feph()
+        self.get_obsinfo()
         self.time_axis = time_axis[0].lower()
         x_axis_time, xlabel = self._axt_xaxis()
         x_ticks, x_labels = self._invert_axis(self.freqs)
@@ -153,7 +155,7 @@ class Look:
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
         try:
-            plt.suptitle(f"{self.obsid}: {self.eph.feph.obsid[self.obsid].tref.datetime.isoformat()}  ({self.eph.feph.obsid[self.obsid].bf_distance} km)")
+            plt.suptitle(f"{self.obsid}: {self.obs.obsinfo.obsid[self.obsid].tref.datetime.isoformat()}  ({self.obs.obsinfo.obsid[self.obsid].bf_distance} km)")
         except (AttributeError, KeyError):
             pass
         # Water fall plot
@@ -170,7 +172,7 @@ class Look:
         axwf.set_yticks(y_ticks, y_labels)
 
         # Time plot
-        filter = self.eph.feph.filters[self.lo]
+        filter = self.obs.obsinfo.filters[self.lo]
         used_filter = {}
         for clr, filt in filter.items():
             if filt[1] < self.freqs[0] or filt[0] > self.freqs[-1]:
@@ -178,8 +180,8 @@ class Look:
             used_filter[clr] = filt
             tax2 = self.get_sum(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
             axt.plot(x_axis_time, tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
-        if show_feph:
-            self.plot_feph_times(axt)
+        if show_obsinfo:
+            self.plot_obsinfo_times(axt)
         axt.legend()
         axt.set_xlabel(xlabel)
         if use_db:
@@ -191,8 +193,8 @@ class Look:
             axf.plot(self.freqs, toMag(self.data[i], use_db), '0.8')
         axf.set_xlabel(self.freq_unit)
         try:
-            dmin = self.eph.feph.obsid[self.obsid].t0.jd
-            dmax = self.eph.feph.obsid[self.obsid].t1.jd
+            dmin = self.obs.obsinfo.obsid[self.obsid].t0.jd
+            dmax = self.obs.obsinfo.obsid[self.obsid].t1.jd
             if dmin < self.times.jd[0]:
                 dmin = self.times.jd[0]
         except AttributeError:
@@ -276,22 +278,22 @@ class Look:
                 pdata = toMag(self.data[:, i], use_db)
             plt.plot(self.times.datetime, pdata)
 
-    def plot_feph_times(self, ax):
-        if self.eph is None:
+    def plot_obsinfo_times(self, ax):
+        if self.obs is None:
             return
         dmin = ax.axis()[2]
         dmax = ax.axis()[3]
-        src_eph = self.eph.feph.obsid[self.obsid]
+        src_eph = self.obs.obsinfo.obsid[self.obsid]
         try:
-            tref = self.eph.feph.obsid[self.obsid].tref
+            tref = self.obs.obsinfo.obsid[self.obsid].tref
         except AttributeError:
             tref = self.times[len(self.times // 2)]
         try:
-            t0 = self.eph.feph.obsid[self.obsid].t0
+            t0 = self.obs.obsinfo.obsid[self.obsid].t0
         except AttributeError:
             t0 = self.times[0]
         try:
-            t1 = self.eph.feph.obsid[self.obsid].t1
+            t1 = self.obs.obsinfo.obsid[self.obsid].t1
         except AttributeError:
             t1 = self.times[-1]
         if self.time_axis == 'a':  # absolute
@@ -313,10 +315,10 @@ class Look:
             ax.plot([x, x], [dmin, dmax], lsc, linewidth=2)
         ax.set_ylim(bottom=dmin, top=dmax)
 
-    def get_feph(self):
-        self.eph = starlink_eph.Eph()
-        self.eph.read_feph(obsid=self.obsid)
+    def get_obsinfo(self):
+        self.obs = obs_base.Base()
+        self.obs.read_obsinfo(obs=self.obsid)
 
-    def put_feph(self, fn, fdict):
-        self.eph = starlink_eph.Eph()
-        self.eph.write_feph(fn, fdict)
+    def put_obsinfo(self, fn, fdict):
+        self.obs = obs_base.Base()
+        self.obs.write_obsinfo(fn, fdict)

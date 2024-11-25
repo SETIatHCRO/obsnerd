@@ -94,3 +94,75 @@ def readc(fn):
             sats_inp[this_sat].norad = [int(data[1])]
             sats_inp[this_sat].bf_distance = [int(data[-1])]
     return sats_inp
+
+class Input:
+    def __init__(self, tools):
+        """
+        Parameter
+        ---------
+        tools : class (nominally obsid_base.Base)
+        """
+        self.tools = tools
+
+    def read_SpaceX(self, fn, ftype='c'):
+        """
+        Since the files from SpaceX vary so much, pull the readers out but produce common self.sats dictionary.
+
+        """
+        from . import starlink_input
+        self.SpaceX = fn
+        self.sats = getattr(starlink_input, f"read{ftype}")(fn)
+        # if ftype == 'a':
+        #     self.sats = starlink_input.reada(fn)
+        # if ftype == 'b':
+        #     self.sats = starlink_input.readb(fn)
+        # if ftype == 'c':
+        #     self.sats = starlink_input.readc(fn)
+        self.tools.get_azel()
+
+    def filter(self, name=None, ytime=['2024-11-06T23:00:00', '2024-11-15T01:00:00'], yel=[30, 70]):
+        """
+        use None, None, None to write out everything.
+
+        """
+        import string
+        tags = string.ascii_lowercase
+        if name == 'dump':
+            name, ytime, yel = None, None, None
+        if name is None:
+            name = list(self.sats.keys())
+        if ytime is not None:
+            ytime[0] = Time(ytime[0], format='isot')
+            ytime[1] = Time(ytime[1], format='isot')
+        fephjson = {'Sources': {}}
+        ctr = 0
+        for this_sat in name:
+            for i in range(len(self.sats[this_sat].times)):
+                use_it = True
+                if ytime is not None:
+                    this_time = self.sats[this_sat].times[i]
+                    if this_time < ytime[0] or this_time > ytime[1]:
+                        use_it = False
+                if use_it and yel is not None:
+                    this_el = self.sats[this_sat].el[i]
+                    if this_el < yel[0] or this_el > yel[1]:
+                        use_it = False
+                obsid_name = f"S{this_sat}{tags[i]}"
+                if use_it:
+                    fephjson['Sources'][obsid_name] = {
+                        'sat': this_sat,
+                        'az': self.sats[this_sat].az[i],
+                        'el': self.sats[this_sat].el[i],
+                        'ra': self.sats[this_sat].ra[i],
+                        'dec': self.sats[this_sat].dec[i],
+                        'tref': self.sats[this_sat].times[i].datetime.isoformat(),
+                        'norad': self.sats[this_sat].norad[i],
+                        'bf_distance': self.sats[this_sat].bf_distance[i]
+                    }
+                    #print(f"S{this_sat}{tags[i]},{self.sats[this_sat].ra[i] / 15.0:.6f},{self.sats[this_sat].dec[i]:.6f}", file=fp)
+                    print(f"S{this_sat}{tags[i]},{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}")
+                    #print(f"S{this_sat}{tags[i]},{self.sats[this_sat].times[i].datetime},{self.sats[this_sat].ra[i] / 15.0:.6f},{self.sats[this_sat].dec[i]:.6f},", file=fp, end='')
+                    #print(f"{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}", file=fp)
+                    ctr += 1
+        print(f"{ctr} entries")
+        self.write_feph(fn=None, feph_dict=fephjson)
