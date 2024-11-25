@@ -28,7 +28,6 @@ if __name__ == '__main__':
 
     look = obs_look.Look(obsid=args.obsid, lo=args.lo, cnode=args.cnode, tag=args.tag, freq_unit=args.freq_unit, dir_data=args.dir_data)
     if args.dash:
-        (self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_obsinfo=False)
         look.dashboard(ant=args.ants[0], pol=args.pols[0], save=args.save, time_axis=args.time_axis, show_obsinfo=args.show_obsinfo)
     if not args.save:
         plt.show()
