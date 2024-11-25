@@ -15,7 +15,7 @@ if __name__ == '__main__':
     ap.add_argument('-t', '--time_axis', help="Type of 'time' axis for dashboard ('actual_time, dt, boresight)", default='boresight')
     ap.add_argument('--tag', help="File extenstion.", choices=['npz', 'uvh5'], default='npz')
     ap.add_argument('--dir_data', help="directory for the observation data", default='./data')
-    ap.add_argument('--show_feph', help="Show the feph info in dashboard", action='store_true')
+    ap.add_argument('--show_obsinfo', help="Show the feph info in dashboard", action='store_true')
     ap.add_argument('--dash', help="Generate the dashboard", action='store_true')
     ap.add_argument('--cnode', help="If 'source' is an obsid, need cnodes to use.", default='352,544,736,928,1120,1312,1504')
     ap.add_argument('--lo', help="If 'source' is an obsid, need LO to use", default='A')
@@ -28,6 +28,7 @@ if __name__ == '__main__':
 
     look = obs_look.Look(obsid=args.obsid, lo=args.lo, cnode=args.cnode, tag=args.tag, freq_unit=args.freq_unit, dir_data=args.dir_data)
     if args.dash:
-        look.dashboard(ant=args.ants[0], pol=args.pols[0], save=args.save, time_axis=args.time_axis, show_feph=args.show_feph)
+        (self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_obsinfo=False)
+        look.dashboard(ant=args.ants[0], pol=args.pols[0], save=args.save, time_axis=args.time_axis, show_obsinfo=args.show_obsinfo)
     if not args.save:
         plt.show()
