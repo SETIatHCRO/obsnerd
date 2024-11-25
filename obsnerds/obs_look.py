@@ -234,10 +234,12 @@ class Look:
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
+        suptitle = f"{self.obsid}: {self.obs.obsinfo.obsid[self.obsid].tref.datetime.isoformat()}"
         try:
-            plt.suptitle(f"{self.obsid}: {self.obs.obsinfo.obsid[self.obsid].tref.datetime.isoformat()}  ({self.obs.obsinfo.obsid[self.obsid].bf_distance} km)")
+            suptitle += f"  ({self.obs.obsinfo.obsid[self.obsid].bf_distance} km)"
         except (AttributeError, KeyError):
             pass
+        plt.suptitle(suptitle)
         # Water fall plot
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
         axt = plt.subplot2grid((2, 2), (0, 1), rowspan=1, colspan=1)
