@@ -15,27 +15,39 @@ def toMag(x, use_db=True):
     else:
         return np.abs(x)
 
+def make_cnode(cns):
+        cns = cns if isinstance(cns, list) else [cns]
+        try:
+            return [f"C{int(x):04d}" for x in cns]
+        except ValueError:
+            return cns
+
 
 class Look:
-    def __init__(self, freq_unit='MHz', dir_data='.'):
+    def __init__(self, obsid, lo='A', cnode=[352, 544, 736, 928, 1120, 1312, 1504], tag='npz', freq_unit='MHz', dir_data='.'):
+        self.obsid = obsid
+        self.lo = lo
+        self.cnode = make_cnode(cnode)
+        self.tag = tag
         self.freq_unit = freq_unit
-        self.obsrec = None
-        self.obsid = None
         self.dir_data = dir_data
-
-    def read_obsrec(self, fn, src=None):
-        st = fn.split('.')[-1]
-        if st == 'uvh5':
-            self.read_uvh5(fn=fn, src=src)
-        elif st == 'npz':
-            self.read_npz(fn=fn)
-        else:
-            print(f"Invalid file {fn}")
+        self.obsrec_list = [f"{self.obsid}_{self.lo}_{x}" for x in self.cnode]
+        self.get_obsinfo()
+        self.npzfile = {}
+        self.freqs = []
+        for obsrec in self.obsrec_list:
+            if self.tag == 'uvh5':
+                self.read_uvh5(obsrec)
+            elif self.tag == 'npz':
+                self.read_an_npz(obsrec)
+            else:
+                print(f"Invalid file {obsrec}.{self.tag}")
+        
 
     def read_uvh5(self, fn, src=None):
         print(f"Reading {fn}")
         print("THIS ISN'T QUITE RIGHT WITH NEW TERMINOLOGY ETC")
-        self.file_type = 'uvh5'
+        return
         self.fn = path.join(self.dir_data, fn)
         if src is None:
             self.obsrec = self.fn.split('_')[4]
@@ -50,25 +62,20 @@ class Look:
             self.ant_map[antna] = antno
         self.freqs = self.uv.freq_array[0] / FREQ_CONVERT[self.freq_unit]
 
-    def read_npz(self, fn):
-        self.file_type = 'npz'
-        self.obsrec = path.splitext(fn)[0]
-        self.source, mjd, self.lo, self.cnode = self.obsrec.split('_')
-        self.obsid = f"{self.source}_{mjd}"
-        self.get_obsinfo()
-        self.fn = path.join(self.obs.obsinfo.dir_data, fn)
+    def read_an_npz(self, obsrec):
+        """
+        This will write ant_names, times, into attributes without checking...and appends freqs
+ 
+        """
+        fn = path.join(self.obs.obsinfo.dir_data, f"{obsrec}.{self.tag}")
         try:
-            self.npzfile = np.load(self.fn)
+            self.npzfile[obsrec] = np.load(fn)
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        self.ant_names = list(self.npzfile['ants'])
-        self.freqs = list(self.npzfile['freqs'])
-        self.times = Time(self.npzfile['times'], format='jd')
-        try:
-            self.freq_unit = str(self.npzfile['freq_unit'])
-        except KeyError:
-            pass
+        self.ant_names = list(self.npzfile[obsrec]['ants'])
+        self.freqs += list(self.npzfile[obsrec]['freqs'])
+        self.times = Time(self.npzfile[obsrec]['times'], format='jd')
         return True
 
     def get_bl(self, a, b=None, pol='xx'):
@@ -78,13 +85,18 @@ class Look:
         if self.b is None:
             self.b = self.a
         print(f"Reading ({self.a}, {self.b}){self.pol}", end='')
-        if self.file_type == 'uvh5':
+        if self.tag == 'uvh5':
+            print("UVH5 not working yet...")
             self.ano = self.ant_map[self.a]
             self.bno = self.ant_map[self.b]
             self.data = self.uv.get_data(self.ano, self.bno, pol)
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
-        elif self.file_type == 'npz':
-            self.data = self.npzfile[f"{self.a}{pol}"]
+        elif self.tag == 'npz':
+            dataf = []
+            for obsrec in self.obsrec_list:
+                dataf.append(self.npzfile[obsrec][f"{self.a}{pol}"])
+        self.data = np.concatenate(dataf, axis=1)
+
         self.datamin = np.min(np.abs(self.data))
         self.datamax = np.max(np.abs(self.data))
         print(f"\tmin={self.datamin}, max={self.datamax}")
@@ -143,10 +155,6 @@ class Look:
             t/x axis to use in plot [a/b/d]
     
         """
-        if self.obsid is None:
-            print("Need to read in some data first!")
-            return
-        self.get_obsinfo()
         self.time_axis = time_axis[0].lower()
         x_axis_time, xlabel = self._axt_xaxis()
         x_ticks, x_labels = self._invert_axis(self.freqs)
