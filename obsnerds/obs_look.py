@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from obsnerds import obs_base
 from datetime import datetime
 import os.path as path
+from copy import copy
 
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 
@@ -16,6 +17,10 @@ def toMag(x, use_db=True):
         return np.abs(x)
 
 def make_cnode(cns):
+        """
+        Takes a list and makes a list of valid cnodes -> C####
+
+        """
         cns = cns if isinstance(cns, list) else [cns]
         try:
             return [f"C{int(x):04d}" for x in cns]
@@ -25,6 +30,9 @@ def make_cnode(cns):
 
 class Look:
     def __init__(self, obsid, lo='A', cnode=[352, 544, 736, 928, 1120, 1312, 1504], tag='npz', freq_unit='MHz', dir_data='.'):
+        """
+        This initializes, but also reads in all of the data.
+        """
         self.obsid = obsid
         self.lo = lo
         self.cnode = make_cnode(cnode)
@@ -35,24 +43,22 @@ class Look:
         self.get_obsinfo()
         self.npzfile = {}
         self.freqs = []
-        for obsrec in self.obsrec_list:
+        for i, obsrec in enumerate(self.obsrec_list):
             if self.tag == 'uvh5':
-                self.read_uvh5(obsrec)
+                if i:
+                    print("This will only read in the first obsrec file in the list")
+                else:
+                    self.read_uvh5(obsrec)
             elif self.tag == 'npz':
                 self.read_an_npz(obsrec)
             else:
                 print(f"Invalid file {obsrec}.{self.tag}")
         
 
-    def read_uvh5(self, fn, src=None):
+    def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
-        print("THIS ISN'T QUITE RIGHT WITH NEW TERMINOLOGY ETC")
-        return
+        print("NEED TO MAKE fn AND GET DATA PATH ETC IN HERE -- CURRENTLY NOT LIKELY GOING TO WORK?")
         self.fn = path.join(self.dir_data, fn)
-        if src is None:
-            self.obsrec = self.fn.split('_')[4]
-        else:
-            self.obsrec = src
         self.uv = UVData()
         self.uv.read(self.fn)
         self.ant_numbers = self.uv.get_ants()
@@ -64,8 +70,25 @@ class Look:
 
     def read_an_npz(self, obsrec):
         """
+        Reads a single obsrec file.
         This will write ant_names, times, into attributes without checking...and appends freqs
- 
+
+        Parameter
+        ---------
+        obsrec : str
+            Obsrec designation for an observation file (without the extension)
+
+        Attributes
+        ----------
+        npzfile : dictionary
+            Contains the npzfile contents, keyed on obsrec
+        ant_names : list of str
+            List of antenna names - gets overwritten every time.
+        freqs : list of float
+            List of frequencies - gets appended
+        times : list of astropy times
+            List of observation time stamps - gets overwritten very time
+
         """
         fn = path.join(self.obs.obsinfo.dir_data, f"{obsrec}.{self.tag}")
         try:
@@ -79,27 +102,76 @@ class Look:
         return True
 
     def get_bl(self, a, b=None, pol='xx'):
+        """
+        This reads in a baseline in all of the files read into obsrec_list.
+
+        Parameters
+        ----------
+        a : str
+            Antenna name
+        b : str or None
+            Another antenna name, same as 'a' if None
+        pol : str
+            Polarization
+        
+        Attributes
+        ----------
+        a : str
+            Antenna a
+        b : str
+            Antenna b
+        pol : str
+            Polarization
+        ano : int
+            Antenna number in array (uvh5 only)
+        bno : int
+            Antenna number in array (uvh5 only)
+        data : numpy array
+            All of the data
+        datamin : float
+            Minimum value
+        datamax : float
+            Maximum value
+
+        """
         self.a = a
         self.b = b
         self.pol = pol
         if self.b is None:
             self.b = self.a
         print(f"Reading ({self.a}, {self.b}){self.pol}", end='')
-        if self.tag == 'uvh5':
-            print("UVH5 not working yet...")
+        dataf = []
+        if self.tag == 'uvh5':  # Only one file
             self.ano = self.ant_map[self.a]
             self.bno = self.ant_map[self.b]
             self.data = self.uv.get_data(self.ano, self.bno, pol)
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
         elif self.tag == 'npz':
-            dataf = []
             for obsrec in self.obsrec_list:
                 dataf.append(self.npzfile[obsrec][f"{self.a}{pol}"])
-        self.data = np.concatenate(dataf, axis=1)
+            self.data = np.concatenate(dataf, axis=1)
 
         self.datamin = np.min(np.abs(self.data))
         self.datamax = np.max(np.abs(self.data))
         print(f"\tmin={self.datamin}, max={self.datamax}")
+
+    def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
+        if ants is None:
+            ants = self.ant_names
+            antstr = 'all'
+        else:
+            antstr = ','.join(ants)
+        outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
+        print(f"Dumping autos in {self.fnuvh5} for {antstr} {pols}", end=' ... ')
+        for ant in self.ant_names:
+            for pol in pols:
+                self.get_bl(ant, pol=pol)
+                outdata[f"{ant}{pol}"] = copy(self.data)
+        outdata['times'] = self.times.jd  # This assumes that all times in the UVH5 file are the same...
+        mjd = outdata['times'][0] - 2400000.5
+        obsrec = f"{self.source}_{mjd:.4f}_{self.lo}_{self.cnode}.npz"
+        print(f"writing {obsrec}")
+        np.savez(obsrec, **outdata)
 
     def _axt_xaxis(self):
         if self.time_axis == 'a':  # actual datetime
@@ -141,7 +213,7 @@ class Look:
         self.get_obsinfo()
         with open('dash.sh', 'w') as fp:
             for obsid in self.obs.obsinfo.obsid:
-                print(f"on_starlink.py {obsid} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
+                print(f"on_obs.py {obsid} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
 
     def dashboard(self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_obsinfo=False):
         """

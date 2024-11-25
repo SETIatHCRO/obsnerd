@@ -114,10 +114,9 @@ class Base:
                     setattr(self.obsinfo.obsid[src], key, value)
         print(f"\t{', '.join(self.obsinfo.array.name)}")
         print(f"\t{', '.join(list(parameters))}")
-        for par in parameters:
-            if par[0] == 't':
-                value = Time(copy(getattr(self.obsinfo.array, par)))
-                setattr(self.obsinfo.array, par, value)
+        for par in [x for x in parameters if x[0]=='t']:
+            value = Time(copy(getattr(self.obsinfo.array, par)))
+            setattr(self.obsinfo.array, par, value)
 
     def write_sorted_obs_file(self, obslen=6.0, tz=0.0, fn='observe.dat', fmt=2):
         """
