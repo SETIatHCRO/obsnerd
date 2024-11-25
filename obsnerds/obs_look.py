@@ -21,7 +21,7 @@ def make_cnode(cns):
         Takes a list and makes a list of valid cnodes -> C####
 
         """
-        cns = cns if isinstance(cns, list) else [cns]
+        cns = cns if isinstance(cns, list) else cns.split(',')
         try:
             return [f"C{int(x):04d}" for x in cns]
         except ValueError:
