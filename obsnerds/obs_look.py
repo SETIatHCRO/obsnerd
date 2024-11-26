@@ -56,8 +56,7 @@ def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', scri
             print(f"Adding {obsrec}")
 
 
-ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504',
-              'C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
+ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
 
 
 class Look:
