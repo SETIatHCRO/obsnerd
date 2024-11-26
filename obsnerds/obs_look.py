@@ -27,11 +27,44 @@ def make_cnode(cns):
         except ValueError:
             return cns
 
+def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', script_filename='dump_autos.sh'):
+    from os import walk, listdir, path
+    if date_path == '?':
+        print(f"Available observation dates in {base_path}:")
+        for x in listdir(base_path):
+            print(f"\t{x}")
+        return
+    print(f"Retrieving from {base_path}")
+    files = {}
+    dbase_path = path.join(base_path, date_path)
+    for basedir, _, filelist in walk(dbase_path):
+        if base_path in basedir and '/Lo' in basedir:
+            lolo, cnode = basedir.split('/')[-1].split('.')
+            lo = lolo[2:]
+            for fn in filelist:
+                if fn.startswith('uvh5_'):
+                    _, mjd1, mjd2, _, src, _ = fn.split('_')
+                    mjd = float(f"{mjd1}.{mjd2}")
+                    obsid = f"{src}_{mjd:.4f}"
+                    obsrec = f"{obsid}_{lo}_{cnode}"
+                    dfn = path.join(basedir, fn)
+                    files[obsrec] = [dfn, lo, cnode]
+                
+    with open(script_filename, 'w') as fp:
+        for obsrec, data in files.items():
+            print(f"python on_dump_autos.py {data[0]} --lo {data[1]} --cnode {data[2]}", file=fp)
+            print(f"Adding {obsrec}")
+
+
+ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504',
+              'C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
+
 
 class Look:
-    def __init__(self, obsid, lo='A', cnode=[352, 544, 736, 928, 1120, 1312, 1504], tag='npz', freq_unit='MHz', dir_data='.'):
+    def __init__(self, obsid, lo='A', cnode=ALL_CNODES, tag='npz', freq_unit='MHz', dir_data='.'):
         """
         This initializes, but also reads in all of the data.
+
         """
         self.obsid = obsid
         self.lo = lo
@@ -53,7 +86,6 @@ class Look:
                 self.read_an_npz(obsrec)
             else:
                 print(f"Invalid file {obsrec}.{self.tag}")
-        
 
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
@@ -100,6 +132,24 @@ class Look:
         self.freqs += list(self.npzfile[obsrec]['freqs'])
         self.times = Time(self.npzfile[obsrec]['times'], format='jd')
         return True
+
+    def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
+        if ants is None:
+            ants = self.ant_names
+            antstr = 'all'
+        else:
+            antstr = ','.join(ants)
+        outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
+        print(f"Dumping autos in {self.fnuvh5} for {antstr} {pols}", end=' ... ')
+        for ant in self.ant_names:
+            for pol in pols:
+                self.get_bl(ant, pol=pol)
+                outdata[f"{ant}{pol}"] = copy(self.data)
+        outdata['times'] = self.times.jd  # This assumes that all times in the UVH5 file are the same...
+        mjd = outdata['times'][0] - 2400000.5
+        obsrec = f"{self.source}_{mjd:.4f}_{self.lo}_{self.cnode}.npz"
+        print(f"writing {obsrec}")
+        np.savez(obsrec, **outdata)
 
     def get_bl(self, a, b=None, pol='xx'):
         """
