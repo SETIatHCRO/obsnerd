@@ -1,11 +1,3 @@
-import sys
-if '/opt/mnt/miniconda3/lib/python3.9/site-packages' not in sys.path:
-    sys.path.append('/opt/mnt/miniconda3/lib/python3.9/site-packages')
-#if '/opt/mnt/miniconda3/lib/python3.9/site-packages/casperfpga-0.4.4.dev1075+head.b9ad079.dirty-py3.9-linux-x86_64.egg/casperfpga' not in sys.path:
-#    sys.path.append('/opt/mnt/miniconda3/lib/python3.9/site-packages/casperfpga-0.4.4.dev1075+head.b9ad079.dirty-py3.9-linux-x86_64.egg/casperfpga')
-#if '/opt/mnt/miniconda3/lib/python3.9/site-packages/SNAPobs' not in sys.path:
-#    sys.path.append('/opt/mnt/miniconda3/lib/python3.9/site-packages/SNAPobs')
-
 try:
     from ATATools import ata_control  # type: ignore
 except ImportError:
