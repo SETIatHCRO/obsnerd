@@ -5,7 +5,11 @@ except ImportError:
 import atexit
 from . import metadata, onutil
 import subprocess
+import sys
 
+
+if '/opt/mnt/miniconda3/lib/python3.9/site-packages' not in sys.path:
+    sys.path.append('/opt/mnt/miniconda3/lib/python3.9/site-packages')
 
 
 class CommandHandler:
@@ -130,6 +134,9 @@ class CommandHandler:
                 print(f"Invalid backend: {self.backend} -- no action")
                 return
             subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_{self.project_id}.py")
+
+    def observe(self, **kwargs):
+        print("GET THE GUPPI?ETC STUFF HERE")
 
     def move(self, **kwargs):
         """
