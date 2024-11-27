@@ -1,3 +1,7 @@
+import sys
+if '/opt/mnt/miniconda3/lib/python3.9/site-packages' not in sys.path:
+    sys.path.append('/opt/mnt/miniconda3/lib/python3.9/site-packages')
+
 try:
     from ATATools import ata_control  # type: ignore
 except ImportError:
@@ -5,11 +9,6 @@ except ImportError:
 import atexit
 from . import metadata, onutil
 import subprocess
-import sys
-
-
-if '/opt/mnt/miniconda3/lib/python3.9/site-packages' not in sys.path:
-    sys.path.append('/opt/mnt/miniconda3/lib/python3.9/site-packages')
 
 
 class CommandHandler:
