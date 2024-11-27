@@ -1,5 +1,5 @@
 try:
-    from ATATools import ata_control
+    from ATATools import ata_control # type: ignore
 except ImportError:
     ata_control = None
 import atexit
