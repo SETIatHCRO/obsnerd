@@ -27,12 +27,17 @@ class CommandHandler:
                 setattr(self, key, val)
         self._setantlists()
 
-    def _setantlists(self, special_lists=[]):
+    def _setantlists(self, known_lists=['rfsoc_active']):
         for ant_list in ['group_ants', 'use_ants']:
             if hasattr(self, ant_list):
                 if isinstance(getattr(self, ant_list), str):
-                    if getattr(self, ant_list) in special_lists:
-                        setattr(self, ant_list, 'GET WAY TO GET FROM SPECIAL LISTS')
+                    if getattr(self, ant_list) in known_lists:
+                        if getattr(self, ant_list) == 'rfsoc_active':
+                            if snap_config is not None:
+                                setattr(self, ant_list, snap_config.get_rfsoc_active_antlist())
+                            else:
+                                print(f"{getattr(self, ant_list)} is not known list")
+                                setattr(self, ant_list, None)
                     else:
                         setattr(self, ant_list, getattr(self, ant_list).split(','))
         if hasattr(self, 'use_ants') and self.use_ants is None:
