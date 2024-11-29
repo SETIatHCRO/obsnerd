@@ -11,6 +11,10 @@ except ImportError:
 import atexit
 from . import metadata, onutil
 import subprocess
+from copy import copy
+
+
+ANT_LISTS = {'old_feeds': ['']}
 
 
 class CommandHandler:
@@ -28,18 +32,23 @@ class CommandHandler:
         self._setantlists()
 
     def _setantlists(self, known_lists=['rfsoc_active']):
+        known_lists += list(ANT_LISTS.keys())
         for ant_list in ['group_ants', 'use_ants']:
             if hasattr(self, ant_list):
-                if isinstance(getattr(self, ant_list), str):
-                    if getattr(self, ant_list) in known_lists:
-                        if getattr(self, ant_list) == 'rfsoc_active':
-                            if snap_config is not None:
-                                setattr(self, ant_list, snap_config.get_rfsoc_active_antlist())
-                            else:
-                                print(f"{getattr(self, ant_list)} is not known list")
-                                setattr(self, ant_list, None)
-                    else:
-                        setattr(self, ant_list, getattr(self, ant_list).split(','))
+                this_list = copy(getattr(self, ant_list))
+                if isinstance(this_list, list):
+                    pass
+                elif this_list in known_lists:
+                    if this_list in ANT_LISTS.keys():
+                        setattr(self, ant_list, ANT_LISTS[this_list])
+                    elif this_list == 'rfsoc_active':
+                        if snap_config is None:
+                            print(f"snap_config not loaded to get {this_list}")
+                            setattr(self, ant_list, None)
+                        else:
+                            setattr(self, ant_list, snap_config.get_rfsoc_active_antlist())
+                else:
+                    setattr(self, ant_list, getattr(self, ant_list).split(','))
         if hasattr(self, 'use_ants') and self.use_ants is None:
             self.use_ants = self.group_ants
 
