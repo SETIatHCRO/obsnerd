@@ -47,8 +47,10 @@ class CommandHandler:
                             setattr(self, ant_list, None)
                         else:
                             setattr(self, ant_list, snap_config.get_rfsoc_active_antlist())
-                else:
+                elif isinstance(ant_list, str):
                     setattr(self, ant_list, getattr(self, ant_list).split(','))
+                else:
+                    setattr(self, ant_list, None)
         if hasattr(self, 'use_ants') and self.use_ants is None:
             self.use_ants = self.group_ants
 
