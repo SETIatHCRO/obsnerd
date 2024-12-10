@@ -14,7 +14,8 @@ class Dump:
         self.cnode = cnode
         self.source = fn.split('_')[UVH5_SRC_IND]  # Current standard format
         if self.source[0] == 'S':
-            self.source = self.source[:-1]
+            print("AD HOC TO HANDLE THE EXTRA UNDERSCORE")
+            self.source += '_' + fn.split('_')[UVH5_SRC_IND+1]
         self.freq_unit = freq_unit
         self.read_uvh5()
 
