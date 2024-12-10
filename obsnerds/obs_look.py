@@ -43,7 +43,12 @@ def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', scri
             lo = lolo[2:]
             for fn in filelist:
                 if fn.startswith('uvh5_'):
-                    _, mjd1, mjd2, _, src, _ = fn.split('_')
+                    fnsplit = fn.split('_')
+                    if len(fnsplit) == 6:
+                        _, mjd1, mjd2, _, src, _ = fnsplit
+                    elif len(fnsplit) == 7:
+                        _, mjd1, mjd2, _, src, extra, _ = fnsplit
+                        src = src + '_' + extra
                     mjd = float(f"{mjd1}.{mjd2}")
                     obsid = f"{src}_{mjd:.4f}"
                     obsrec = f"{obsid}_{lo}_{cnode}"
