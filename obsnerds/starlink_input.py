@@ -134,7 +134,7 @@ class Input:
         if ytime is not None:
             ytime[0] = Time(ytime[0], format='isot')
             ytime[1] = Time(ytime[1], format='isot')
-        fephjson = {'Sources': {}}
+        obsinfojson = {'Sources': {}}
         ctr = 0
         for this_sat in name:
             for i in range(len(self.sats[this_sat].times)):
@@ -149,7 +149,7 @@ class Input:
                         use_it = False
                 obsid_name = f"S{this_sat}{tags[i]}"
                 if use_it:
-                    fephjson['Sources'][obsid_name] = {
+                    obsinfojson['Sources'][obsid_name] = {
                         'sat': this_sat,
                         'az': self.sats[this_sat].az[i],
                         'el': self.sats[this_sat].el[i],
@@ -165,4 +165,4 @@ class Input:
                     #print(f"{self.sats[this_sat].az[i]:.6f},{self.sats[this_sat].el[i]:.6f}", file=fp)
                     ctr += 1
         print(f"{ctr} entries")
-        self.write_feph(fn=None, feph_dict=fephjson)
+        self.write_obsinfo(fn=None, obsinfo_dict=obsinfojson)

@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerds import starlink_look, starlink_eph
+from obsnerds import obs_look
 from os import listdir
 import argparse
 
@@ -7,9 +7,10 @@ ap = argparse.ArgumentParser()
 ap.add_argument('mjd', help='csv list of mjd to include.')
 args = ap.parse_args()
 args.mjd = args.mjd.split(',')
-fephfn = f"feph_{args.mjd[0].split('.')[0]}.json"
+obsinfofn = f"obsinfo_{args.mjd[0].split('.')[0]}.json"
 
-feph = {
+obsinfo = {
+    "dir_data": ".",
     "Filters": {
       "A": {
         "r": [1690.0, 1710.0],
@@ -19,7 +20,8 @@ feph = {
       },
       "B": {
         "r": [3740.0, 3760.0],
-        "b": [3975.0, 3990.0]
+        "b": [3975.0, 3990.0],
+        "g": [5550.0, 5560.0]
       }
     },
   "Sources":
@@ -27,7 +29,7 @@ feph = {
   }
 }
 
-look  = starlink_look.Look()
+look  = obs_look.Look()
 
 for xfn in listdir('.'):
     for mjd in args.mjd:
@@ -35,9 +37,9 @@ for xfn in listdir('.'):
             print(f"Found {xfn}")
             look.read_obsrec(xfn)
             obsid = '_'.join(xfn.split('_')[:2])
-            feph['Sources'][obsid] = {'tref': look.times[0].datetime.isoformat()}
+            obsinfo['Sources'][obsid] = {'tref': look.times[0].datetime.isoformat()}
             break
-for x in feph['Sources']:
+for x in obsinfo['Sources']:
     print(x)
 
-look.put_feph(fn=fephfn, fdict=feph)
+look.put_obsinfo(fn=obsinfofn, fdict=obsinfo)
