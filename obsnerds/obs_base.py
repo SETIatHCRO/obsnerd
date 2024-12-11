@@ -168,29 +168,29 @@ class Base:
                     print(f"{sorter[key].name}: [{ra:.4f},{sorter[key].dec}]", file=fp)
 
     def find_sats_gen(self, efn, start_seconds=200, tlefile='tle/starlink.tle', duration=6.0):
-        self.read_feph(efn)
+        self.read_obsinfo(efn)
         with open('find_sats.sh', 'w') as fp:
-            for src in self.feph.obsid:
-                start = self.feph.obsid[src].tref.datetime - timedelta(seconds=start_seconds)
+            for src in self.obsinfo.obsid:
+                start = self.obsinfo.obsid[src].tref.datetime - timedelta(seconds=start_seconds)
                 print(f'find_sats.py -t "{start.isoformat()}" --tle_file {tlefile} -d {duration} --output_file --sat2write {src[1:-1]}', file=fp)
 
     def boresight_update_view(self, efn):
         import matplotlib.pyplot as plt
-        self.read_feph(efn)
-        for src in self.feph.obsid:
-            plt.plot(self.feph.obsid[src].off_times, self.feph.obsid[src].off_boresight)
+        self.read_obsinfo(efn)
+        for src in self.obsinfo.obsid:
+            plt.plot(self.obsinfo.obsid[src].off_times, self.obsinfo.obsid[src].off_boresight)
 
-    def update_feph_boresight(self, fn):
+    def update_obsinfo_boresight(self, fn):
         """
         You need to have run SOPP and written satellite output files.
 
         """
         from astropy.coordinates import angular_separation
-        self.read_feph(fn)
+        self.read_obsinfo(fn)
         import json
         with open(fn, 'r') as fp:
-            feph_file_dict = json.load(fp)
-        for src in self.feph.obsid:
+            obsinfo_file_dict = json.load(fp)
+        for src in self.obsinfo.obsid:
             satfile = f"{src[:-1]}.txt"  # strip off the last letter
             try:
                 fp = open(satfile, 'r')
@@ -198,47 +198,47 @@ class Base:
             except FileNotFoundError:
                 print(F"{satfile} not found")
                 continue
-            self.feph.obsid[src].sopp = Namespace(dt=[], az=[], el=[], dist=[])
+            self.obsinfo.obsid[src].sopp = Namespace(dt=[], az=[], el=[], dist=[])
             ctr = 0
             center_found = False
             min_dt_off = 1E6
             for line in fp:
                 data = [float(x) for x in line.strip().split(',')[1:]]
                 t = Time(line.split(',')[0])
-                dt = (t - self.feph.obsid[src].tref).to('second').value
+                dt = (t - self.obsinfo.obsid[src].tref).to('second').value
                 if abs(dt) < abs(min_dt_off):
                     min_dt_off = dt
                 if abs(dt) < 1E-6:
                     center_found = True
-                    self.feph.obsid[src].sopp.d_az = data[0] - self.feph.obsid[src].az
-                    self.feph.obsid[src].sopp.d_el = data[1] - self.feph.obsid[src].el
-                    if abs(self.feph.obsid[src].sopp.d_az) > 0.1 or abs(self.feph.obsid[src].sopp.d_az) > 0.1:
-                        print(f"{src} has large excursions:  {self.feph.obsid[src].sopp.d_az}, {self.feph.obsid[src].sopp.d_el}")
-                    az0 = self.feph.obsid[src].az * u.deg
-                    el0 = self.feph.obsid[src].el * u.deg
+                    self.obsinfo.obsid[src].sopp.d_az = data[0] - self.obsinfo.obsid[src].az
+                    self.obsinfo.obsid[src].sopp.d_el = data[1] - self.obsinfo.obsid[src].el
+                    if abs(self.obsinfo.obsid[src].sopp.d_az) > 0.1 or abs(self.obsinfo.obsid[src].sopp.d_az) > 0.1:
+                        print(f"{src} has large excursions:  {self.obsinfo.obsid[src].sopp.d_az}, {self.obsinfo.obsid[src].sopp.d_el}")
+                    az0 = self.obsinfo.obsid[src].az * u.deg
+                    el0 = self.obsinfo.obsid[src].el * u.deg
                 if abs(dt) < 1E-6 or not ctr % 10:
-                    self.feph.obsid[src].sopp.dt.append(dt)
-                    self.feph.obsid[src].sopp.az.append(data[0])
-                    self.feph.obsid[src].sopp.el.append(data[1])
-                    self.feph.obsid[src].sopp.dist.append(data[2])
+                    self.obsinfo.obsid[src].sopp.dt.append(dt)
+                    self.obsinfo.obsid[src].sopp.az.append(data[0])
+                    self.obsinfo.obsid[src].sopp.el.append(data[1])
+                    self.obsinfo.obsid[src].sopp.dist.append(data[2])
                 ctr += 1
             if center_found:
-                for i in range(len(self.feph.obsid[src].sopp.az)):  # "Fix" for offset
-                    self.feph.obsid[src].sopp.az[i] -= self.feph.obsid[src].sopp.d_az
-                    self.feph.obsid[src].sopp.el[i] -= self.feph.obsid[src].sopp.d_el
-                self.feph.obsid[src].sopp.angsep = []
-                for i in range(len(self.feph.obsid[src].sopp.az)):  # "Fix" for offset
-                    angsep = float(angular_separation(az0, el0, self.feph.obsid[src].sopp.az[i]*u.deg, self.feph.obsid[src].sopp.el[i]*u.deg).to(u.deg).value)
-                    self.feph.obsid[src].sopp.angsep.append(angsep * np.sign(self.feph.obsid[src].sopp.dt[i]))
-                feph_file_dict['Sources'][src]['off_times'] = np.round(self.feph.obsid[src].sopp.dt, 1).tolist()
-                feph_file_dict['Sources'][src]['off_boresight'] = np.round(self.feph.obsid[src].sopp.angsep, 2).tolist()
-                feph_file_dict['Sources'][src]['off_distance'] = np.round(self.feph.obsid[src].sopp.dist, 1).tolist()
-                feph_file_dict['Sources'][src]['off_az_offset'] = self.feph.obsid[src].sopp.d_az
-                feph_file_dict['Sources'][src]['off_el_offset'] = self.feph.obsid[src].sopp.d_el
-                feph_file_dict['Sources'][src]['off_min_dt'] = min_dt_off
+                for i in range(len(self.obsinfo.obsid[src].sopp.az)):  # "Fix" for offset
+                    self.obsinfo.obsid[src].sopp.az[i] -= self.obsinfo.obsid[src].sopp.d_az
+                    self.obsinfo.obsid[src].sopp.el[i] -= self.obsinfo.obsid[src].sopp.d_el
+                self.obsinfo.obsid[src].sopp.angsep = []
+                for i in range(len(self.obsinfo.obsid[src].sopp.az)):  # "Fix" for offset
+                    angsep = float(angular_separation(az0, el0, self.obsinfo.obsid[src].sopp.az[i]*u.deg, self.obsinfo.obsid[src].sopp.el[i]*u.deg).to(u.deg).value)
+                    self.obsinfo.obsid[src].sopp.angsep.append(angsep * np.sign(self.obsinfo.obsid[src].sopp.dt[i]))
+                obsinfo_file_dict['Sources'][src]['off_times'] = np.round(self.obsinfo.obsid[src].sopp.dt, 1).tolist()
+                obsinfo_file_dict['Sources'][src]['off_boresight'] = np.round(self.obsinfo.obsid[src].sopp.angsep, 2).tolist()
+                obsinfo_file_dict['Sources'][src]['off_distance'] = np.round(self.obsinfo.obsid[src].sopp.dist, 1).tolist()
+                obsinfo_file_dict['Sources'][src]['off_az_offset'] = self.obsinfo.obsid[src].sopp.d_az
+                obsinfo_file_dict['Sources'][src]['off_el_offset'] = self.obsinfo.obsid[src].sopp.d_el
+                obsinfo_file_dict['Sources'][src]['off_min_dt'] = min_dt_off
             else:
                 print(f"Center was not found - min dt offset was {min_dt_off}")
-        self.write_feph(fn, feph_file_dict)
+        self.write_obsinfo(fn, obsinfo_file_dict)
 
     def get_azel(self, name=None):
         if name is None:
@@ -256,7 +256,7 @@ class Base:
             return
         if fn is None:
             mjd = float(Time.now().jd) - 2400000.5
-            fn = f"feph_{mjd:.4f}.json"
+            fn = f"obsinfo_{mjd:.4f}.json"
         import json
         print(f"Writing {fn}")
         with open(fn, 'w') as fp:
