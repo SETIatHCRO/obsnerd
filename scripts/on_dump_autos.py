@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from pyuvdata import UVData
 from astropy.time import Time
 import numpy as np
