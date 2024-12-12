@@ -107,7 +107,7 @@ def readd(fn):
         for line in fp:
             data = line.split(',')
             this_sat = int(data[1])
-            sats_inp.setdefault(this_sat, ObsData(name=this_sat))
+            sats_inp.setdefault(this_sat, ObsData(name=this_sat, center=None))
             sats_inp[this_sat].times.append(Time(data[3].strip()))
             sats_inp[this_sat].ra.append(float(data[4]))
             sats_inp[this_sat].dec.append(float(data[5]))
@@ -118,11 +118,11 @@ def readd(fn):
     return sats_inp
 
 class Input:
-    def __init__(self, tools):
+    def __init__(self, tools=False):
         """
         Parameter
         ---------
-        tools : class (nominally obsid_base.Base)
+        tools : class (nominally obs_base.Base)
         """
         self.tools = tools
 
@@ -134,7 +134,7 @@ class Input:
         from . import starlink_input
         self.SpaceX = fn
         self.sats = getattr(starlink_input, f"read{ftype}")(fn)
-        if getazel:
+        if self.tools:
             self.tools.get_azel()
 
     def filter(self, name=None, ytime=['2024-11-06T23:00:00', '2024-11-15T01:00:00'], yel=[30, 70]):
