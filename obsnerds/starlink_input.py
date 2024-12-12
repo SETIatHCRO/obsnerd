@@ -1,5 +1,5 @@
 from astropy.time import Time, TimeDelta
-from obsnerds.starlink_eph import ObsData
+from obsnerds.obs_base import ObservationData as ObsData
 import numpy as np
 
 """
@@ -95,6 +95,28 @@ def readc(fn):
             sats_inp[this_sat].bf_distance = [int(data[-1])]
     return sats_inp
 
+def readd(fn):
+    """
+    Read in the later December file
+
+    """
+    sats_inp = {}
+    with open(fn, 'r') as fp:
+        header = fp.readline().split(',')
+        print(header)
+        for line in fp:
+            data = line.split(',')
+            this_sat = int(data[1])
+            sats_inp.setdefault(this_sat, ObsData(name=this_sat))
+            sats_inp[this_sat].times.append(Time(data[3].strip()))
+            sats_inp[this_sat].ra.append(float(data[4]))
+            sats_inp[this_sat].dec.append(float(data[5]))
+            sats_inp[this_sat].az.append(float(data[6]))
+            sats_inp[this_sat].el.append(float(data[7]))
+            if int(data[-1]):
+                sats_inp[this_sat].center = Time(data[3].strip())
+    return sats_inp
+
 class Input:
     def __init__(self, tools):
         """
@@ -104,7 +126,7 @@ class Input:
         """
         self.tools = tools
 
-    def read_SpaceX(self, fn, ftype='c'):
+    def read_SpaceX(self, fn, ftype='c', getazel=False):
         """
         Since the files from SpaceX vary so much, pull the readers out but produce common self.sats dictionary.
 
@@ -112,13 +134,8 @@ class Input:
         from . import starlink_input
         self.SpaceX = fn
         self.sats = getattr(starlink_input, f"read{ftype}")(fn)
-        # if ftype == 'a':
-        #     self.sats = starlink_input.reada(fn)
-        # if ftype == 'b':
-        #     self.sats = starlink_input.readb(fn)
-        # if ftype == 'c':
-        #     self.sats = starlink_input.readc(fn)
-        self.tools.get_azel()
+        if getazel:
+            self.tools.get_azel()
 
     def filter(self, name=None, ytime=['2024-11-06T23:00:00', '2024-11-15T01:00:00'], yel=[30, 70]):
         """
