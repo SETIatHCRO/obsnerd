@@ -236,8 +236,18 @@ class Look:
             x = (self.times - self.obs.obsinfo.obsid[self.obsid].tref).to_value('sec') - self.obs.obsinfo.obsid[self.obsid].offset
             self.xp = self.obs.obsinfo.obsid[self.obsid].off_times
             self.yp = self.obs.obsinfo.obsid[self.obsid].off_boresight
-            b = np.interp(x, self.xp, self.yp)
-            return b, 'deg'
+            # Now extrapolate xp, yp to the limits of x...
+            m_lo = (self.yp[1] - self.yp[0]) / (self.xp[1] - self.xp[0])
+            b_lo = self.yp[0] - m_lo * self.xp[0]
+            new_ylo = m_lo * x[0] + b_lo
+            m_hi = (self.yp[-1] - self.yp[-2]) / (self.xp[-1] - self.xp[-2])
+            b_hi = self.yp[-1] - m_hi * self.xp[-1]
+            new_yhi = m_hi * x[-1] + b_hi
+            self.xp = [x[0]] + self.xp + [x[-1]]
+            self.yp = [new_ylo] + self.yp + [new_yhi]
+            # ...ugly but working
+            bbb = np.interp(x, self.xp, self.yp)
+            return bbb, 'deg'
         
     def _invert_axis(self, dat, num=8, precision=-1):
         if isinstance(dat[0], datetime):
@@ -419,17 +429,17 @@ class Look:
             return
         dmin = ax.axis()[2]
         dmax = ax.axis()[3]
-        src_eph = self.obs.obsinfo.obsid[self.obsid]
+        this_src = self.obs.obsinfo.obsid[self.obsid]
         try:
-            tref = self.obs.obsinfo.obsid[self.obsid].tref
+            tref = this_src.tref
         except AttributeError:
             tref = self.times[len(self.times // 2)]
         try:
-            t0 = self.obs.obsinfo.obsid[self.obsid].t0
+            t0 = this_src.t0
         except AttributeError:
             t0 = self.times[0]
         try:
-            t1 = self.obs.obsinfo.obsid[self.obsid].t1
+            t1 = this_src.t1
         except AttributeError:
             t1 = self.times[-1]
         if self.time_axis == 'a':  # absolute
@@ -441,9 +451,9 @@ class Look:
                     [(t0 - tref).to_value('sec'), 'k--'],
                     [(t1 - tref).to_value('sec'), 'k--']]
         elif self.time_axis == 'b':
-            x = [-src_eph.offset,
-                 (src_eph.t0 - src_eph.tref).to_value('sec') - src_eph.offset,
-                 (src_eph.t1 - src_eph.tref).to_value('sec') - src_eph.offset
+            x = [-this_src.offset,
+                 (t0 - tref).to_value('sec') - this_src.offset,
+                 (t1 - tref).to_value('sec') - this_src.offset
             ]
             b = np.interp(x, self.xp, self.yp)
             sups = [[b[0], 'r--'], [b[1], 'k--'], [b[2], 'k--']]

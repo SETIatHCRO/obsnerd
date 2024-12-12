@@ -180,7 +180,36 @@ class Base:
         for src in self.obsinfo.obsid:
             plt.plot(self.obsinfo.obsid[src].off_times, self.obsinfo.obsid[src].off_boresight)
 
-    def update_obsinfo_boresight(self, fn):
+    def update_obsinfo_boresight_format_d(self, spacex_fn, obsid_fn, spacex_format='d'):
+        """
+        Uses starlink format d, which has pointing info
+
+        """
+        from . import starlink_input
+        from astropy.coordinates import angular_separation
+        sl = starlink_input.Input()
+        sl.read_SpaceX(spacex_fn, spacex_format)
+        self.read_obsinfo(obsid_fn)
+        import json
+        with open(obsid_fn, 'r') as fp:
+            obsinfo_file_dict = json.load(fp)
+        for src in self.obsinfo.obsid:
+            sl_sat_num = int(src.split('_')[0][1:])
+            ra_cen = sl.sats[sl_sat_num].center['ra'] * u.deg
+            dec_cen = sl.sats[sl_sat_num].center['dec'] * u.deg
+            dts, angseps = [], []
+            for i, tt in enumerate(sl.sats[sl_sat_num].times):
+                dt = (tt - sl.sats[sl_sat_num].center['times']).to('second').value
+                ra = sl.sats[sl_sat_num].ra[i] * u.deg
+                dec = sl.sats[sl_sat_num].dec[i] * u.deg
+                angseps.append(float(angular_separation(ra, dec, ra_cen, dec_cen).to(u.deg).value) * np.sign(dt))
+                dts.append(dt)
+            obsinfo_file_dict['Sources'][src]['off_times'] = np.round(dts, 1).tolist()
+            obsinfo_file_dict['Sources'][src]['off_boresight'] = np.round(angseps, 2).tolist()
+
+        self.write_obsinfo(obsid_fn, obsinfo_file_dict)
+
+    def update_obsinfo_boresight_formats_abc(self, fn):
         """
         You need to have run SOPP and written satellite output files.
 
