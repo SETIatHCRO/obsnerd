@@ -242,16 +242,21 @@ class Look:
             # ...ugly but working
             return np.interp(x, self.xp, self.yp), 'deg'
         
-    def _invert_axis(self, dat, num=8, precision=-1):
+    def _get_wf_ticks(self, dat, ticks=8, precision=-1):
         if isinstance(dat[0], datetime):
             dat = (self.times.jd - self.times[0].jd) * 24.0 * 3600.0
         idat = list(np.arange(len(dat)))
-        if isinstance(num, (float, int)):
+        if isinstance(ticks, (float, int)):
             xstart = np.round(np.floor(dat[0]), precision)
-            xstep = np.round((dat[-1] - dat[0]) / num, precision)
+            xstep = np.round((dat[-1] - dat[0]) / ticks, precision)
             x = [int(xx) for xx in np.arange(xstart, dat[-1], xstep)]
+        elif isinstance(ticks, list):
+            if len(ticks) == 3:
+                x = [int(xx) for xx in np.arange(ticks[0], ticks[1]+1, ticks[2])]
+            else:
+                x = ticks
         else:
-            x = [int(xx) for xx in np.arange(num[0], num[1]+1, num[2])]
+            raise ValueError("Invalid ticks parameters")
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
@@ -292,14 +297,14 @@ class Look:
             pol to use [xx,yy,xy,yz]
         taxis : str
             t/x axis to use in plot [a/b/d]
-        kwargs : use_db, save, show_obsinfo, t_ticks, f_ticks
+        kwargs : use_db, save, show_obsinfo, t_wfticks, f_wfticks
     
         """
         use_db = kwargs['use_db'] if 'use_db' in kwargs else True
         save = kwargs['save'] if 'save' in kwargs else False
         show_obsinfo = kwargs['show_obsinfo'] if 'show_obsinfo' in kwargs else False
-        t_num = kwargs['t_ticks'] if 't_ticks' in kwargs else [-120, 120, 20]
-        f_num = kwargs['f_ticks'] if 'f_ticks' in kwargs else 8
+        t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else [-120, 120, 20]
+        f_wfticks = kwargs['f_wfticks'] if 'f_wfticks' in kwargs else 8
 
         self.time_axis = time_axis[0].lower()  # values to use along the "x" axis
         t_axis_vals, t_axis_label = self.get_time_axis()
@@ -320,14 +325,14 @@ class Look:
         axf = plt.subplot2grid((2, 2), (1, 1), rowspan=1, colspan=1)
 
         # Water fall plot
-        f_ticks, f_labels = self._invert_axis(self.freqs, num=f_num)
-        t_ticks, t_labels = self._invert_axis(t_axis_vals, num=t_num)
+        f_wfticks, f_wftick_labels = self._get_wf_ticks(self.freqs, ticks=f_wfticks)
+        t_wfticks, t_wftick_labels = self._get_wf_ticks(t_axis_vals, ticks=t_wfticks)
         axwf.imshow(toMag(self.data, use_db))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
         axwf.set_ylabel(t_axis_label)
-        axwf.set_xticks(f_ticks, f_labels)
-        axwf.set_yticks(t_ticks, t_labels)
+        axwf.set_xticks(f_wfticks, f_wftick_labels)
+        axwf.set_yticks(t_wfticks, t_wftick_labels)
 
         # Time plot
         filter = self.obs.obsinfo.filters[self.lo]
