@@ -111,32 +111,41 @@ def readd(fn):
             this_sat = int(data[1])
             sats_inp.setdefault(this_sat, ObsData(name=this_sat, center={}))
             sats_inp[this_sat].times.append(Time(data[3].strip()))
-            sats_inp[this_sat].ra.append(float(data[4]))
+            t_ra = float(data[4])
+            this_ra = t_ra if t_ra > 0 else 360.0 + t_ra
+            sats_inp[this_sat].ra.append(this_ra)
             sats_inp[this_sat].dec.append(float(data[5]))
             sats_inp[this_sat].az.append(float(data[6]))
             sats_inp[this_sat].el.append(float(data[7]))
             if int(data[8]):
                 sats_inp[this_sat].center['time'] = Time(data[3].strip())
-                sats_inp[this_sat].center['ra'] = float(data[4])
+                sats_inp[this_sat].center['ra'] = float(this_ra)
                 sats_inp[this_sat].center['dec'] = float(data[5])
                 sats_inp[this_sat].center['az'] = float(data[6])
                 sats_inp[this_sat].center['el'] = float(data[7])
     return sats_inp
 
-def writed(sats, fn='sourcesd.txt'):
+def writed(sats, fn='sourcesd.json'):
     import json
     source_list = {}
+    fpsl = open("source_list.txt", 'w')
+    print(f"src_id src_ra_j2000_deg src_dec_j2000_deg src_start_utc src_end_utc", file=fpsl)
     for this_sat in sats:
         src_name = f"S{this_sat}_1212"
-        if sats[this_sat].center:
+        if 'ra' in sats[this_sat].center:
+            print(sats[this_sat].center)
             source_list[src_name] = {
-                "radec": [sats[this_sat].center['ra'], sats[this_sat].center['dec']],
-                "time": sats[this_sat].center['time'],
+                "ra": sats[this_sat].center['ra'],
+                "dec": sats[this_sat].center['dec'],
+                "time": sats[this_sat].center['time'].datetime.isoformat(timespec='seconds'),
                 "tuning": {'a': 1980.0, 'b': 5500.0}
                 }
+            start_t = (sats[this_sat].center['time'] - TimeDelta(240, format='sec')).datetime.isoformat(timespec='seconds')
+            end_t = (sats[this_sat].center['time'] + TimeDelta(240, format='sec')).datetime.isoformat(timespec='seconds')
+            print(f"{src_name}  {sats[this_sat].center['ra']:.5f}  {sats[this_sat].center['dec']} {start_t} {end_t}", file=fpsl)
+    fpsl.close()
     with open(fn, 'w') as fp:
-        json.dump(source_list, fp)
-
+        json.dump(source_list, fp, indent=4)
 
 
 class Input:
@@ -153,9 +162,9 @@ class Input:
         Since the files from SpaceX vary so much, pull the readers out but produce (somewhat) common self.sats dictionary.
 
         """
-        from . import starlink_input
         self.SpaceX = fn
-        self.sats = getattr(starlink_input, f"read{ftype}")(fn)
+        from . import starlink_io
+        self.sats = getattr(starlink_io, f"read{ftype}")(fn)
         self.sort_in_place('times', ['ra', 'dec', 'az', 'el'])
         if self.tools:
             self.tools.get_azel()

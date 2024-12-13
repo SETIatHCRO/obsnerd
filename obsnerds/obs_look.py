@@ -27,7 +27,7 @@ def make_cnode(cns):
         except ValueError:
             return cns
 
-def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', script_filename='dump_autos.sh'):
+def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', script_filename='dump_autos.sh', ants='all'):
     from os import walk, listdir, path
     if date_path == '?':
         print(f"Available observation dates in {base_path}:")
@@ -57,7 +57,7 @@ def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', scri
                 
     with open(script_filename, 'w') as fp:
         for obsrec, data in files.items():
-            print(f"on_dump_autos.py {data[0]} --lo {data[1]} --cnode {data[2]}", file=fp)
+            print(f"on_dump_autos.py {data[0]} --lo {data[1]} --cnode {data[2]} --ants {ants}", file=fp)
             print(f"Adding {obsrec}")
 
 
