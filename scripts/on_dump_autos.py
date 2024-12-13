@@ -36,9 +36,10 @@ class Dump:
             antstr = ','.join(ants)
         else:
             antstr = ants
+            ants = ants.split(',')
         outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
         print(f"Dumping autos in {self.fnuvh5} for {antstr} {pols}", end=' ... ')
-        for ant in self.ant_names:
+        for ant in ants:
             for pol in pols:
                 self.get_bl(ant, pol=pol)
                 outdata[f"{ant}{pol}"] = copy(self.data)
