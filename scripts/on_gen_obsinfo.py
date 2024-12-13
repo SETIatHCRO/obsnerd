@@ -30,14 +30,16 @@ obsinfo = {
   }
 }
 
-look  = obs_look.Look()
+look = {}
 
 for xfn in listdir('.'):
     for mjd in args.mjd:
         if xfn.endswith('.npz') and mjd in xfn:
             print(f"Found {xfn}")
-            look.read_obsrec(xfn)
+            tmp = xfn.split('_')
             obsid = '_'.join(xfn.split('_')[:2])
+            look[xfn] = obs_look.Look(obsid)
+            look[xfn].read_obsrec(xfn)
             obsinfo['Sources'][obsid] = {'tref': look.times[0].datetime.isoformat()}
             break
 for x in obsinfo['Sources']:
