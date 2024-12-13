@@ -267,7 +267,7 @@ class Look:
             for obsid in self.obs.obsinfo.obsid:
                 print(f"on_obs.py {obsid} -a {ant} -t {taxis} --lo {self.lo} --cnode {cnode} -p {pol} --dash -s", file=fp)
 
-    def dashboard(self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_obsinfo=False):
+    def dashboard(self, ant='2b', pol='xx', time_axis='diff', **kwargs):
         """
         Parameters
         ----------
@@ -279,6 +279,10 @@ class Look:
             t/x axis to use in plot [a/b/d]
     
         """
+        use_db = kwargs['use_db'] if 'use_db' in kwargs else True
+        save = kwargs['save'] if 'save' in kwargs else False
+        show_obsinfo = kwargs['show_obsinfo'] if 'show_obsinfo' in kwargs else False
+
         self.time_axis = time_axis[0].lower()
         x_axis_time, xlabel = self._axt_xaxis()
         x_ticks, x_labels = self._invert_axis(self.freqs)
