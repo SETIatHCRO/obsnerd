@@ -133,7 +133,7 @@ def write(sats, src_tag, fn='sources.json'):
     for this_sat in sats:
         src_name = f"S{this_sat}_{src_tag}"
         if 'ra' in sats[this_sat].center:
-            print(sats[this_sat].center)
+            print(f"Found {this_sat} at {sats[this_sat].center['time']}")
             source_list[src_name] = {
                 "ra": sats[this_sat].center['ra'],
                 "dec": sats[this_sat].center['dec'],
