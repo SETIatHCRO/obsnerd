@@ -212,7 +212,16 @@ class Look:
         self.datamax = np.max(np.abs(self.data))
         print(f"\tmin={self.datamin}, max={self.datamax}")
 
-    def _axt_xaxis(self):
+    def get_time_axis(self):
+        """
+        Get the values for the time axis (which is vertical in the waterplot)
+        
+        Returns
+        -------
+        tuple : values, label
+
+        """
+
         if self.time_axis == 'a':  # actual datetime
             return self.times.datetime, 'Time'
         elif self.time_axis == 'd':  # difference
@@ -231,20 +240,22 @@ class Look:
             self.xp = [x[0]] + self.xp + [x[-1]]
             self.yp = [new_ylo] + self.yp + [new_yhi]
             # ...ugly but working
-            bbb = np.interp(x, self.xp, self.yp)
-            return bbb, 'deg'
+            return np.interp(x, self.xp, self.yp), 'deg'
         
     def _invert_axis(self, dat, num=8, precision=-1):
         if isinstance(dat[0], datetime):
             dat = (self.times.jd - self.times[0].jd) * 24.0 * 3600.0
         idat = list(np.arange(len(dat)))
-        xstart = np.round(np.floor(dat[0]), precision)
-        xstep = np.round((dat[-1] - dat[0]) / num, precision)
-        x = [int(xx) for xx in np.arange(xstart, dat[-1], xstep)]
+        if isinstance(num, (float, int)):
+            xstart = np.round(np.floor(dat[0]), precision)
+            xstep = np.round((dat[-1] - dat[0]) / num, precision)
+            x = [int(xx) for xx in np.arange(xstart, dat[-1], xstep)]
+        else:
+            x = [int(xx) for xx in np.arange(num[0], num[1]+1, num[2])]
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
-    def dashboard_gen(self, obsinfo, script_fn='dash.sh', ant='all', pol='xx,xy,yy,yx', taxis='b'):
+    def dashboard_gen(self, obsinfo, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b'):
         """
         Parameters
         ----------
@@ -263,9 +274,13 @@ class Look:
         self.obs = obs_base.Base()
         self.obs.read_obsinfo(obs=obsinfo)
         cnode = ','.join(self.cnode)
+        ants = ants.split(',')
+        pols = pols.split(',')
         with open(script_fn, 'w') as fp:
             for obsid in self.obs.obsinfo.obsid:
-                print(f"on_obs.py {obsid} -a {ant} -t {taxis} --lo {self.lo} --cnode {cnode} -p {pol} --dash -s", file=fp)
+                for ant in ants:
+                    for pol in pols:
+                        print(f"on_obs.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} --dash -s", file=fp)
 
     def dashboard(self, ant='2b', pol='xx', time_axis='diff', **kwargs):
         """
@@ -277,16 +292,19 @@ class Look:
             pol to use [xx,yy,xy,yz]
         taxis : str
             t/x axis to use in plot [a/b/d]
+        kwargs : use_db, save, show_obsinfo, t_ticks, f_ticks
     
         """
         use_db = kwargs['use_db'] if 'use_db' in kwargs else True
         save = kwargs['save'] if 'save' in kwargs else False
         show_obsinfo = kwargs['show_obsinfo'] if 'show_obsinfo' in kwargs else False
+        t_num = kwargs['t_ticks'] if 't_ticks' in kwargs else [-120, 120, 20]
+        f_num = kwargs['f_ticks'] if 'f_ticks' in kwargs else 8
 
-        self.time_axis = time_axis[0].lower()
-        x_axis_time, xlabel = self._axt_xaxis()
-        x_ticks, x_labels = self._invert_axis(self.freqs)
-        y_ticks, y_labels = self._invert_axis(x_axis_time)
+        self.time_axis = time_axis[0].lower()  # values to use along the "x" axis
+        t_axis_vals, t_axis_label = self.get_time_axis()
+        if ant:
+            self.get_bl(ant, pol=pol)
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
@@ -295,19 +313,21 @@ class Look:
             suptitle += f"  ({self.obs.obsinfo.obsid[self.obsid].bf_distance} km)"
         except (AttributeError, KeyError):
             pass
+        suptitle += f'  --  ({self.a},{self.b}) {self.pol}'
         plt.suptitle(suptitle)
-        # Water fall plot
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
         axt = plt.subplot2grid((2, 2), (0, 1), rowspan=1, colspan=1)
         axf = plt.subplot2grid((2, 2), (1, 1), rowspan=1, colspan=1)
-        if ant:
-            self.get_bl(ant, pol=pol)
+
+        # Water fall plot
+        f_ticks, f_labels = self._invert_axis(self.freqs, num=f_num)
+        t_ticks, t_labels = self._invert_axis(t_axis_vals, num=t_num)
         axwf.imshow(toMag(self.data, use_db))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
-        axwf.set_ylabel(xlabel)
-        axwf.set_xticks(x_ticks, x_labels)
-        axwf.set_yticks(y_ticks, y_labels)
+        axwf.set_ylabel(t_axis_label)
+        axwf.set_xticks(f_ticks, f_labels)
+        axwf.set_yticks(t_ticks, t_labels)
 
         # Time plot
         filter = self.obs.obsinfo.filters[self.lo]
@@ -317,11 +337,11 @@ class Look:
                 continue
             used_filter[clr] = filt
             tax2 = self.get_sum(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
-            axt.plot(x_axis_time, tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
+            axt.plot(t_axis_vals, tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
         if show_obsinfo:
             self.plot_obsinfo_times(axt)
         axt.legend()
-        axt.set_xlabel(xlabel)
+        axt.set_xlabel(t_axis_label)
         if use_db:
             axt.set_ylabel('dB')
         # axt.set_xlim(left=-15.0, right=15.0)
@@ -347,6 +367,7 @@ class Look:
             axf.plot([filt[0], filt[0]], [axmin, axmax], color=clr)
             axf.plot([filt[1], filt[1]], [axmin, axmax], color=clr)
         axf.set_ylim(bottom=axmin, top=axmax)
+
         if save:
             fn = f"{self.obsid}_{ant}_{pol}.png"
             plt.savefig(fn)
