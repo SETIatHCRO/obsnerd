@@ -8,9 +8,6 @@ from copy import copy
 import json
 
 
-def update_obs_meta(mjd):
-    
-
 class Observatory:
     def __init__(self, name, location, **kwargs):
         self.name = name
@@ -188,9 +185,9 @@ class Base:
         Uses starlink format d, which has pointing info
 
         """
-        from . import starlink_input
+        from . import starlink_io
         from astropy.coordinates import angular_separation
-        sl = starlink_input.Input()
+        sl = starlink_io.Input()
         sl.read_SpaceX(spacex_fn, spacex_format)
         self.read_obsinfo(obsid_fn)
         import json
@@ -202,15 +199,15 @@ class Base:
             dec_cen = sl.sats[sl_sat_num].center['dec'] * u.deg
             dts, angseps = [], []
             for i, tt in enumerate(sl.sats[sl_sat_num].times):
-                dt = (tt - sl.sats[sl_sat_num].center['times']).to('second').value
+                dt = (tt - sl.sats[sl_sat_num].center['time']).to('second').value
                 ra = sl.sats[sl_sat_num].ra[i] * u.deg
                 dec = sl.sats[sl_sat_num].dec[i] * u.deg
                 angseps.append(float(angular_separation(ra, dec, ra_cen, dec_cen).to(u.deg).value) * np.sign(dt))
                 dts.append(dt)
             obsinfo_file_dict['Sources'][src]['off_times'] = np.round(dts, 1).tolist()
             obsinfo_file_dict['Sources'][src]['off_boresight'] = np.round(angseps, 2).tolist()
-
-        self.write_obsinfo(obsid_fn, obsinfo_file_dict)
+        with open(obsid_fn, 'w') as fp:
+            json.dump(obsinfo_file_dict, fp, indent=2)
 
     def update_obsinfo_boresight_formats_abc(self, fn):
         """
@@ -281,15 +278,3 @@ class Base:
             altazsky = coord.transform_to(aa)
             self.sats[this_name].az = altazsky.az.value
             self.sats[this_name].el = altazsky.alt.value
-
-    def write_obsinfo(self, fn=None, package='obsinfo'):
-        if isinstance(package, str):
-            print("Package up self.obsinfo into dict...not done yet")
-            return
-        if fn is None:
-            mjd = float(Time.now().jd) - 2400000.5
-            fn = f"obsinfo_{mjd:.4f}.json"
-        import json
-        print(f"Writing {fn}")
-        with open(fn, 'w') as fp:
-            json.dump(package, fp, indent=2)

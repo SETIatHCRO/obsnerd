@@ -28,7 +28,7 @@ class Dump:
             self.ant_map[antna] = antno
         self.freqs = self.uv.freq_array[0] / FREQ_CONVERT[self.freq_unit]
 
-    def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
+    def dump_autos(self, ants=None, pols=['xx', 'xy']):
         if ants is None or ants=='all':
             ants = self.ant_names
             antstr = 'all'
@@ -37,6 +37,8 @@ class Dump:
         else:
             antstr = ants
             ants = ants.split(',')
+        if isinstance(pols, str):
+            pols = pols.split(',')
         outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
         print(f"Dumping autos in {self.fnuvh5} for {antstr} {pols}", end=' ... ')
         for ant in ants:
@@ -70,10 +72,11 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('filename', help="Name of UVH5 file to dump.")
     ap.add_argument('--ants', help="Ant list to drop or'all'", default='all')
+    ap.add_argument('--pols', help="Pols to use", default='xx,xy,yy,yx')
     ap.add_argument('--lo', help='LO', choices=['A', 'B'], default='A')
     ap.add_argument('--cnode', help='CNODE', choices=['C0352', 'C0544', 'C0736', 'C0928',  'C1120',  'C1312',  'C1504', 'C0352',
                                                       'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504'], default='C0928')
     args = ap.parse_args()
 
     sl = Dump(args.filename, args.lo, args.cnode)
-    sl.dump_autos(args.ants)
+    sl.dump_autos(args.ants, args.pols)
