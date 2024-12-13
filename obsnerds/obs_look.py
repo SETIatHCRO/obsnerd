@@ -8,6 +8,7 @@ import os.path as path
 from copy import copy
 
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
+ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
 
 
 def toMag(x, use_db=True):
@@ -21,6 +22,8 @@ def make_cnode(cns):
         Takes a list and makes a list of valid cnodes -> C####
 
         """
+        if cns == 'all':
+            return ALL_CNODES
         cns = cns if isinstance(cns, list) else cns.split(',')
         try:
             return [f"C{int(x):04d}" for x in cns]
@@ -60,12 +63,8 @@ def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', scri
             print(f"on_dump_autos.py {data[0]} --lo {data[1]} --cnode {data[2]} --ants {ants} --pols {pols}", file=fp)
             print(f"Adding {obsrec}")
 
-
-ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
-
-
 class Look:
-    def __init__(self, obsid, lo='A', cnode=ALL_CNODES, tag='npz', freq_unit='MHz', dir_data='.'):
+    def __init__(self, obsid=None, lo='A', cnode='all', tag='npz', freq_unit='MHz', dir_data='.'):
         """
         This initializes, but also reads in all of the data.
 
@@ -76,10 +75,14 @@ class Look:
         self.tag = tag
         self.freq_unit = freq_unit
         self.dir_data = dir_data
-        self.obsrec_list = [f"{self.obsid}_{self.lo}_{x}" for x in self.cnode]
-        self.get_obsinfo()
         self.npzfile = {}
         self.freqs = []
+        if obsid is not None:
+            self.get_obsinfo()
+            self.read_in_files()
+
+    def read_in_files(self):
+        self.obsrec_list = [f"{self.obsid}_{self.lo}_{x}" for x in self.cnode]
         for i, obsrec in enumerate(self.obsrec_list):
             if self.tag == 'uvh5':
                 if i:
@@ -241,25 +244,28 @@ class Look:
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
-    def dashboard_gen(self, obsid, lo='A', pol='xx', ant='2b', taxis='b'):
+    def dashboard_gen(self, obsinfo, script_fn='dash.sh', ant='all', pol='xx,xy,yy,yx', taxis='b'):
         """
         Parameters
         ----------
-        obsid : str
-            Can either be an obsid or a source in the obsinfo, or a json filename
-        lo : str
-            LO to use [A/B]
+        obsinfo : str
+            Name of obsinfo file to use
+        script_fn : str
+            Name of bash script file to write
+        ant : str
+            ants to use
         pol : str
             pol to use [xx,yy,xy,yz]
         taxis : str
             t/x axis to use in plot [a/b/d]
     
         """
-        self.obsid = obsid
-        self.get_obsinfo()
-        with open('dash.sh', 'w') as fp:
+        self.obs = obs_base.Base()
+        self.obs.read_obsinfo(obs=obsinfo)
+        cnode = ','.join(self.cnode)
+        with open(script_fn, 'w') as fp:
             for obsid in self.obs.obsinfo.obsid:
-                print(f"on_obs.py {obsid} -a {ant} -t {taxis} --lo {lo} -p {pol} --dash -s", file=fp)
+                print(f"on_obs.py {obsid} -a {ant} -t {taxis} --lo {self.lo} --cnode {cnode} -p {pol} --dash -s", file=fp)
 
     def dashboard(self, ant='2b', pol='xx', use_db=True, save=False, time_axis='diff', show_obsinfo=False):
         """

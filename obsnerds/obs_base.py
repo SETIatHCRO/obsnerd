@@ -206,6 +206,7 @@ class Base:
                 dts.append(dt)
             obsinfo_file_dict['Sources'][src]['off_times'] = np.round(dts, 1).tolist()
             obsinfo_file_dict['Sources'][src]['off_boresight'] = np.round(angseps, 2).tolist()
+            obsinfo_file_dict['Sources'][src]['tref'] = sl.sats[sl_sat_num].center['time'].datetime.isoformat(timespec='seconds')
         with open(obsid_fn, 'w') as fp:
             json.dump(obsinfo_file_dict, fp, indent=2)
 
