@@ -39,8 +39,8 @@ for xfn in listdir('.'):
             tmp = xfn.split('_')
             obsid = '_'.join(xfn.split('_')[:2])
             look[xfn] = obs_look.Look(obsid)
-            look[xfn].read_obsrec(xfn)
-            obsinfo['Sources'][obsid] = {'tref': look.times[0].datetime.isoformat()}
+            look[xfn].get_obsinfo()
+            obsinfo['Sources'][obsid] = {'tref': look[xfn].times[0].datetime.isoformat(timespec='seconds')}
             break
 for x in obsinfo['Sources']:
     print(x)

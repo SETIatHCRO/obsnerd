@@ -8,6 +8,9 @@ from copy import copy
 import json
 
 
+def update_obs_meta(mjd):
+    
+
 class Observatory:
     def __init__(self, name, location, **kwargs):
         self.name = name

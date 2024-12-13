@@ -209,24 +209,6 @@ class Look:
         self.datamax = np.max(np.abs(self.data))
         print(f"\tmin={self.datamin}, max={self.datamax}")
 
-    def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
-        if ants is None:
-            ants = self.ant_names
-            antstr = 'all'
-        else:
-            antstr = ','.join(ants)
-        outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
-        print(f"Dumping autos in {self.fnuvh5} for {antstr} {pols}", end=' ... ')
-        for ant in self.ant_names:
-            for pol in pols:
-                self.get_bl(ant, pol=pol)
-                outdata[f"{ant}{pol}"] = copy(self.data)
-        outdata['times'] = self.times.jd  # This assumes that all times in the UVH5 file are the same...
-        mjd = outdata['times'][0] - 2400000.5
-        obsrec = f"{self.source}_{mjd:.4f}_{self.lo}_{self.cnode}.npz"
-        print(f"writing {obsrec}")
-        np.savez(obsrec, **outdata)
-
     def _axt_xaxis(self):
         if self.time_axis == 'a':  # actual datetime
             return self.times.datetime, 'Time'
