@@ -50,10 +50,6 @@ class Dump:
         np.savez(obsrec, **outdata)
 
     def get_bl(self, a, b=None, pol='xx'):
-        """
-        Pulled from starlink_eph to be stand alone
-
-        """
         self.a = a
         self.b = b
         self.pol = pol

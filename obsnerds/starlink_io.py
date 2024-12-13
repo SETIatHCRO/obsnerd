@@ -125,13 +125,13 @@ def readd(fn):
                 sats_inp[this_sat].center['el'] = float(data[7])
     return sats_inp
 
-def writed(sats, fn='sourcesd.json'):
+def write(sats, src_tag, fn='sources.json'):
     import json
     source_list = {}
     fpsl = open("source_list.txt", 'w')
     print(f"src_id src_ra_j2000_deg src_dec_j2000_deg src_start_utc src_end_utc", file=fpsl)
     for this_sat in sats:
-        src_name = f"S{this_sat}_1212"
+        src_name = f"S{this_sat}_{src_tag}"
         if 'ra' in sats[this_sat].center:
             print(sats[this_sat].center)
             source_list[src_name] = {
