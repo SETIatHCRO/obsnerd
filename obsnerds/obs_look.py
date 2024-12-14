@@ -57,6 +57,7 @@ class Look:
 
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
+        self.file_type = 'uvh5'
         self.uvh5_pieces = OS.parse_uvh5_filename(fn)
         self.fn = fn
         self.source = self.uvh5_pieces['source']
@@ -92,6 +93,7 @@ class Look:
             List of observation time stamps - gets overwritten very time
 
         """
+        self.file_type = 'npz'
         fn = path.join(self.obs.obsinfo.dir_data, obsrec)
         X = OS.split_obsrec(obsrec)
         try:
@@ -144,12 +146,12 @@ class Look:
             self.b = self.a
         print(f"Reading ({self.a}, {self.b}){self.pol}", end='')
         dataf = []
-        if self.tag == 'uvh5':  # Only one file
+        if self.file_type == 'uvh5':  # Only one file
             self.ano = self.ant_map[self.a]
             self.bno = self.ant_map[self.b]
             self.data = self.uv.get_data(self.ano, self.bno, pol)
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
-        elif self.tag == 'npz':
+        elif self.file_type == 'npz':
             for obsrec in self.obsrec_list:
                 dataf.append(self.npzfile[obsrec][f"{self.a}{pol}"])
             self.data = np.concatenate(dataf, axis=1)
