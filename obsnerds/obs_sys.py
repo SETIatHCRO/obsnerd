@@ -67,7 +67,6 @@ def parse_uvh5_filename(fn):
         mjd = float(f"{sdat[1]}.{sdat[2]}")
         src = '_'.join([x for x in sdat[4:-1]])
         pieces.update({'filename': fn, 'mjd': mjd, 'source': src, 'obsid': make_obsid(src, mjd)})
-        print(data[-2])
         if len(data) > 1 and data[-2].startswith('Lo'):
             lo = data[-2][2]
             cnode = data[-2].split('.')[-1]
