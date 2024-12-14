@@ -9,6 +9,7 @@ from copy import copy
 
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
+UVH5_SRC_IND = 4
 
 
 def toMag(x, use_db=True):
@@ -64,40 +65,47 @@ def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', scri
             print(f"Adding {obsrec}")
 
 class Look:
-    def __init__(self, obsid=None, lo='A', cnode='all', tag='npz', freq_unit='MHz', dir_data='.'):
+    def __init__(self, obsid=None, lo='A', cnode='all', freq_unit='MHz', dir_data='.'):
         """
         This initializes, but also reads in all of the data.
+
+        Parameters
+        ----------
+        obsid : None, str
+            This one is now complicated -- standard mode is just an obsid -- need to clean up!
 
         """
         self.obsid = obsid
         self.lo = lo
         self.cnode = make_cnode(cnode)
-        self.tag = tag
         self.freq_unit = freq_unit
         self.dir_data = dir_data
         self.npzfile = {}
         self.freqs = []
         if obsid is not None:
-            self.get_obsinfo()
+            if self.obsid.endswith('.uvh5') or self.obsid.endswith('.npz'):
+                self.obsrec_list = self.obsid.split(',')
+            else:
+                self.get_obsinfo()
+                self.obsrec_list = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
             self.read_in_files()
 
     def read_in_files(self):
-        self.obsrec_list = [f"{self.obsid}_{self.lo}_{x}" for x in self.cnode]
-        for i, obsrec in enumerate(self.obsrec_list):
-            if self.tag == 'uvh5':
-                if i:
-                    print("This will only read in the first obsrec file in the list")
-                else:
-                    self.read_uvh5(obsrec)
-            elif self.tag == 'npz':
+        for obsrec in self.obsrec_list:
+            if obsrec.endswith('.uvh5'):
+                self.read_a_uvh5(obsrec)
+                if len(self.obsrec_list) > 1:
+                    print("Only reading in first uvh5 file")
+                    break
+            elif obsrec.endswith('npz'):
                 self.read_an_npz(obsrec)
             else:
-                print(f"Invalid file {obsrec}.{self.tag}")
+                print(f"Invalid file {obsrec}")
 
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
-        print("NEED TO MAKE fn AND GET DATA PATH ETC IN HERE -- CURRENTLY NOT LIKELY GOING TO WORK?")
-        self.fn = path.join(self.dir_data, fn)
+        self.source = fn.split('_')[UVH5_SRC_IND]
+        self.fn = fn
         self.uv = UVData()
         self.uv.read(self.fn)
         self.ant_numbers = self.uv.get_ants()
@@ -106,6 +114,7 @@ class Look:
         for antno, antna in zip(self.ant_numbers, self.ant_names):
             self.ant_map[antna] = antno
         self.freqs = self.uv.freq_array[0] / FREQ_CONVERT[self.freq_unit]
+        return True
 
     def read_an_npz(self, obsrec):
         """
@@ -129,26 +138,26 @@ class Look:
             List of observation time stamps - gets overwritten very time
 
         """
-        fn = path.join(self.obs.obsinfo.dir_data, f"{obsrec}.{self.tag}")
+        fn = path.join(self.obs.obsinfo.dir_data, obsrec)
+        obsrec_key = obsrec[:-4]  # Strip off the .npz,  this mangles the convention a bit...
         try:
-            self.npzfile[obsrec] = np.load(fn)
+            self.npzfile[obsrec_key] = np.load(fn)
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        self.ant_names = list(self.npzfile[obsrec]['ants'])
-        self.freqs += list(self.npzfile[obsrec]['freqs'])
-        self.times = Time(self.npzfile[obsrec]['times'], format='jd')
+        self.ant_names = list(self.npzfile[obsrec_key]['ants'])
+        self.freqs += list(self.npzfile[obsrec_key]['freqs'])
+        self.times = Time(self.npzfile[obsrec_key]['times'], format='jd')
         return True
 
-    def dump_autos(self, ants=None, pols=['xx', 'yy', 'xy', 'yx']):
-        if ants is None:
+    def dump_autos(self, ants='all', pols=['xx', 'yy', 'xy', 'yx']):
+        if ants == 'all':
             ants = self.ant_names
-            antstr = 'all'
-        else:
-            antstr = ','.join(ants)
+        elif isinstance(ants, str):
+            ants = ','.join(ants)
         outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
-        print(f"Dumping autos in {self.fnuvh5} for {antstr} {pols}", end=' ... ')
-        for ant in self.ant_names:
+        print(f"Dumping autos in {self.fnuvh5} for {','.join(ants)} {pols}", end=' ... ')
+        for ant in ants:
             for pol in pols:
                 self.get_bl(ant, pol=pol)
                 outdata[f"{ant}{pol}"] = copy(self.data)
