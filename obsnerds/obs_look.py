@@ -9,6 +9,7 @@ from copy import copy
 
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
+ALL_LOS = ['A', 'B']
 UVH5_SRC_IND = 4
 
 
@@ -31,37 +32,42 @@ def make_cnode(cns):
         except ValueError:
             return cns
 
-def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', script_filename='dump_autos.sh', ants='all', pols='xx,xy,yy,yx'):
+def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', script_filename='dump_autos.sh', ants='all', pols='xx,xy,yy,yx',
+                    LOs='all', CNODEs='all'):
     from os import walk, listdir, path
     if date_path == '?':
         print(f"Available observation dates in {base_path}:")
         for x in listdir(base_path):
             print(f"\t{x}")
         return
-    print(f"Retrieving from {base_path}")
-    files = {}
+    LOs = ALL_LOS if LOs == 'all' else LOs
+    CNODEs = ALL_CNODES if CNODEs == 'all' else CNODEs
+
     dbase_path = path.join(base_path, date_path)
+    print(f"Retrieving from {dbase_path}")
+    files = {}
     for basedir, _, filelist in walk(dbase_path):
         if base_path in basedir and '/Lo' in basedir:
             lolo, cnode = basedir.split('/')[-1].split('.')
             lo = lolo[2:]
-            for fn in filelist:
-                if fn.startswith('uvh5_'):
-                    fnsplit = fn.split('_')
-                    if len(fnsplit) == 6:
-                        _, mjd1, mjd2, _, src, _ = fnsplit
-                    elif len(fnsplit) == 7:
-                        _, mjd1, mjd2, _, src, extra, _ = fnsplit
-                        src = src + '_' + extra
-                    mjd = float(f"{mjd1}.{mjd2}")
-                    obsid = f"{src}_{mjd:.4f}"
-                    obsrec = f"{obsid}_{lo}_{cnode}"
-                    dfn = path.join(basedir, fn)
-                    files[obsrec] = [dfn, lo, cnode]
+            if lo in LOs and cnode in CNODEs:
+                for fn in filelist:
+                    if fn.startswith('uvh5_'):
+                        fnsplit = fn.split('_')
+                        if len(fnsplit) == 6:
+                            _, mjd1, mjd2, _, src, _ = fnsplit
+                        elif len(fnsplit) == 7:
+                            _, mjd1, mjd2, _, src, extra, _ = fnsplit
+                            src = src + '_' + extra
+                        mjd = float(f"{mjd1}.{mjd2}")
+                        obsid = f"{src}_{mjd:.4f}"
+                        obsrec = f"{obsid}_{lo}_{cnode}"
+                        dfn = path.join(basedir, fn)
+                        files[obsrec] = dfn
                 
     with open(script_filename, 'w') as fp:
-        for obsrec, data in files.items():
-            print(f"on_dump_autos.py {data[0]} --lo {data[1]} --cnode {data[2]} --ants {ants} --pols {pols}", file=fp)
+        for obsrec, dfn in files.items():
+            print(f"on_dump_autos.py {dfn} --ants {ants} --pols {pols}", file=fp)
             print(f"Adding {obsrec}")
 
 class Look:
