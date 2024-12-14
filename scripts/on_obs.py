@@ -26,7 +26,7 @@ if __name__ == '__main__':
         args.ants = args.ants.split(',')
     args.pols = args.pols.split(',')
 
-    look = obs_look.Look(obsid=args.obsid, lo=args.lo, cnode=args.cnode, tag=args.tag, freq_unit=args.freq_unit, dir_data=args.dir_data)
+    look = obs_look.Look(obsinput=args.obsid, lo=args.lo, cnode=args.cnode, tag=args.tag, freq_unit=args.freq_unit, dir_data=args.dir_data)
     if args.dash:
         look.dashboard(ant=args.ants[0], pol=args.pols[0], save=args.save, time_axis=args.time_axis, show_obsinfo=args.show_obsinfo)
     if not args.save:
