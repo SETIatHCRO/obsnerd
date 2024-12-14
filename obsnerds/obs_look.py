@@ -257,17 +257,16 @@ class Look:
         pol : str
             pol to use [xx,yy,xy,yz]
         time_axis : str
-            t/x axis to use in plot [a/b/d]
-        kwargs : use_db, save, show_obsinfo, t_wfticks, f_wfticks
+            t axis to use in plot [datetime/boresight/seconds]
+        kwargs : use_db, save, t_wfticks, f_wfticks
     
         """
         use_db = kwargs['use_db'] if 'use_db' in kwargs else True
         save = kwargs['save'] if 'save' in kwargs else False
-        show_obsinfo = kwargs['show_obsinfo'] if 'show_obsinfo' in kwargs else False
         t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else [-120, 120, 20]
         f_wfticks = kwargs['f_wfticks'] if 'f_wfticks' in kwargs else 8
 
-        self.time_axis = time_axis
+        self.time_axis = OS.AXIS_OPTIONS[time_axis[0].lower()]
         self.get_time_axes()
         if ant:
             self.get_bl(ant, pol=pol)
@@ -304,8 +303,6 @@ class Look:
             used_filter[clr] = filt
             tax2 = self.get_sum(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
             axt.plot(self.taxes[time_axis]['values'], tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
-        if show_obsinfo:
-            self.plot_obsinfo_times(axt)
         axt.legend()
         axt.set_xlabel(self.taxes[time_axis]['label'])
         if use_db:
@@ -402,43 +399,6 @@ class Look:
             if plotting[0].lower() == 'a':
                 pdata = toMag(self.data[:, i], use_db)
             plt.plot(self.times.datetime, pdata)
-
-    def plot_obsinfo_times(self, ax):
-        if self.obs is None:
-            return
-        dmin = ax.axis()[2]
-        dmax = ax.axis()[3]
-        this_src = self.obs.obsinfo.obsid[self.obsid]
-        try:
-            tref = this_src.tref
-        except AttributeError:
-            tref = self.times[len(self.times // 2)]
-        try:
-            t0 = this_src.t0
-        except AttributeError:
-            t0 = self.times[0]
-        try:
-            t1 = this_src.t1
-        except AttributeError:
-            t1 = self.times[-1]
-        if self.time_axis == 'a':  # absolute
-            sups = [[tref.datetime, 'r--'],
-                    [t0.datetime, 'k--'],
-                    [t1.datetime, 'k--']]
-        elif self.time_axis == 'd':  # diff
-            sups = [[0.0, 'r--'],
-                    [(t0 - tref).to_value('sec'), 'k--'],
-                    [(t1 - tref).to_value('sec'), 'k--']]
-        elif self.time_axis == 'b':
-            x = [-this_src.offset,
-                 (t0 - tref).to_value('sec') - this_src.offset,
-                 (t1 - tref).to_value('sec') - this_src.offset
-            ]
-            b = np.interp(x, self.xp, self.yp)
-            sups = [[b[0], 'r--'], [b[1], 'k--'], [b[2], 'k--']]
-        for x, lsc in sups:
-            ax.plot([x, x], [dmin, dmax], lsc, linewidth=2)
-        ax.set_ylim(bottom=dmin, top=dmax)
 
     def get_obsinfo(self):
         self.obs = obs_base.Base()
