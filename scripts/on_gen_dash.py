@@ -14,4 +14,4 @@ ap.add_argument('--axis', help="Type of axis to use <[b]oresight/[a]ctual/[d]iff
 args = ap.parse_args()
 
 obs = obs_look.Look(obsinput=None, lo=args.lo, cnode=args.cnode)
-obs.dashboard_gen(obsinput=args.obsinfo, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.axis)
+obs.dashboard_gen(obsinfo=args.obsinfo, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.axis)
