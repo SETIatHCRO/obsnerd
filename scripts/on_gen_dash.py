@@ -13,5 +13,5 @@ ap.add_argument('--pols', help="Pols to use - csv list", default='xx')
 ap.add_argument('--axis', help="Type of axis to use <[b]oresight/[a]ctual/[d]ifference>", choices=['b', 'a', 'd'], default='b')
 args = ap.parse_args()
 
-obs = obs_look.Look(obsid=None, lo=args.lo, cnode=args.cnode)
-obs.dashboard_gen(obsinfo=args.obsinfo, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.axis)
+obs = obs_look.Look(obsinput=None, lo=args.lo, cnode=args.cnode)
+obs.dashboard_gen(obsinput=args.obsinfo, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.axis)
