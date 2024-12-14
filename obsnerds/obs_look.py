@@ -5,12 +5,7 @@ import matplotlib.pyplot as plt
 from obsnerds import obs_base
 from datetime import datetime
 import os.path as path
-from copy import copy
-
-FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
-ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
-ALL_LOS = ['A', 'B']
-UVH5_SRC_IND = 4
+from . import obs_sys as OS
 
 
 def toMag(x, use_db=True):
@@ -19,80 +14,32 @@ def toMag(x, use_db=True):
     else:
         return np.abs(x)
 
-def make_cnode(cns):
-        """
-        Takes a list and makes a list of valid cnodes -> C####
-
-        """
-        if cns == 'all':
-            return ALL_CNODES
-        cns = cns if isinstance(cns, list) else cns.split(',')
-        try:
-            return [f"C{int(x):04d}" for x in cns]
-        except ValueError:
-            return cns
-
-def gen_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/', script_filename='dump_autos.sh', ants='all', pols='xx,xy,yy,yx',
-                    LOs='all', CNODEs='all'):
-    from os import walk, listdir, path
-    if date_path == '?':
-        print(f"Available observation dates in {base_path}:")
-        for x in listdir(base_path):
-            print(f"\t{x}")
-        return
-    LOs = ALL_LOS if LOs == 'all' else LOs
-    CNODEs = ALL_CNODES if CNODEs == 'all' else CNODEs
-
-    dbase_path = path.join(base_path, date_path)
-    print(f"Retrieving from {dbase_path}")
-    files = {}
-    for basedir, _, filelist in walk(dbase_path):
-        if base_path in basedir and '/Lo' in basedir:
-            lolo, cnode = basedir.split('/')[-1].split('.')
-            lo = lolo[2:]
-            if lo in LOs and cnode in CNODEs:
-                for fn in filelist:
-                    if fn.startswith('uvh5_'):
-                        fnsplit = fn.split('_')
-                        if len(fnsplit) == 6:
-                            _, mjd1, mjd2, _, src, _ = fnsplit
-                        elif len(fnsplit) == 7:
-                            _, mjd1, mjd2, _, src, extra, _ = fnsplit
-                            src = src + '_' + extra
-                        mjd = float(f"{mjd1}.{mjd2}")
-                        obsid = f"{src}_{mjd:.4f}"
-                        obsrec = f"{obsid}_{lo}_{cnode}"
-                        dfn = path.join(basedir, fn)
-                        files[obsrec] = dfn
-                
-    with open(script_filename, 'w') as fp:
-        for obsrec, dfn in files.items():
-            print(f"on_dump_autos.py {dfn} --ants {ants} --pols {pols}", file=fp)
-            print(f"Adding {obsrec}")
 
 class Look:
-    def __init__(self, obsid=None, lo='A', cnode='all', freq_unit='MHz', dir_data='.'):
+    def __init__(self, obsinput=None, lo='A', cnode='all', freq_unit='MHz', dir_data='.'):
         """
         This initializes, but also reads in all of the data.
 
         Parameters
         ----------
-        obsid : None, str
-            This one is now complicated -- standard mode is just an obsid -- need to clean up!
+        obsinput : None, str
+            Either a file (ends with .uvh5 or .npz) or obsid
 
         """
-        self.obsid = obsid
+        self.obsid = None
         self.lo = lo
-        self.cnode = make_cnode(cnode)
+        self.cnode = OS.make_cnode(cnode)
         self.freq_unit = freq_unit
         self.dir_data = dir_data
         self.npzfile = {}
         self.freqs = []
-        if obsid is not None:
-            if self.obsid.endswith('.uvh5') or self.obsid.endswith('.npz'):
-                self.obsrec_list = self.obsid.split(',')
+        if obsinput is not None:
+            if obsinput.endswith('.uvh5') or obsinput.endswith('.npz'):
+                self.obsrec_list = obsinput(',')
             else:
                 self.get_obsinfo()
+                self.obsid = obsinput
+                self.source, self.mjd = OS.split_obsid(self.obsid)
                 self.obsrec_list = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
             self.read_in_files()
 
@@ -110,8 +57,9 @@ class Look:
 
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
-        self.source = fn.split('_')[UVH5_SRC_IND]
+        self.uvh5_pieces = OS.parse_uvh5_filename(fn)
         self.fn = fn
+        self.source = self.uvh5_pieces['source']
         self.uv = UVData()
         self.uv.read(self.fn)
         self.ant_numbers = self.uv.get_ants()
@@ -119,7 +67,7 @@ class Look:
         self.ant_map = {}
         for antno, antna in zip(self.ant_numbers, self.ant_names):
             self.ant_map[antna] = antno
-        self.freqs = self.uv.freq_array[0] / FREQ_CONVERT[self.freq_unit]
+        self.freqs = self.uv.freq_array[0] / OS.FREQ_CONVERT[self.freq_unit]
         return True
 
     def read_an_npz(self, obsrec):
@@ -145,33 +93,16 @@ class Look:
 
         """
         fn = path.join(self.obs.obsinfo.dir_data, obsrec)
-        obsrec_key = obsrec[:-4]  # Strip off the .npz,  this mangles the convention a bit...
+        X = OS.split_obsrec(obsrec)
         try:
-            self.npzfile[obsrec_key] = np.load(fn)
+            self.npzfile[X['obsrec']] = np.load(fn)
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        self.ant_names = list(self.npzfile[obsrec_key]['ants'])
-        self.freqs += list(self.npzfile[obsrec_key]['freqs'])
-        self.times = Time(self.npzfile[obsrec_key]['times'], format='jd')
+        self.ant_names = list(self.npzfile[X['obsrec']]['ants'])
+        self.freqs += list(self.npzfile[X['obsrec']]['freqs'])
+        self.times = Time(self.npzfile[X['obsrec']]['times'], format='jd')
         return True
-
-    def dump_autos(self, ants='all', pols=['xx', 'yy', 'xy', 'yx']):
-        if ants == 'all':
-            ants = self.ant_names
-        elif isinstance(ants, str):
-            ants = ','.join(ants)
-        outdata = {'ants': ants, 'freqs': self.freqs, 'pols': pols, 'source': self.source, 'uvh5': self.fnuvh5, 'freq_unit': self.freq_unit}
-        print(f"Dumping autos in {self.fnuvh5} for {','.join(ants)} {pols}", end=' ... ')
-        for ant in ants:
-            for pol in pols:
-                self.get_bl(ant, pol=pol)
-                outdata[f"{ant}{pol}"] = copy(self.data)
-        outdata['times'] = self.times.jd  # This assumes that all times in the UVH5 file are the same...
-        mjd = outdata['times'][0] - 2400000.5
-        obsrec = f"{self.source}_{mjd:.4f}_{self.lo}_{self.cnode}.npz"
-        print(f"writing {obsrec}")
-        np.savez(obsrec, **outdata)
 
     def get_bl(self, a, b=None, pol='xx'):
         """

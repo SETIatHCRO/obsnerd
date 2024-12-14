@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import argparse
-from obsnerds import obs_look
+from obsnerds import obs_dump
 
 
 ap = argparse.ArgumentParser()
@@ -13,5 +13,7 @@ ap.add_argument('--cnodes', help="CNODES to use.", default='all')
 ap.add_argument('--los', help="LOs to use", default='all')
 args = ap.parse_args()
 
-#on_dump_autos.py /mnt/primary/ata/projects/p054/2024-12-12-22:22:01/uvh5_60656_83668_34122680_S11105_1212_0001/LoB.C0928/uvh5_60656_83668_34122680_S11105_1212_0001.uvh5 --lo B --cnode C0928 --ants 2a,2b,2h,4e
-obs_look.gen_dump_script(date_path=args.date, base_path=args.base_dir, script_filename=args.script, ants=args.ants, pols=args.pols)
+obs_dump.gen_uvh5_dump_script(args.date, base_path=args.base_dir,
+                              ants=args.ants, pols=args.pols,
+                              LOs=args.los, CNODEs=args.cnodes,
+                              script_filename=args.script)
