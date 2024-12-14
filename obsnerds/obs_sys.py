@@ -58,15 +58,14 @@ def split_obsrec(obsrec):
 
 def parse_uvh5_filename(fullfn):
     pieces = split_obsrec('-_-_-_-')
-    pieces.update({'filename': '-'})
+    pieces.update({'filename': fullfn})
     data = fullfn.split('/')
     fn = data[-1]
     if fn.startswith('uvh5_'):
-        pieces.update({'filename': fullfn})
         sdat = fn.split('_')
         mjd = float(f"{sdat[1]}.{sdat[2]}")
         src = '_'.join([x for x in sdat[4:-1]])
-        pieces.update({'filename': fn, 'mjd': mjd, 'source': src, 'obsid': make_obsid(src, mjd)})
+        pieces.update({'mjd': mjd, 'source': src, 'obsid': make_obsid(src, mjd)})
         if len(data) > 1 and data[-2].startswith('Lo'):
             lo = data[-2][2]
             cnode = data[-2].split('.')[-1]
