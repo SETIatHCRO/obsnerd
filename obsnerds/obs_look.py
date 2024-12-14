@@ -35,19 +35,19 @@ class Look:
         self.freqs = []
         if obsinput is not None:
             if obsinput.endswith('.uvh5') or obsinput.endswith('.npz'):
-                self.obsrec_list = obsinput.split(',')
+                self.obsrec_files = obsinput.split(',')
             else:
-                self.get_obsinfo()
                 self.obsid = obsinput
+                self.get_obsinfo()
                 self.source, self.mjd = OS.split_obsid(self.obsid)
-                self.obsrec_list = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
+                self.obsrec_files = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
             self.read_in_files()
 
     def read_in_files(self):
-        for obsrec in self.obsrec_list:
+        for obsrec in self.obsrec_files:
             if obsrec.endswith('.uvh5'):
                 self.read_a_uvh5(obsrec)
-                if len(self.obsrec_list) > 1:
+                if len(self.obsrec_files) > 1:
                     print("Only reading in first uvh5 file")
                     break
             elif obsrec.endswith('npz'):
@@ -71,7 +71,7 @@ class Look:
         self.freqs = self.uv.freq_array[0] / OS.FREQ_CONVERT[self.freq_unit]
         return True
 
-    def read_an_npz(self, obsrec):
+    def read_an_npz(self, obsrec_file):
         """
         Reads a single obsrec file.
         This will write ant_names, times, into attributes without checking...and appends freqs
@@ -94,21 +94,21 @@ class Look:
 
         """
         self.file_type = 'npz'
-        fn = path.join(self.obs.obsinfo.dir_data, obsrec)
-        X = OS.split_obsrec(obsrec)
+        fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
+        X = OS.split_obsrec(obsrec_file)
         try:
-            self.npzfile[X['obsrec']] = np.load(fn)
+            self.npzfile[obsrec_file] = np.load(fn)
         except FileNotFoundError:
             print(f"Couldn't find {fn}")
             return False
-        self.ant_names = list(self.npzfile[X['obsrec']]['ants'])
-        self.freqs += list(self.npzfile[X['obsrec']]['freqs'])
-        self.times = Time(self.npzfile[X['obsrec']]['times'], format='jd')
+        self.ant_names = list(self.npzfile[obsrec_file]['ants'])
+        self.freqs += list(self.npzfile[obsrec_file]['freqs'])
+        self.times = Time(self.npzfile[obsrec_file]['times'], format='jd')
         return True
 
     def get_bl(self, a, b=None, pol='xx'):
         """
-        This reads in a baseline in all of the files read into obsrec_list.
+        This reads in a baseline in all of the files read into obsrec_files.
 
         Parameters
         ----------
@@ -152,8 +152,8 @@ class Look:
             self.data = self.uv.get_data(self.ano, self.bno, pol)
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
         elif self.file_type == 'npz':
-            for obsrec in self.obsrec_list:
-                dataf.append(self.npzfile[obsrec][f"{self.a}{pol}"])
+            for obsrec_file in self.obsrec_files:
+                dataf.append(self.npzfile[obsrec_file][f"{self.a}{pol}"])
             self.data = np.concatenate(dataf, axis=1)
 
         self.datamin = np.min(np.abs(self.data))
