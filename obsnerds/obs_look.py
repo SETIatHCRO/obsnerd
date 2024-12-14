@@ -160,35 +160,48 @@ class Look:
         self.datamax = np.max(np.abs(self.data))
         print(f"\tmin={self.datamin}, max={self.datamax}")
 
-    def get_time_axis(self):
+    def get_time_axes(self):
         """
-        Get the values for the time axis (which is vertical in the waterplot)
+        Get the values for the various "time" axis options (which is vertical in the waterplot)
         
-        Returns
-        -------
-        tuple : values, label
+        Attribute
+        ---------
+        taxes : dict
+            dictionary containing the axis values and axis label
 
         """
 
-        if self.time_axis == 'a':  # actual datetime
-            return self.times.datetime, 'Time'
-        elif self.time_axis == 'd':  # difference
-            return (self.times - self.obs.obsinfo.obsid[self.obsid].tref).to_value('sec'), 'sec'
-        elif self.time_axis == 'b':  # boresight
-            x = (self.times - self.obs.obsinfo.obsid[self.obsid].tref).to_value('sec') - self.obs.obsinfo.obsid[self.obsid].offset
+        self.taxes = {
+            'datetime': {
+                'values': self.times.datetime,
+                'label': 'Time'},
+            'seconds': {
+                'values': (self.times - self.obs.obsinfo.obsid[self.obsid].tref).to_value('sec'),
+                'label': 'Seconds',
+                'reference': self.obs.obsinfo.obsid[self.obsid].tref}
+        }
+        try:
             self.xp = self.obs.obsinfo.obsid[self.obsid].off_times
             self.yp = self.obs.obsinfo.obsid[self.obsid].off_boresight
-            # Now extrapolate xp, yp to the limits of x...
-            m_lo = (self.yp[1] - self.yp[0]) / (self.xp[1] - self.xp[0])
-            b_lo = self.yp[0] - m_lo * self.xp[0]
-            new_ylo = m_lo * x[0] + b_lo
-            m_hi = (self.yp[-1] - self.yp[-2]) / (self.xp[-1] - self.xp[-2])
-            b_hi = self.yp[-1] - m_hi * self.xp[-1]
-            new_yhi = m_hi * x[-1] + b_hi
-            self.xp = [x[0]] + self.xp + [x[-1]]
-            self.yp = [new_ylo] + self.yp + [new_yhi]
-            # ...ugly but working
-            return np.interp(x, self.xp, self.yp), 'deg'
+        except AttributeError:
+            self.taxes['boresight'] = None
+            return
+        x = self.taxes['seconds']['values'] - self.obs.obsinfo.obsid[self.obsid].offset
+        # Now extrapolate xp, yp to the limits of x...
+        m_lo = (self.yp[1] - self.yp[0]) / (self.xp[1] - self.xp[0])
+        b_lo = self.yp[0] - m_lo * self.xp[0]
+        new_ylo = m_lo * x[0] + b_lo
+        m_hi = (self.yp[-1] - self.yp[-2]) / (self.xp[-1] - self.xp[-2])
+        b_hi = self.yp[-1] - m_hi * self.xp[-1]
+        new_yhi = m_hi * x[-1] + b_hi
+        self.xp = [x[0]] + self.xp + [x[-1]]
+        self.yp = [new_ylo] + self.yp + [new_yhi]
+        # ...ugly but working
+        self.taxes['boresight'] = {
+            'values': np.interp(x, self.xp, self.yp),
+            'label': 'Degrees',
+            'offset': self.obs.obsinfo.obsid[self.obsid].offset
+        }
         
     def _get_wf_ticks(self, dat, ticks=8, precision=-1):
         if isinstance(dat[0], datetime):
@@ -227,15 +240,15 @@ class Look:
         self.obs = obs_base.Base()
         self.obs.read_obsinfo(obs=obsinfo)
         cnode = ','.join(self.cnode)
-        ants = ants.split(',')
-        pols = pols.split(',')
+        ants = OS.listify(ants)
+        pols = OS.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
         with open(script_fn, 'w') as fp:
             for obsid in self.obs.obsinfo.obsid:
                 for ant in ants:
                     for pol in pols:
                         print(f"on_obs.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} --dash -s", file=fp)
 
-    def dashboard(self, ant='2b', pol='xx', time_axis='diff', **kwargs):
+    def dashboard(self, ant='2b', pol='xx', time_axis='seconds', **kwargs):
         """
         Parameters
         ----------
@@ -243,7 +256,7 @@ class Look:
             antenna to use
         pol : str
             pol to use [xx,yy,xy,yz]
-        taxis : str
+        time_axis : str
             t/x axis to use in plot [a/b/d]
         kwargs : use_db, save, show_obsinfo, t_wfticks, f_wfticks
     
@@ -254,8 +267,8 @@ class Look:
         t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else [-120, 120, 20]
         f_wfticks = kwargs['f_wfticks'] if 'f_wfticks' in kwargs else 8
 
-        self.time_axis = time_axis[0].lower()  # values to use along the "x" axis
-        t_axis_vals, t_axis_label = self.get_time_axis()
+        self.time_axis = time_axis
+        self.get_time_axes()
         if ant:
             self.get_bl(ant, pol=pol)
 
@@ -274,11 +287,11 @@ class Look:
 
         # Water fall plot
         f_wfticks, f_wftick_labels = self._get_wf_ticks(self.freqs, ticks=f_wfticks)
-        t_wfticks, t_wftick_labels = self._get_wf_ticks(t_axis_vals, ticks=t_wfticks)
+        t_wfticks, t_wftick_labels = self._get_wf_ticks(self.taxes[time_axis]['values'], ticks=t_wfticks)
         axwf.imshow(toMag(self.data, use_db))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
-        axwf.set_ylabel(t_axis_label)
+        axwf.set_ylabel(self.taxes[time_axis]['label'])
         axwf.set_xticks(f_wfticks, f_wftick_labels)
         axwf.set_yticks(t_wfticks, t_wftick_labels)
 
@@ -290,11 +303,11 @@ class Look:
                 continue
             used_filter[clr] = filt
             tax2 = self.get_sum(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
-            axt.plot(t_axis_vals, tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
+            axt.plot(self.taxes[time_axis]['values'], tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
         if show_obsinfo:
             self.plot_obsinfo_times(axt)
         axt.legend()
-        axt.set_xlabel(t_axis_label)
+        axt.set_xlabel(self.taxes[time_axis]['label'])
         if use_db:
             axt.set_ylabel('dB')
         # axt.set_xlim(left=-15.0, right=15.0)

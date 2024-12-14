@@ -1,6 +1,7 @@
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
 ALL_LOS = ['A', 'B']
+AXIS_OPTIONS = {'b': 'boresight', 'd': 'datetime', 's': 'seconds'}
 
 
 def listify(x, d={}, sep=','):
