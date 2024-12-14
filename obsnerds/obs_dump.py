@@ -29,7 +29,7 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
                 
     with open(script_filename, 'w') as fp:
         for obsrec, data in files.items():
-            print(f"on_dump_autos.py {data['filename']} --ants {ants} --pols {pols}]", file=fp)
+            print(f"on_dump_autos.py {data['filename']} --ants {ants} --pols {pols}", file=fp)
             print(f"Adding {obsrec}")
 
 

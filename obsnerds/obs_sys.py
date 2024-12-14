@@ -56,13 +56,13 @@ def split_obsrec(obsrec):
     return {'obsrec': obsrec, 'source': source, 'mjd': mjd, 'obsid': obsid, 'lo': lo, 'cnode': cnode}
 
 
-def parse_uvh5_filename(fn):
+def parse_uvh5_filename(fullfn):
     pieces = split_obsrec('-_-_-_-')
     pieces.update({'filename': '-'})
-    data = fn.split('/')
+    data = fullfn.split('/')
     fn = data[-1]
     if fn.startswith('uvh5_'):
-        pieces.update({'filename': fn})
+        pieces.update({'filename': fullfn})
         sdat = fn.split('_')
         mjd = float(f"{sdat[1]}.{sdat[2]}")
         src = '_'.join([x for x in sdat[4:-1]])
