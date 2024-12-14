@@ -35,7 +35,7 @@ class Look:
         self.freqs = []
         if obsinput is not None:
             if obsinput.endswith('.uvh5') or obsinput.endswith('.npz'):
-                self.obsrec_list = obsinput(',')
+                self.obsrec_list = obsinput.split(',')
             else:
                 self.get_obsinfo()
                 self.obsid = obsinput
