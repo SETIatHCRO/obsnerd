@@ -335,7 +335,7 @@ class Look:
             fn = f"{self.obsid}_{ant}_{pol}.png"
             plt.savefig(fn)
 
-    def get_sum(self, over='freq', dmin=1990.0, dmax=1995.0, norm=False, plotting='amplitude', use_db=True):
+    def get_sum(self, over='freq', dmin=1990.0, dmax=1995.0, norm=False, use_db=True):
         ave = []
         if over[0].lower() == 'f':
             npfr = np.array(self.freqs)
