@@ -389,20 +389,16 @@ class Look:
         ax.imshow(pdata)
         ax.set_aspect('auto')
 
-    def plot_freqs(self, ch='all', plotting='amplitude', use_db=True):
+    def plot_freqs(self, use_db=True):
         plt.figure(f'Freqs: {self.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.times)):
-            if plotting[0].lower() == 'a':
-                pdata = toMag(self.data[i], use_db)
-            plt.plot(self.freqs, pdata)        
+            plt.plot(self.freqs, toMag(self.data[i], use_db))        
         plt.xlabel(self.freq_unit)
     
-    def plot_times(self, trange='all', plotting='amplitude', use_db=True):
+    def plot_times(self, use_db=True):
         plt.figure(f'Times: {self.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.freqs)):
-            if plotting[0].lower() == 'a':
-                pdata = toMag(self.data[:, i], use_db)
-            plt.plot(self.times.datetime, pdata)
+            plt.plot(self.times.datetime, toMag(self.data[:, i], use_db))
 
     def get_obsinfo(self):
         self.obs = obs_base.Base()
