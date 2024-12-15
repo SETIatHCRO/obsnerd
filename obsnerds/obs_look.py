@@ -258,18 +258,23 @@ class Look:
             pol to use [xx,yy,xy,yz]
         time_axis : str
             t axis to use in plot [datetime/boresight/seconds]
-        kwargs : use_db, save, t_wfticks, f_wfticks
+        kwargs : use_db, save, t_wfticks, f_wfticks, zoom_time, zoom_freq, filter_time
     
         """
         use_db = kwargs['use_db'] if 'use_db' in kwargs else True
         save = kwargs['save'] if 'save' in kwargs else False
         t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else [-120, 120, 20]
         f_wfticks = kwargs['f_wfticks'] if 'f_wfticks' in kwargs else 8
+        zoom_time = kwargs['zoom_time'] if 'zoom_time' in kwargs else False
+        zoom_freq = kwargs['zoom_freq'] if 'zoom_freq' in kwargs else False
+        filter_time = kwargs['filt_time'] if 'filt_time' in kwargs else {}
+        filter_time.update({'k': [self.times.jd[0], self.times.jd[-1]]})
 
         self.time_axis = OS.AXIS_OPTIONS[time_axis[0].lower()]
         self.get_time_axes()
-        if ant:
+        if ant:  # Otherwise use existing
             self.get_bl(ant, pol=pol)
+        self.apply_obsinfo_freq_filters(use_db=use_db)
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
@@ -295,47 +300,46 @@ class Look:
         axwf.set_yticks(t_wfticks, t_wftick_labels)
 
         # Time plot
-        filter = self.obs.obsinfo.filters[self.lo]
-        used_filter = {}
-        for clr, filt in filter.items():
-            if filt[1] < self.freqs[0] or filt[0] > self.freqs[-1]:
-                continue
-            used_filter[clr] = filt
-            tax2 = self.get_sum(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
-            axt.plot(self.taxes[time_axis]['values'], tax2, label=f"{filt[0]}-{filt[1]}", color=clr)
+        for clr, data in self.filtered_power.items():
+            axt.plot(self.taxes[time_axis]['values'], data, label=f"{self.used_filters[clr][0]}-{self.used_filters[clr][1]}", color=clr)
         axt.legend()
         axt.set_xlabel(self.taxes[time_axis]['label'])
-        if use_db:
-            axt.set_ylabel('dB')
-        # axt.set_xlim(left=-15.0, right=15.0)
+        ylabel = 'dB' if use_db else 'linear'
+        axt.set_ylabel(ylabel)
+        if zoom_time:
+            axt.set_xlim(left=zoom_time[0], right=zoom_time[1])
 
         # Frequency plot
         for i in range(len(self.times)):
             axf.plot(self.freqs, toMag(self.data[i], use_db), '0.8')
         axf.set_xlabel(self.freq_unit)
-        try:
-            dmin = self.obs.obsinfo.obsid[self.obsid].t0.jd
-            dmax = self.obs.obsinfo.obsid[self.obsid].t1.jd
-            if dmin < self.times.jd[0]:
-                dmin = self.times.jd[0]
-        except AttributeError:
-            dmin = self.times.jd[0]
-            dmax = self.times.jd[-1]
-        fax1 = self.get_sum(over='time', dmin=dmin, dmax=dmax, norm=True, use_db=use_db)
-        axf.plot(self.freqs, fax1, 'k', linewidth=2)
-        if use_db:
-            axf.set_ylabel('dB')
+        for clr, filt in filter_time.items():
+            fax1 = self.power_filter(over='time', dmin=filt[0], dmax=filt[1], norm=True, use_db=use_db)
+            axf.plot(self.freqs, fax1, clr, linewidth=2 if clr=='k' else 1)
+        axf.set_ylabel(ylabel)
         axmin, axmax = axf.axis()[2], axf.axis()[3]
-        for clr, filt in used_filter.items():
+        for clr, filt in self.used_filters.items():
             axf.plot([filt[0], filt[0]], [axmin, axmax], color=clr)
             axf.plot([filt[1], filt[1]], [axmin, axmax], color=clr)
         axf.set_ylim(bottom=axmin, top=axmax)
+        if zoom_freq:
+            axt.set_xlim(left=zoom_freq[0], right=zoom_freq[1])
 
         if save:
             fn = f"{self.obsid}_{ant}_{pol}.png"
             plt.savefig(fn)
 
-    def get_sum(self, over='freq', dmin=1990.0, dmax=1995.0, norm=False, use_db=True):
+    def apply_obsinfo_freq_filters(self, use_db=True):
+        self.filtered_power = {}
+        self.used_filters = {}
+        filters = self.obs.obsinfo.filters[self.lo]
+        for clr, filt in filters.items():
+            if filt[1] < self.freqs[0] or filt[0] > self.freqs[-1]:
+                continue
+            self.used_filters[clr] = filt
+            self.filtered_power[clr] = self.power_filter(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
+
+    def power_filter(self, over='freq', dmin=1990.0, dmax=1995.0, norm=False, use_db=True):
         ave = []
         if over[0].lower() == 'f':
             npfr = np.array(self.freqs)
