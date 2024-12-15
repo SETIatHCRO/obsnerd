@@ -15,6 +15,64 @@ def toMag(x, use_db=True):
         return np.abs(x)
 
 
+class Filter:
+    def __init__(self):
+        self.used = False
+        self.type = None
+        self.unit = None
+        self.lo = None
+        self.hi = None
+        self.norm = False
+        self.use_dB = False
+        self.color = 'k'
+        self.shape = 'rect'  # only option for now
+        self.invert = False
+
+    def apply(self, x, data, **kwargs):
+        """
+        Parameters
+        ----------
+        x : array/list
+            x axis values
+        y : array/list
+            y axis values
+        kwargs : see list under __init__
+            need at least lo/hi to set bounds
+
+        """
+        for key, val in kwargs.items():
+            setattr(self, key, val)
+        if self.lo < x[0] or self.hi > x[-1]:
+            self.used = False
+            return False
+
+        ave = []
+        if not isinstance(x, np.ndarray):
+            x = np.array(x)
+
+        lp = np.where(x >= self.lo)
+        up = np.where(x[lp] <= self.hi)
+        ind = lp[0][up[0]]
+        for i in range(len(data[i])):
+            ave.append(np.sum(np.abs(data[i][ind])))
+
+
+        ave = np.array(ave)
+        if norm:
+            ave /= len(self.times)
+        elif over[0].lower() == 't':
+            lp = np.where(self.times.jd >= dmin)
+            up = np.where(self.times.jd[lp] <= dmax)
+            ind = lp[0][up[0]]
+            for i in range(len(self.freqs)):
+                ave.append(np.sum(np.abs(self.data[:, i][ind])))
+            ave = np.array(ave)
+            if norm:
+                ave /= len(self.freqs)
+        ave = toMag(ave, use_db)
+        return ave
+
+
 class Look:
     def __init__(self, obsinput=None, lo='A', cnode='all', freq_unit='MHz', dir_data='.'):
         """
@@ -33,6 +91,7 @@ class Look:
         self.dir_data = dir_data
         self.npzfile = {}
         self.freqs = []
+        self.reset_filters()
         if obsinput is not None:
             if obsinput.endswith('.uvh5') or obsinput.endswith('.npz'):
                 self.obsrec_files = obsinput.split(',')
@@ -329,15 +388,17 @@ class Look:
             fn = f"{self.obsid}_{ant}_{pol}.png"
             plt.savefig(fn)
 
+    def reset_filters(self):
+        self.filters = []
+
     def apply_obsinfo_freq_filters(self, use_db=True):
-        self.filtered_power = {}
-        self.used_filters = {}
+        self.reset_filters()
         filters = self.obs.obsinfo.filters[self.lo]
         for clr, filt in filters.items():
             if filt[1] < self.freqs[0] or filt[0] > self.freqs[-1]:
                 continue
-            self.used_filters[clr] = filt
-            self.filtered_power[clr] = self.power_filter(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
+            self.used_filters['f'][clr] = filt
+            self.filtered_power['f'][clr] = self.power_filter(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
 
     def power_filter(self, over='freq', dmin=1990.0, dmax=1995.0, norm=False, use_db=True):
         ave = []
