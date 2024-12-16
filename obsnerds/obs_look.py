@@ -283,7 +283,7 @@ class Look:
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
-    def dashboard_gen(self, obsinfo, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b'):
+    def dashboard_gen(self, obsinfo, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b', show_diff=False):
         """
         Parameters
         ----------
@@ -304,11 +304,12 @@ class Look:
         cnode = ','.join(self.cnode)
         ants = OS.listify(ants)
         pols = OS.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
+        show_diff = ' --show_diff ' if show_diff else ''
         with open(script_fn, 'w') as fp:
             for obsid in self.obs.obsinfo.obsid:
                 for ant in ants:
                     for pol in pols:
-                        print(f"on_obs.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} --dash -s", file=fp)
+                        print(f"on_obs.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} {show_diff} --dash -s", file=fp)
 
     def dashboard(self, ant='2b', pol='xx', time_axis='seconds', transit_time=4.0, **kwargs):
         """
@@ -332,6 +333,7 @@ class Look:
         zoom_time = kwargs['zoom_time'] if 'zoom_time' in kwargs else False
         zoom_freq = kwargs['zoom_freq'] if 'zoom_freq' in kwargs else False
         filter_time = kwargs['filt_time'] if 'filt_time' in kwargs else {}
+        show_diff = kwargs['show_diff'] if 'show_diff' in kwargs else False
 
         self.time_axis = OS.AXIS_OPTIONS[time_axis[0].lower()]
         self.get_time_axes()
@@ -352,13 +354,13 @@ class Look:
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
-        suptitle = f"{self.obsid}: {self.obs.obsinfo.obsid[self.obsid].tref.datetime.isoformat()}"
+        self.suptitle = f"{self.obsid}: {self.obs.obsinfo.obsid[self.obsid].tref.datetime.isoformat()}"
         try:
-            suptitle += f"  ({self.obs.obsinfo.obsid[self.obsid].bf_distance} km)"
+            self.suptitle += f"  ({self.obs.obsinfo.obsid[self.obsid].bf_distance} km)"
         except (AttributeError, KeyError):
             pass
-        suptitle += f'  --  ({self.a},{self.b}) {self.pol}'
-        plt.suptitle(suptitle)
+        self.suptitle += f'  --  ({self.a},{self.b}) {self.pol}'
+        plt.suptitle(self.suptitle)
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
         axt = plt.subplot2grid((2, 2), (0, 1), rowspan=1, colspan=1)
         axf = plt.subplot2grid((2, 2), (1, 1), rowspan=1, colspan=1)
@@ -418,8 +420,25 @@ class Look:
         else:
             axf.set_xlim(left=self.freqs[0], right=self.freqs[-1])
 
+        fn = f"{self.obsid}_{ant}_{pol}.png"
         if save:
-            fn = f"{self.obsid}_{ant}_{pol}.png"
+            plt.savefig(fn)
+
+        if show_diff:
+            self.plot_diff(use_dB=use_dB, save=save, fn=f'Diff_{fn}')
+
+    def plot_diff(self, use_dB=True, save=False, fn=None):
+        plt.figure("On / Off: "+self.suptitle, figsize=(12,6))
+        plt.title("On / Off: "+self.suptitle)
+        dp = (self.filters[self.boresight['on']].power / self.filters[self.boresight['off']].power)
+        plt.plot(self.freqs, toMag(dp, use_dB), color='k')
+        plt.fill_between(self.freqs, toMag(dp, use_dB), color='0.8')
+        plt.xlabel('Freq [MHz]')
+        ylabel = 'dB' if use_dB else ''
+        plt.ylabel(ylabel)
+        plt.grid()
+        plt.axis([1900.0, 2060, -0.35, 3.5])
+        if save:
             plt.savefig(fn)
 
     def all_wf(self, pol='xx', use_dB=True, save=False):
@@ -438,17 +457,6 @@ class Look:
         if save:
             fn = f"{self.obsid}_{pol}.png"
             plt.savefig(fn)
-
-    def plot_diff(self, use_dB=True):
-        plt.figure("On / Off", figsize=(12,6))
-        dp = (self.filters[self.boresight['on']].power / self.filters[self.boresight['off']].power)
-        plt.plot(self.freqs, toMag(dp, use_dB), color='k')
-        plt.fill_between(self.freqs, toMag(dp, use_dB), color='0.8')
-        plt.xlabel('Freq [MHz]')
-        ylabel = 'dB' if use_dB else ''
-        plt.ylabel(ylabel)
-        plt.grid()
-        plt.axes(ymin=-0.5, ymax=8)
 
     def plot_wf(self, plotting='amplitude', use_dB=True):
         ptitle = (f'WF: {self.obsid} - ({self.a},{self.b}){self.pol}')
