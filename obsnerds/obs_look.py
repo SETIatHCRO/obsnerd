@@ -440,13 +440,15 @@ class Look:
             plt.savefig(fn)
 
     def plot_diff(self, use_dB=True):
-        plt.figure("On / Off")
+        plt.figure("On / Off", figsize=(12,6))
         dp = (self.filters[self.boresight['on']].power / self.filters[self.boresight['off']].power)
-        plt.fill_between(self.freqs, toMag(dp, use_dB))
+        plt.plot(self.freqs, toMag(dp, use_dB), color='k')
+        plt.fill_between(self.freqs, toMag(dp, use_dB), color='0.8')
         plt.xlabel('Freq [MHz]')
         ylabel = 'dB' if use_dB else ''
         plt.ylabel(ylabel)
         plt.grid()
+        plt.axes(ymin=-0.5, ymax=8)
 
     def plot_wf(self, plotting='amplitude', use_dB=True):
         ptitle = (f'WF: {self.obsid} - ({self.a},{self.b}){self.pol}')
