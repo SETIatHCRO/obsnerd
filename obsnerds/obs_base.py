@@ -90,7 +90,7 @@ class Base:
         
         parameters = {'name'}
         self.obsinfo.obsinfo_keys = ['obsinfo_keys']
-        print(f"Reading {self.obsinfo.filename}")
+        print(f"Reading {self.obsinfo.filename}", end=' - ')
         with open(self.obsinfo.filename, 'r') as fp:
             json_input = json.load(fp)
             for key, val in json_input.items():  # Get non-'Sources' info
@@ -112,7 +112,7 @@ class Base:
                     except AttributeError:
                         setattr(self.obsinfo.array, key, [value])
                     setattr(self.obsinfo.obsid[src], key, value)
-        print(f"\t{', '.join(self.obsinfo.array.name)}")
+        # print(f"\t{', '.join(self.obsinfo.array.name)}")
         print(f"\t{', '.join(list(parameters))}")
         for par in [x for x in parameters if x[0]=='t']:
             value = Time(copy(getattr(self.obsinfo.array, par)))

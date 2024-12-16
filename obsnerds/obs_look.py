@@ -8,27 +8,35 @@ import os.path as path
 from . import obs_sys as OS
 
 
-def toMag(x, use_db=True):
-    if use_db:
+def toMag(x, use_dB=True):
+    if use_dB:
         return 10.0 * np.log10(np.abs(x))
     else:
         return np.abs(x)
 
 
 class Filter:
-    def __init__(self):
-        self.used = False
-        self.type = None
-        self.unit = None
-        self.lo = None
-        self.hi = None
-        self.norm = False
-        self.use_dB = False
-        self.color = 'k'
+    def __init__(self, ftype=None, axis=None, unit=None, lo=None, hi=None, norm=False, use_dB=False, color='k', shape='rect', invert=False):
+        self.use = True
+        self.ftype = ftype
+        self.axis = axis
+        self.unit = unit
+        self.lo = lo
+        self.hi = hi
+        self.norm = norm
+        self.use_dB = use_dB
+        self.color = color
         self.shape = 'rect'  # only option for now
-        self.invert = False
+        self.invert = invert
 
-    def apply(self, x, data, **kwargs):
+    def __str__(self):
+        s = '<'
+        for p in ['ftype', 'axis', 'unit', 'lo', 'hi']:
+            s += f"{p}={getattr(self, p)},\t"
+        s += '>'
+        return s
+
+    def apply(self, x, data, use_dB=None):
         """
         Parameters
         ----------
@@ -37,40 +45,38 @@ class Filter:
         y : array/list
             y axis values
         kwargs : see list under __init__
-            need at least lo/hi to set bounds
 
         """
-        for key, val in kwargs.items():
-            setattr(self, key, val)
-        if self.lo < x[0] or self.hi > x[-1]:
-            self.used = False
-            return False
-
-        ave = []
+        self.use_dB = self.use_dB if use_dB is None else use_dB
+        if self.hi < x[0] or self.lo > x[-1]:
+            self.use = False
+            return
+        self.use = True
         if not isinstance(x, np.ndarray):
             x = np.array(x)
-
         lp = np.where(x >= self.lo)
         up = np.where(x[lp] <= self.hi)
-        ind = lp[0][up[0]]
-        for i in range(len(data[i])):
-            ave.append(np.sum(np.abs(data[i][ind])))
+        self.inds = lp[0][up[0]]
+        filterarr = np.zeros(data.shape)
+        self.indicator = [[self.lo, self.hi]]
+        if self.invert:
+            self._invert(len(x), xmm=[min(x), max(x)])
+        if self.axis == 0:
+            filterarr[self.inds, :] = 1
+        elif self.axis == 1:
+            filterarr[:, self.inds] = 1
+        power = np.sum(data * filterarr, axis=self.axis)
+        power = power if not self.norm else power / len(self.inds)
+        self.power = toMag(power, self.use_dB)
+        return self.use
 
-
-        ave = np.array(ave)
-        if norm:
-            ave /= len(self.times)
-        elif over[0].lower() == 't':
-            lp = np.where(self.times.jd >= dmin)
-            up = np.where(self.times.jd[lp] <= dmax)
-            ind = lp[0][up[0]]
-            for i in range(len(self.freqs)):
-                ave.append(np.sum(np.abs(self.data[:, i][ind])))
-            ave = np.array(ave)
-            if norm:
-                ave /= len(self.freqs)
-        ave = toMag(ave, use_db)
-        return ave
+    def _invert(self, N, xmm):
+        new_ind = []
+        for i in range(N):
+            if i not in self.inds:
+                new_ind.append(i)
+        self.inds = new_ind
+        self.indicator = [[xmm[0], self.lo], [self.hi, xmm[1]]]
 
 
 class Look:
@@ -91,7 +97,7 @@ class Look:
         self.dir_data = dir_data
         self.npzfile = {}
         self.freqs = []
-        self.reset_filters()
+        self.filters = []
         if obsinput is not None:
             if obsinput.endswith('.uvh5') or obsinput.endswith('.npz'):
                 self.obsrec_files = obsinput.split(',')
@@ -307,7 +313,7 @@ class Look:
                     for pol in pols:
                         print(f"on_obs.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} --dash -s", file=fp)
 
-    def dashboard(self, ant='2b', pol='xx', time_axis='seconds', **kwargs):
+    def dashboard(self, ant='2b', pol='xx', time_axis='seconds', transit_time=4.0, **kwargs):
         """
         Parameters
         ----------
@@ -317,23 +323,32 @@ class Look:
             pol to use [xx,yy,xy,yz]
         time_axis : str
             t axis to use in plot [datetime/boresight/seconds]
-        kwargs : use_db, save, t_wfticks, f_wfticks, zoom_time, zoom_freq, filter_time
+        transit_time : float
+            time around zero to average
+        kwargs : use_dB, save, t_wfticks, f_wfticks, zoom_time, zoom_freq, filter_time
     
         """
-        use_db = kwargs['use_db'] if 'use_db' in kwargs else True
+        use_dB = kwargs['use_dB'] if 'use_dB' in kwargs else True
         save = kwargs['save'] if 'save' in kwargs else False
         t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else [-120, 120, 20]
         f_wfticks = kwargs['f_wfticks'] if 'f_wfticks' in kwargs else 8
         zoom_time = kwargs['zoom_time'] if 'zoom_time' in kwargs else False
         zoom_freq = kwargs['zoom_freq'] if 'zoom_freq' in kwargs else False
         filter_time = kwargs['filt_time'] if 'filt_time' in kwargs else {}
-        filter_time.update({'k': [self.times.jd[0], self.times.jd[-1]]})
 
         self.time_axis = OS.AXIS_OPTIONS[time_axis[0].lower()]
         self.get_time_axes()
         if ant:  # Otherwise use existing
             self.get_bl(ant, pol=pol)
-        self.apply_obsinfo_freq_filters(use_db=use_db)
+        # Set up filters
+        self.filters = []
+        for clr, filt in self.obs.obsinfo.filters[self.lo].items():
+            self.filters.append(Filter(color=clr, ftype='freq', axis=1, unit='MHz', lo=filt[0], hi=filt[1]))
+        tt = transit_time / 2.0
+        self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='r'))
+        self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True))
+        for clr, filt in filter_time:
+            self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr))
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
@@ -351,7 +366,7 @@ class Look:
         # Water fall plot
         f_wfticks, f_wftick_labels = self._get_wf_ticks(self.freqs, ticks=f_wfticks)
         t_wfticks, t_wftick_labels = self._get_wf_ticks(self.taxes[time_axis]['values'], ticks=t_wfticks)
-        axwf.imshow(toMag(self.data, use_db))
+        axwf.imshow(toMag(self.data, use_dB))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
         axwf.set_ylabel(self.taxes[time_axis]['label'])
@@ -359,78 +374,62 @@ class Look:
         axwf.set_yticks(t_wfticks, t_wftick_labels)
 
         # Time plot
-        for clr, data in self.filtered_power.items():
-            axt.plot(self.taxes[time_axis]['values'], data, label=f"{self.used_filters[clr][0]}-{self.used_filters[clr][1]}", color=clr)
-        axt.legend()
+        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='freq']:
+            f = self.filters[iii]
+            if f.apply(self.freqs, self.data, use_dB=use_dB):
+                axt.plot(self.taxes[time_axis]['values'], f.power, color=f.color) #label=f"{self.used_filters[clr][0]}-{self.used_filters[clr][1]}", color=clr)
+        # axt.legend()
         axt.set_xlabel(self.taxes[time_axis]['label'])
-        ylabel = 'dB' if use_db else 'linear'
+        ylabel = 'dB' if use_dB else 'linear'
         axt.set_ylabel(ylabel)
-        if zoom_time:
-            axt.set_xlim(left=zoom_time[0], right=zoom_time[1])
+        axtlim = axt.axis()
 
         # Frequency plot
         for i in range(len(self.times)):
-            axf.plot(self.freqs, toMag(self.data[i], use_db), '0.8')
+            axf.plot(self.freqs, toMag(self.data[i], use_dB), '0.8')
         axf.set_xlabel(self.freq_unit)
-        for clr, filt in filter_time.items():
-            fax1 = self.power_filter(over='time', dmin=filt[0], dmax=filt[1], norm=True, use_db=use_db)
-            axf.plot(self.freqs, fax1, clr, linewidth=2 if clr=='k' else 1)
+        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='time']:
+            f = self.filters[iii]
+            if f.apply(self.taxes[time_axis]['values'], self.data, use_dB=use_dB):
+                axf.plot(self.freqs, f.power, color=f.color) #label=f"{self.used_filters[clr][0]}-{self.used_filters[clr][1]}", color=clr)
         axf.set_ylabel(ylabel)
-        axmin, axmax = axf.axis()[2], axf.axis()[3]
-        for clr, filt in self.used_filters.items():
-            axf.plot([filt[0], filt[0]], [axmin, axmax], color=clr)
-            axf.plot([filt[1], filt[1]], [axmin, axmax], color=clr)
-        axf.set_ylim(bottom=axmin, top=axmax)
+        axflim = axf.axis()
+
+        # Indicate filters and set limits
+        # ... time
+        axtshade = axtlim[2] + 0.15 * (axtlim[3] - axtlim[2])
+        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='time' and self.filters[i].use]:
+            f = self.filters[iii]
+            for xlim in f.indicator:
+                axt.fill_between(xlim, [axtshade, axtshade], color=f.color)
+        axt.set_ylim(bottom=axtlim[2], top=axtlim[3])
+        if zoom_time:
+            axt.set_xlim(left=zoom_time[0], right=zoom_time[1])
+        else:
+            axt.set_xlim(left=self.taxes[time_axis]['values'][0], right=self.taxes[time_axis]['values'][-1])
+        # ... freq
+        axfshade = axflim[2] + 0.15 * (axflim[3] - axflim[2])
+        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='freq' and self.filters[i].use]:
+            f = self.filters[iii]
+            for xlim in f.indicator:
+                axf.fill_between(xlim, [axfshade, axfshade], color=f.color)
+        axf.set_ylim(bottom=axflim[2], top=axflim[3])
         if zoom_freq:
-            axt.set_xlim(left=zoom_freq[0], right=zoom_freq[1])
+            axf.set_xlim(left=zoom_freq[0], right=zoom_freq[1])
+        else:
+            axf.set_xlim(left=self.freqs[0], right=self.freqs[-1])
 
         if save:
             fn = f"{self.obsid}_{ant}_{pol}.png"
             plt.savefig(fn)
 
-    def reset_filters(self):
-        self.filters = []
-
-    def apply_obsinfo_freq_filters(self, use_db=True):
-        self.reset_filters()
-        filters = self.obs.obsinfo.filters[self.lo]
-        for clr, filt in filters.items():
-            if filt[1] < self.freqs[0] or filt[0] > self.freqs[-1]:
-                continue
-            self.used_filters['f'][clr] = filt
-            self.filtered_power['f'][clr] = self.power_filter(over='freq', dmin=filt[0], dmax=filt[1], use_db=use_db)
-
-    def power_filter(self, over='freq', dmin=1990.0, dmax=1995.0, norm=False, use_db=True):
-        ave = []
-        if over[0].lower() == 'f':
-            npfr = np.array(self.freqs)
-            lp = np.where(npfr >= dmin)
-            up = np.where(npfr[lp] <= dmax)
-            ind = lp[0][up[0]]
-            for i in range(len(self.times)):
-                ave.append(np.sum(np.abs(self.data[i][ind])))
-            ave = np.array(ave)
-            if norm:
-                ave /= len(self.times)
-        elif over[0].lower() == 't':
-            lp = np.where(self.times.jd >= dmin)
-            up = np.where(self.times.jd[lp] <= dmax)
-            ind = lp[0][up[0]]
-            for i in range(len(self.freqs)):
-                ave.append(np.sum(np.abs(self.data[:, i][ind])))
-            ave = np.array(ave)
-            if norm:
-                ave /= len(self.freqs)
-        ave = toMag(ave, use_db)
-        return ave
-
-    def all_wf(self, pol='xx', use_db=True, save=False):
+    def all_wf(self, pol='xx', use_dB=True, save=False):
         fig, axs = plt.subplots(nrows=4, ncols=7, figsize=(16, 9), tight_layout=True)
         ctr = 0
         for i in range(4):
             for j in range(7):
                 self.get_bl(self.ant_names[ctr], pol=pol)
-                axs[i][j].imshow(10.0 * toMag(self.data, use_db))
+                axs[i][j].imshow(10.0 * toMag(self.data, use_dB))
                 axs[i][j].set_aspect('auto')
                 axs[i][j].set_title(f"{self.a}")
                 axs[i][j].set_xticks([])
@@ -441,25 +440,25 @@ class Look:
             fn = f"{self.obsid}_{pol}.png"
             plt.savefig(fn)
 
-    def plot_wf(self, plotting='amplitude', use_db=True):
+    def plot_wf(self, plotting='amplitude', use_dB=True):
         ptitle = (f'WF: {self.obsid} - ({self.a},{self.b}){self.pol}')
         fig, ax = plt.subplots()
         ax.set_title(ptitle)
         if plotting[0].lower() == 'a':
-            pdata = 10.0 * toMag(self.data, use_db)
+            pdata = 10.0 * toMag(self.data, use_dB)
         ax.imshow(pdata)
         ax.set_aspect('auto')
 
-    def plot_freqs(self, use_db=True):
+    def plot_freqs(self, use_dB=True):
         plt.figure(f'Freqs: {self.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.times)):
-            plt.plot(self.freqs, toMag(self.data[i], use_db))        
+            plt.plot(self.freqs, toMag(self.data[i], use_dB))        
         plt.xlabel(self.freq_unit)
     
-    def plot_times(self, use_db=True):
+    def plot_times(self, use_dB=True):
         plt.figure(f'Times: {self.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.freqs)):
-            plt.plot(self.times.datetime, toMag(self.data[:, i], use_db))
+            plt.plot(self.times.datetime, toMag(self.data[:, i], use_dB))
 
     def get_obsinfo(self):
         self.obs = obs_base.Base()
