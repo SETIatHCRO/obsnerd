@@ -12,6 +12,7 @@ ap.add_argument('--cnode', help="Correlator nodes to use", default='all')
 ap.add_argument('-a', '--ants', help='antennas to generate for', default='2b')
 ap.add_argument('-p', '--pols', help="polarization to generate for", default='xx')
 ap.add_argument('-t', '--time_axis', help="Type of 'time' axis for dashboard ([d]atetime, [s]econds, [b]oresight)", default='boresight')
+ap.add_argument('--show_diff', help="Flag to include show_diff", action='store_true')
 
 
 args = ap.parse_args()
@@ -19,4 +20,4 @@ args = ap.parse_args()
 args.time_axis = AXIS_OPTIONS[args.time_axis[0].lower()]
 
 obs = obs_look.Look(obsinput=None, lo=args.lo, cnode=args.cnode)
-obs.dashboard_gen(obsinfo=args.obsinfo, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.time_axis)
+obs.dashboard_gen(obsinfo=args.obsinfo, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.time_axis, show_diff=args.show_diff)
