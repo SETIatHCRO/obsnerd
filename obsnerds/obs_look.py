@@ -350,7 +350,6 @@ class Look:
         for clr, filt in self.obs.obsinfo.filters[self.lo].items():
             self.filters[f"freq:{filt[0]}-{filt[1]}:{clr}"] = Filter(color=clr, ftype='freq', axis=1, unit='MHz', lo=filt[0], hi=filt[1])
 
-
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
         self.suptitle = f"{self.obsid}: {self.obs.obsinfo.obsid[self.obsid].tref.datetime.isoformat()}"
@@ -422,10 +421,10 @@ class Look:
         if show_diff:
             self.plot_diff(use_dB=use_dB, save=save, fn=f'Diff_{fn}')
 
-    def plot_diff(self, use_dB=True, save=False, fn=None):
+    def plot_diff(self, use_dB=True, save=False, fn=None, num='on:boresight', den='off:boresight'):
         plt.figure("On / Off: "+self.suptitle, figsize=(12,6))
         plt.title("On / Off: "+self.suptitle)
-        dp = self.filters['on:boresight'].power / self.filters['off:boresight'].power
+        dp = self.filters[num].power / self.filters[den].power
         plt.plot(self.freqs, toMag(dp, use_dB), color='k')
         plt.fill_between(self.freqs, toMag(dp, use_dB), color='0.8')
         plt.xlabel('Freq [MHz]')
