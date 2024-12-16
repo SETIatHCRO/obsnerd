@@ -94,7 +94,7 @@ class Look:
         self.dir_data = dir_data
         self.npzfile = {}
         self.freqs = []
-        self.filters = []
+        self.filters = {}
         if obsinput is not None:
             if obsinput.endswith('.uvh5') or obsinput.endswith('.npz'):
                 self.obsrec_files = obsinput.split(',')
@@ -341,15 +341,14 @@ class Look:
             self.get_bl(ant, pol=pol)
 
         # Set up filters
-        self.filters = []
+        self.filters = {}
         tt = transit_time / 2.0
-        self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='r'))
-        self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True))
-        self.boresight = {'on': 0, 'off': 1}
+        self.filters['on:boresight'] = Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='r')
+        self.filters['off:boresight'] = Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True)
         for clr, filt in filter_time:
-            self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr))
+            self.filters[f"time:{filt[0]}-{filt[1]}:{clr}"] = Filter(ftype='time', axis=0, unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr)
         for clr, filt in self.obs.obsinfo.filters[self.lo].items():
-            self.filters.append(Filter(color=clr, ftype='freq', axis=1, unit='MHz', lo=filt[0], hi=filt[1]))
+            self.filters[f"freq:{filt[0]}-{filt[1]}:{clr}"] = Filter(color=clr, ftype='freq', axis=1, unit='MHz', lo=filt[0], hi=filt[1])
 
 
         plt.figure('Dashboard', figsize=(16, 9))
@@ -376,10 +375,9 @@ class Look:
         axwf.set_yticks(t_wfticks, t_wftick_labels)
 
         # Time plot
-        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='freq']:
-            f = self.filters[iii]
-            if f.apply(self.freqs, self.data):
-                axt.plot(self.taxes[time_axis]['values'], toMag(f.power, use_dB), color=f.color)
+        for key in [k for k in self.filters if self.filters[k].ftype=='freq']:
+            if self.filters[key].apply(self.freqs, self.data):
+                axt.plot(self.taxes[time_axis]['values'], toMag(self.filters[key].power, use_dB), color=self.filters[key].color)
         axt.set_xlabel(self.taxes[time_axis]['label'])
         ylabel = 'dB' if use_dB else 'linear'
         axt.set_ylabel(ylabel)
@@ -389,20 +387,18 @@ class Look:
         for i in range(len(self.times)):
             axf.plot(self.freqs, toMag(self.data[i], use_dB), '0.8')
         axf.set_xlabel(self.freq_unit)
-        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='time']:
-            f = self.filters[iii]
-            if f.apply(self.taxes[time_axis]['values'], self.data):
-                axf.plot(self.freqs, toMag(f.power, use_dB), color=f.color)
+        for key in [k for k in self.filters if self.filters[k].ftype=='time']:
+            if self.filters[key].apply(self.taxes[time_axis]['values'], self.data):
+                axf.plot(self.freqs, toMag(self.filters[key].power, use_dB), color=self.filters[key].color)
         axf.set_ylabel(ylabel)
         axflim = axf.axis()
 
         # Indicate filters and set limits
         # ... time
         axtshade = axtlim[2] + 0.15 * (axtlim[3] - axtlim[2])
-        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='time' and self.filters[i].use]:
-            f = self.filters[iii]
-            for xlim in f.indicator:
-                axt.fill_between(xlim, [axtshade, axtshade], color=f.color)
+        for key in [k for k in self.filters if self.filters[k].ftype=='time' and self.filters[k].use]:
+            for xlim in self.filters[key].indicator:
+                axt.fill_between(xlim, [axtshade, axtshade], color=self.filters[key].color)
         axt.set_ylim(bottom=axtlim[2], top=axtlim[3])
         if zoom_time:
             axt.set_xlim(left=zoom_time[0], right=zoom_time[1])
@@ -410,10 +406,9 @@ class Look:
             axt.set_xlim(left=self.taxes[time_axis]['values'][0], right=self.taxes[time_axis]['values'][-1])
         # ... freq
         axfshade = axflim[2] + 0.15 * (axflim[3] - axflim[2])
-        for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='freq' and self.filters[i].use]:
-            f = self.filters[iii]
-            for xlim in f.indicator:
-                axf.fill_between(xlim, [axfshade, axfshade], color=f.color)
+        for key in [k for k in self.filters if self.filters[k].ftype=='freq' and self.filters[k].use]:
+            for xlim in self.filters[key].indicator:
+                axf.fill_between(xlim, [axfshade, axfshade], color=self.filters[key].color)
         axf.set_ylim(bottom=axflim[2], top=axflim[3])
         if zoom_freq:
             axf.set_xlim(left=zoom_freq[0], right=zoom_freq[1])
@@ -430,7 +425,7 @@ class Look:
     def plot_diff(self, use_dB=True, save=False, fn=None):
         plt.figure("On / Off: "+self.suptitle, figsize=(12,6))
         plt.title("On / Off: "+self.suptitle)
-        dp = (self.filters[self.boresight['on']].power / self.filters[self.boresight['off']].power)
+        dp = self.filters['on:boresight'].power / self.filters['off:boresight'].power
         plt.plot(self.freqs, toMag(dp, use_dB), color='k')
         plt.fill_between(self.freqs, toMag(dp, use_dB), color='0.8')
         plt.xlabel('Freq [MHz]')
