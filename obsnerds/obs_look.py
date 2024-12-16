@@ -16,7 +16,7 @@ def toMag(x, use_dB=True):
 
 
 class Filter:
-    def __init__(self, ftype=None, axis=None, unit=None, lo=None, hi=None, norm=False, use_dB=False, color='k', shape='rect', invert=False):
+    def __init__(self, ftype=None, axis=None, unit=None, lo=None, hi=None, norm=False, color='k', shape='rect', invert=False):
         self.use = True
         self.ftype = ftype
         self.axis = axis
@@ -24,7 +24,6 @@ class Filter:
         self.lo = lo
         self.hi = hi
         self.norm = norm
-        self.use_dB = use_dB
         self.color = color
         self.shape = 'rect'  # only option for now
         self.invert = invert
@@ -47,7 +46,6 @@ class Filter:
         kwargs : see list under __init__
 
         """
-        self.use_dB = self.use_dB if use_dB is None else use_dB
         if self.hi < x[0] or self.lo > x[-1]:
             self.use = False
             return
@@ -66,8 +64,7 @@ class Filter:
         elif self.axis == 1:
             filterarr[:, self.inds] = 1
         power = np.sum(data * filterarr, axis=self.axis)
-        power = power if not self.norm else power / len(self.inds)
-        self.power = toMag(power, self.use_dB)
+        self.power = power if not self.norm else power / len(self.inds)
         return self.use
 
     def _invert(self, N, xmm):
@@ -340,15 +337,18 @@ class Look:
         self.get_time_axes()
         if ant:  # Otherwise use existing
             self.get_bl(ant, pol=pol)
+
         # Set up filters
         self.filters = []
-        for clr, filt in self.obs.obsinfo.filters[self.lo].items():
-            self.filters.append(Filter(color=clr, ftype='freq', axis=1, unit='MHz', lo=filt[0], hi=filt[1]))
         tt = transit_time / 2.0
         self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='r'))
         self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True))
+        self.boresight = {'on': 0, 'off': 1}
         for clr, filt in filter_time:
             self.filters.append(Filter(ftype='time', axis=0, unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr))
+        for clr, filt in self.obs.obsinfo.filters[self.lo].items():
+            self.filters.append(Filter(color=clr, ftype='freq', axis=1, unit='MHz', lo=filt[0], hi=filt[1]))
+
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
@@ -376,9 +376,8 @@ class Look:
         # Time plot
         for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='freq']:
             f = self.filters[iii]
-            if f.apply(self.freqs, self.data, use_dB=use_dB):
-                axt.plot(self.taxes[time_axis]['values'], f.power, color=f.color) #label=f"{self.used_filters[clr][0]}-{self.used_filters[clr][1]}", color=clr)
-        # axt.legend()
+            if f.apply(self.freqs, self.data):
+                axt.plot(self.taxes[time_axis]['values'], toMag(f.power, use_dB), color=f.color)
         axt.set_xlabel(self.taxes[time_axis]['label'])
         ylabel = 'dB' if use_dB else 'linear'
         axt.set_ylabel(ylabel)
@@ -390,8 +389,8 @@ class Look:
         axf.set_xlabel(self.freq_unit)
         for iii in [i for i in range(len(self.filters)) if self.filters[i].ftype=='time']:
             f = self.filters[iii]
-            if f.apply(self.taxes[time_axis]['values'], self.data, use_dB=use_dB):
-                axf.plot(self.freqs, f.power, color=f.color) #label=f"{self.used_filters[clr][0]}-{self.used_filters[clr][1]}", color=clr)
+            if f.apply(self.taxes[time_axis]['values'], self.data):
+                axf.plot(self.freqs, toMag(f.power, use_dB), color=f.color)
         axf.set_ylabel(ylabel)
         axflim = axf.axis()
 
@@ -439,6 +438,15 @@ class Look:
         if save:
             fn = f"{self.obsid}_{pol}.png"
             plt.savefig(fn)
+
+    def plot_diff(self, use_dB=True):
+        plt.figure("On / Off")
+        dp = (self.filters[self.boresight['on']].power / self.filters[self.boresight['off']].power)
+        plt.fill_between(self.freqs, toMag(dp, use_dB))
+        plt.xlabel('Freq [MHz]')
+        ylabel = 'dB' if use_dB else ''
+        plt.ylabel(ylabel)
+        plt.grid()
 
     def plot_wf(self, plotting='amplitude', use_dB=True):
         ptitle = (f'WF: {self.obsid} - ({self.a},{self.b}){self.pol}')
