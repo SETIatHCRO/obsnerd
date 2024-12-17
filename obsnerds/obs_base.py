@@ -57,7 +57,6 @@ class Base:
                 self.obsmeta_data = json.load(fp)
         except FileNotFoundError:
             self.obsmeta_data = {}
-        print(f"Handle observation ephemerides, tools etc for {observatory.name}")
 
     def read_obsinfo(self, obs):
         """

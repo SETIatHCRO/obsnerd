@@ -16,10 +16,10 @@ def toMag(x, use_dB=True):
 
 
 class Filter:
-    def __init__(self, ftype=None, axis=None, unit=None, lo=None, hi=None, norm=False, color='k', shape='rect', invert=False):
+    def __init__(self, ftype=None, unit=None, lo=None, hi=None, norm=False, color='k', shape='rect', invert=False):
         self.use = True
         self.ftype = ftype
-        self.axis = axis
+        self.axis = OS.FILTER_AXIS[self.ftype]
         self.unit = unit
         self.lo = lo
         self.hi = hi
@@ -30,7 +30,7 @@ class Filter:
 
     def __str__(self):
         s = '<'
-        for p in ['ftype', 'axis', 'unit', 'lo', 'hi']:
+        for p in ['use', 'ftype', 'unit', 'lo', 'hi', 'norm', 'color']:
             s += f"{p}={getattr(self, p)},\t"
         s += '>'
         return s
@@ -141,7 +141,7 @@ class Look:
         Parameter
         ---------
         obsrec : str
-            Obsrec designation for an observation file (without the extension)
+            Obsrec designation for an observation file
 
         Attributes
         ----------
@@ -157,7 +157,6 @@ class Look:
         """
         self.file_type = 'npz'
         fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
-        X = OS.split_obsrec(obsrec_file)
         try:
             self.npzfile[obsrec_file] = np.load(fn)
         except FileNotFoundError:
@@ -343,12 +342,12 @@ class Look:
         # Set up filters
         self.filters = {}
         tt = transit_time / 2.0
-        self.filters['on:boresight'] = Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='r')
-        self.filters['off:boresight'] = Filter(ftype='time', axis=0, unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True)
+        self.filters['on:boresight'] = Filter(ftype='time', unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='r')
+        self.filters['off:boresight'] = Filter(ftype='time', unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True)
         for clr, filt in filter_time:
-            self.filters[f"time:{filt[0]}-{filt[1]}:{clr}"] = Filter(ftype='time', axis=0, unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr)
+            self.filters[f"time:{filt[0]}-{filt[1]}:{clr}"] = Filter(ftype='time', unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr)
         for clr, filt in self.obs.obsinfo.filters[self.lo].items():
-            self.filters[f"freq:{filt[0]}-{filt[1]}:{clr}"] = Filter(color=clr, ftype='freq', axis=1, unit='MHz', lo=filt[0], hi=filt[1])
+            self.filters[f"freq:{filt[0]}-{filt[1]}:{clr}"] = Filter(color=clr, ftype='freq', unit='MHz', lo=filt[0], hi=filt[1])
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
