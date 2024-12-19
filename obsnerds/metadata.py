@@ -4,7 +4,7 @@ from . import onutil
 import logging
 
 
-ONLOG_FILENAME = 'onlog.log'
+ONLOG_FILENAME = 'onloglog'
 META_FILENAME = 'metadata.yaml'
 UTC = timezone(timedelta(0), 'UTC')
 PST = timezone(timedelta(hours=-8), 'PST')
@@ -155,12 +155,12 @@ def start(samp_rate, decimation, nfft):
             move_data = yaml.safe_load(fp)
         data['track'] = yaml.safe_dump(move_data)
     add_value(initialize=True, **data)
-    onlog(['tstart', f"bw: {samp_rate}"])
+    logger.info(['tstart', f"bw: {samp_rate}"])
 
 
 def stop():
     add_datetimestamp('tstop')
-    onlog('tstop')
+    logger.info('tstop')
 
 
 def add_value(initialize=False, **kwargs):

@@ -55,4 +55,4 @@ def updatetle(base_path, base_url):
                 print("{}:  {}".format(outfile, tlefiles[lll]), file=master)
 
 def update_log():
-    metadata.onlog('Updating TLEs')
+    metadata.logger.info('Updating TLEs')

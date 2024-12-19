@@ -63,5 +63,5 @@ def convert(input_file, output_file=None, split=4096):
             print(f"\t{key}:  {val}")
             fp[key] = val
 
-    metadata.onlog(f"Writing {output_file}")
+    metadata.logger.info(f"Writing {output_file}")
 

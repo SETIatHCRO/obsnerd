@@ -74,8 +74,8 @@ class CommandHandler:
             self.test(f'test start:  {self.initials} for project {self.project_id}')
         else:
             ata_control.move_ant_group(self.group_ants, 'none', 'atagr')
-        metadata.onlog(f"session start: {self.initials} -- reserving {', '.join(self.group_ants)}")
-        metadata.onlog(f"project_id: {self.project_id}")
+        metadata.logger.info(f"session start: {self.initials} -- reserving {', '.join(self.group_ants)}")
+        metadata.logger.info(f"project_id: {self.project_id}")
 
     def end(self, **kwargs):
         """
@@ -94,8 +94,8 @@ class CommandHandler:
         else:
             atexit.register(ata_control.park_antennas, self.use_ants)
             atexit.register(ata_control.move_ant_group, self.group_ants, 'atagr', 'none')
-        metadata.onlog(f"parking: {', '.join(self.use_ants)}")
-        metadata.onlog(f"end: {', '.join(self.group_ants)}")
+        metadata.logger.info(f"parking: {', '.join(self.use_ants)}")
+        metadata.logger.info(f"end: {', '.join(self.group_ants)}")
 
     def freq(self, **kwargs):
         """
@@ -116,9 +116,9 @@ class CommandHandler:
             print("Need a frequency in GHz -- no action")
             return
 
-        metadata.onlog(f"fcen: {self.frequency}")
-        metadata.onlog(f"lo: {self.lo}")
-        metadata.onlog(f"antennas:  {(', ').join(self.use_ants)}")
+        metadata.logger.info(f"fcen: {self.frequency}")
+        metadata.logger.info(f"lo: {self.lo}")
+        metadata.logger.info(f"antennas:  {(', ').join(self.use_ants)}")
         if ata_control is None:
             self.test('Test freq')
         else:
@@ -141,7 +141,7 @@ class CommandHandler:
         if self.project_id is None:
             print("Need a project_id")
             return
-        metadata.onlog(f"Backend {self.backend} for project {self.project_id}")
+        metadata.logger.info(f"Backend {self.backend} for project {self.project_id}")
         if ata_control is None:
             print("Test backend")
         else:
@@ -174,30 +174,30 @@ class CommandHandler:
 
         if ',' in self.location:
             x, y = [float(_v) for _v in self.location.split(',')]
-        metadata.onlog(f'move to: {self.location}  {self.coord_type}')
+        metadata.logger.info(f'move to: {self.location}  {self.coord_type}')
         if ata_control is None:
             self.test('test move')
             return
 
         if self.coord_type == 'azel':
             ata_control.set_az_el(self.use_ants, x, y)
-            metadata.onlog(f"azel: {x},{y}")
+            metadata.logger.info(f"azel: {x},{y}")
         elif self.coord_type == 'radec':
             source = ata_control.track_source(self.use_ants, radec=[x, y])
-            metadata.onlog(f"radec: {x},{y}")
+            metadata.logger.info(f"radec: {x},{y}")
         elif self.coord_type == 'source':
             source = ata_control.track_source(self.use_ants, source=self.location)
-            metadata.onlog(f"source: {self.location}")
+            metadata.logger.info(f"source: {self.location}")
         elif self.coord_type == 'traj':
             from obsnerds.trajectory_engine import TRACK_YAML_FILENAME
             ephem = ata_control.upload_ephemeris(self.location)
             ata_control.track_ephemeris(ephem, self.use_ants, wait=True)
-            metadata.onlog(f"traj: {self.location}")
+            metadata.logger.info(f"traj: {self.location}")
             try:
                 with open(TRACK_YAML_FILENAME, 'r') as fp:
                     for line in fp:
                         if len(line) > 2:
-                            metadata.onlog(f"track: {line.strip()}")
+                            metadata.logger.info(f"track: {line.strip()}")
             except FileNotFoundError:
                 pass
     
@@ -213,7 +213,7 @@ class CommandHandler:
         if self.notation is None:
             print("Need to include a note.")
         else:
-            metadata.onlog(f"note: {self.notation}")
+            metadata.logger.info(f"note: {self.notation}")
 
     def source(self, **kwargs):
         """
@@ -227,11 +227,11 @@ class CommandHandler:
         """
         self._setvar({'name': None, 'datestamp': None}, kwargs)
         self.datestamp = onutil.make_datetime(date=self.datestamp)
-        metadata.onlog([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
+        metadata.logger.info([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
 
     def summary(self, **kwargs):
         summary = metadata.get_summary()
 
     def test(self, msg='test'):
         print(msg)
-        metadata.onlog(msg)
+        metadata.logger.info(msg)
