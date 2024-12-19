@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 import yaml
 from . import onutil
+import logging
 
 
 ONLOG_FILENAME = 'onlog.log'
@@ -13,22 +14,8 @@ LOG_ENTRIES_TO_GET = ['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:',
                       'end:', 'traj:', 'track:', 'Writing', 'move to:', 'TLEs', 'tstop']
 
 
-# Log functions
-def onlog(notes):
-    """
-    Add notes to the log.
-
-    Parameter
-    ---------
-    notes : str or list
-        entries to add
-    """
-    if isinstance(notes, str):
-        notes = [notes]
-    ts = datetime.now().astimezone(UTC).isoformat()
-    with open(ONLOG_FILENAME, 'a') as fp:
-        for note in notes:
-            print(f"{ts} -- {note}", file=fp)
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename=ONLOG_FILENAME, format='%(asctime)s -- %(levelname)-8s -- %(message)s', level=logging.INFO, datefmt="%Y-%m-%dT%H:%M:%S")
 
 class Onlog:
     def __init__(self, entries=LOG_ENTRIES_TO_GET, delimiter=LOGFILE_DELIMITER, auto_read=False):
