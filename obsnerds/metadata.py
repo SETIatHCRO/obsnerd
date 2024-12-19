@@ -2,9 +2,10 @@ from datetime import datetime, timezone, timedelta
 import yaml
 from . import onutil
 import logging
+import hashlib
 
 
-ONLOG_FILENAME = 'onloglog'
+ONLOG_FILENAME = 'onlog.log'
 META_FILENAME = 'metadata.yaml'
 UTC = timezone(timedelta(0), 'UTC')
 PST = timezone(timedelta(hours=-8), 'PST')
@@ -39,21 +40,22 @@ class Onlog:
                 linedata = [x.strip() for x in line.split(self.delimiter)]
                 timestamp, payload = linedata[0], self.delimiter.join(linedata[1:])
                 self.all_timestamps.add(timestamp)
+                tskey = (timestamp, hashlib.sha256(payload.encode('utf-8')).hexdigest()[:8])
                 for key, entry in zip(self.keys, self.entries):
                     if entry in linedata[1]:
                         par_not_found = False
                         if key in ['tstart', 'tstop', 'TLEs']:
-                            self.data[key][timestamp] = timestamp
-                            self.latest[key] = timestamp
+                            self.data[key][tskey] = timestamp
+                            self.latest[key] = tskey
                         elif key == 'track':
                             self.data[key].setdefault(timestamp, [])
-                            self.data[key][timestamp].append(payload)
+                            self.data[key][tskey].append(payload)
                             self.latest[key] = payload
                         else:
-                            self.data[key][timestamp] = payload
+                            self.data[key][tskey] = payload
                             self.latest[key] = payload
                 if par_not_found:
-                    self.data['other'][timestamp] = payload
+                    self.data['other'][tskey] = payload
         self.all_timestamps = sorted(list(self.all_timestamps))
 
     def get_latest_value(self, key, parse=False):

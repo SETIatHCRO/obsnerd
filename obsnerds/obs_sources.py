@@ -1,4 +1,5 @@
 import atexit
+from . import obs_sys as OS
 try:
     from ATATools import ata_control, logger_defaults
     from SNAPobs import snap_if
@@ -10,12 +11,11 @@ except ImportError:
     ata_control, logger_defaults = None, None
     snap_if = None
     hpguppi_record_in = None
-    hpguppi_defaults = None
+    hpguppi_defaults = {}
     hpguppi_auxillary = None
     snap_config = None
 import time
 import logging
-from . import obs_sys as OS
 from datetime import datetime
 
 
