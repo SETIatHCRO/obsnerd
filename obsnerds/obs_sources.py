@@ -94,6 +94,9 @@ class Observer:
         return starts
 
     def setup_session(self):
+        yn = input("Have you set up the backend? ")
+        if yn[0].lower() == 'n':
+            raise RuntimeError("You need to set up the backend.")
         ata_control.reserve_antennas(self.ant_list)
         atexit.register(ata_control.release_antennas, self.ant_list, False)
 
@@ -111,9 +114,6 @@ class Observer:
         snap_if.tune_if_antslo(self.antlo_list)
 
     def step_obs(self, skip_cal_check=False):
-        yn = input("Have you set up the backend? ")
-        if yn[0].lower() == 'n':
-            raise RuntimeError("You need to set up the backend.")
         cal_done = skip_cal_check
         for source, integration, start in zip(self.sources, self.integrations, self.start_times):
             if isinstance(start, datetime):

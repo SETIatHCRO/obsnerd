@@ -18,6 +18,14 @@ ap.add_argument('--data_record', help="Data recording to use", choices=['gnuradi
 
 args = ap.parse_args()
 
+if args.sources.endswith('.json'):
+    import json
+    with open(args.sources, 'r') as fp:
+        vals = json.load(fp)
+    argv = vars(args)
+    argv.update(vals)
+    args = argparse.Namespace(**argv)
+
 freqs = {'a': args.freq_loA,
          'b': args.freq_loB}
 
