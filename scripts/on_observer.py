@@ -4,8 +4,8 @@ from obsnerds import obs_sources
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument('sources', help='Target list', default='Jupiter')
-ap.add_argument('integrations', hope="Integration times in seconds for each source", nargs='?', default=None)
+ap.add_argument('sources', help='Target list')
+ap.add_argument('integrations', help="Integration times in seconds for each source", nargs='?', default=None)
 ap.add_argument('starts', help="Start times of observations (or 'next')", nargs='?', default=None)
 ap.add_argument('-a', '--freq_loA', help='Freq LO A in MHz', default=1500, type=float)
 ap.add_argument('-b', '--freq_loB', help='Freq LO B in MHz', default=6000, type=float)

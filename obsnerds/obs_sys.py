@@ -4,6 +4,7 @@ ALL_LOS = ['A', 'B']
 AXIS_OPTIONS = {'b': 'boresight', 'd': 'datetime', 's': 'seconds'}
 FILTER_AXIS = {'time': 0, 'freq': 1}
 OBS_START_DELAY = 10  # sec
+FEED_FOCUS_SLEEP = 20
 
 
 def listify(x, d={}, sep=','):
