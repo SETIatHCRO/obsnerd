@@ -10,13 +10,14 @@ META_FILENAME = 'metadata.yaml'
 UTC = timezone(timedelta(0), 'UTC')
 PST = timezone(timedelta(hours=-8), 'PST')
 PDT = timezone(timedelta(hours=-7), 'PDT')
-LOGFILE_DELIMITER = '--'
+LOGFILE_DELIMITER = ' -- '
 LOG_ENTRIES_TO_GET = ['tstart', 'source:', 'expected:', 'azel:', 'fcen:', 'bw:', 'session start:',
                       'end:', 'traj:', 'track:', 'Writing', 'move to:', 'TLEs', 'tstop']
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename=ONLOG_FILENAME, format='%(asctime)s -- %(levelname)-8s -- %(message)s', level=logging.INFO, datefmt="%Y-%m-%dT%H:%M:%S")
+logging.basicConfig(filename=ONLOG_FILENAME, format=f'%(asctime)s{LOGFILE_DELIMITER}%(levelname)-8s{LOGFILE_DELIMITER}%(message)s',
+                    level=logging.INFO, datefmt="%Y-%m-%dT%H:%M:%S")
 
 class Onlog:
     def __init__(self, entries=LOG_ENTRIES_TO_GET, delimiter=LOGFILE_DELIMITER, auto_read=False):
@@ -40,7 +41,7 @@ class Onlog:
                 linedata = [x.strip() for x in line.split(self.delimiter)]
                 timestamp, payload = linedata[0], self.delimiter.join(linedata[1:])
                 self.all_timestamps.add(timestamp)
-                tskey = (timestamp, hashlib.sha256(payload.encode('utf-8')).hexdigest()[:8])
+                tskey = (timestamp, hashlib.sha256(payload.encode('utf-8')).hexdigest()[:5])
                 for key, entry in zip(self.keys, self.entries):
                     if entry in linedata[1]:
                         par_not_found = False

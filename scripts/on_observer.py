@@ -6,6 +6,7 @@ from obsnerds import obs_sources
 ap = argparse.ArgumentParser()
 ap.add_argument('sources', help='Target list', default='Jupiter')
 ap.add_argument('integrations', hope="Integration times in seconds for each source", nargs='?', default=None)
+ap.add_argument('starts', help="Start times of observations (or 'next')", nargs='?', default=None)
 ap.add_argument('-a', '--freq_loA', help='Freq LO A in MHz', default=1500, type=float)
 ap.add_argument('-b', '--freq_loB', help='Freq LO B in MHz', default=6000, type=float)
 ap.add_argument('-t', '--integration_times', help="Integration times for sources [sec]", default='300')
@@ -20,8 +21,8 @@ args = ap.parse_args()
 freqs = {'a': args.freq_loA,
          'b': args.freq_loB}
 
-observer = obs_sources.Observer(args.sources, args.integrations, freqs=freqs, ant_list=args.ant_list,
-                                known_bad=args.known_bad, focus_on=args.focus, obs_fiddle=args.fiddle,
-                                data_record=args.data_record)
+observer = obs_sources.Observer(args.sources, args.integrations, start_times=args.starts, freqs=freqs,
+                                ant_list=args.ant_list, known_bad=args.known_bad, focus_on=args.focus,
+                                obs_fiddle=args.fiddle, data_record=args.data_record)
 observer.setup_session()
 observer.step_obs()

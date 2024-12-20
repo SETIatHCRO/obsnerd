@@ -1,5 +1,10 @@
 import atexit
 from . import obs_sys as OS
+import time
+import logging
+from datetime import datetime
+
+
 try:
     from ATATools import ata_control, logger_defaults
     from SNAPobs import snap_if
@@ -8,18 +13,18 @@ try:
     from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary
     from SNAPobs import snap_config
 except ImportError:
-    ata_control, logger_defaults = None, None
-    snap_if = None
-    hpguppi_record_in = None
-    hpguppi_defaults = {}
-    hpguppi_auxillary = None
-    snap_config = None
-import time
-import logging
-from datetime import datetime
+    from .obs_debug import Empty
+    ata_control = Empty()
+    logger_defaults = Empty()
+    snap_if = Empty()
+    hpguppi_record_in = Empty()
+    hpguppi_defaults = Empty()
+    hpguppi_auxillary = Empty()
+    snap_config = Empty()
 
 
-def wait_until(target_time: datetime.datetime):
+
+def wait_until(target_time: datetime):
     """
     Pauses execution until the specified target time.
 
@@ -67,6 +72,8 @@ class Observer:
         self.data_record = data_record
         
         self.ant_list = OS.listify(ant_list, {'rfsoc_active': snap_config.get_rfsoc_active_antlist()})
+        if not len(self.ant_list):
+            raise ValueError("No antennas specified.")
         for badun in OS.listify(known_bad):
             if badun in self.ant_list:
                 print(f"Removing antenna {badun}")
@@ -75,7 +82,7 @@ class Observer:
         # Check/set freqs same for all antennas
         max_freq = {'val': 0.0, 'lo': ''}
         for lo in self.freqs:
-            if isinstance(self.freqs[lo], str):
+            if not isinstance(self.freqs[lo], list):
                 self.freqs[lo] = [self.freqs[lo]]
             if len(self.freqs[lo]) == 1:
                 self.freqs[lo] = self.freqs[lo] * len(self.ant_list)
