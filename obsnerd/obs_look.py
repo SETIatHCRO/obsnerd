@@ -2,7 +2,7 @@ from pyuvdata import UVData
 from astropy.time import Time
 import numpy as np
 import matplotlib.pyplot as plt
-from obsnerds import obs_base
+from . import obs_base
 from datetime import datetime
 import os.path as path
 from . import obs_sys as OS
