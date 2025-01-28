@@ -1,6 +1,6 @@
 import numpy as np
 from copy import copy
-from . import obs_sys as OS
+from . import obsnerd_sys as OS
 from . import obs_look, obs_base
 from odsutils import ods_tools as tools
 
