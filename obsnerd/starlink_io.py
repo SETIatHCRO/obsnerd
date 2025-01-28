@@ -1,5 +1,5 @@
 from astropy.time import Time, TimeDelta
-from obsnerds.obs_base import ObservationData as ObsData
+from obsnerd.onv_base import ObservationData as ObsData
 import numpy as np
 from copy import copy
 
