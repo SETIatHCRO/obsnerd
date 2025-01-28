@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerds import obs_dump
+from obsnerd import obs_dump
 
 
 if __name__ == '__main__':

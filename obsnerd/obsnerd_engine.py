@@ -9,12 +9,17 @@ except ImportError:
     print("SNAPobs not found.")
     snap_config = None
 import atexit
-from . import metadata, onutil
+from . import onutil, __version__
+from odsutils import logger_setup
 import subprocess
 from copy import copy
-
+from . import LOG_FILENAME
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel('DEBUG')  # Set to lowest
 
 ANT_LISTS = {'old_feeds': ['']}
+DEFAULTS = {'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME}
 
 
 class CommandHandler:
@@ -22,6 +27,11 @@ class CommandHandler:
         for key, val in kwargs.items():
             setattr(self, key, val)
         self._setantlists()
+        kw = {}
+        for key, val in DEFAULTS.itmes():
+            kw[key] = kwargs[key] if key in kwargs else val
+        self.logset = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'], log_filename=kw['log_filename'], path=kw['path'])
+        logger.debug(f"{__name__} ver. {__version__}")
 
     def _setvar(self, initargs, kwargs):
         for key, val in initargs.items():
@@ -74,8 +84,8 @@ class CommandHandler:
             self.test(f'test start:  {self.initials} for project {self.project_id}')
         else:
             ata_control.move_ant_group(self.group_ants, 'none', 'atagr')
-        metadata.logger.info(f"session start: {self.initials} -- reserving {', '.join(self.group_ants)}")
-        metadata.logger.info(f"project_id: {self.project_id}")
+        logger.info(f"session start: {self.initials} -- reserving {', '.join(self.group_ants)}")
+        logger.info(f"project_id: {self.project_id}")
 
     def end(self, **kwargs):
         """
@@ -94,8 +104,8 @@ class CommandHandler:
         else:
             atexit.register(ata_control.park_antennas, self.use_ants)
             atexit.register(ata_control.move_ant_group, self.group_ants, 'atagr', 'none')
-        metadata.logger.info(f"parking: {', '.join(self.use_ants)}")
-        metadata.logger.info(f"end: {', '.join(self.group_ants)}")
+        logger.info(f"parking: {', '.join(self.use_ants)}")
+        logger.info(f"end: {', '.join(self.group_ants)}")
 
     def freq(self, **kwargs):
         """
@@ -116,9 +126,9 @@ class CommandHandler:
             print("Need a frequency in GHz -- no action")
             return
 
-        metadata.logger.info(f"fcen: {self.frequency}")
-        metadata.logger.info(f"lo: {self.lo}")
-        metadata.logger.info(f"antennas:  {(', ').join(self.use_ants)}")
+        logger.info(f"fcen: {self.frequency}")
+        logger.info(f"lo: {self.lo}")
+        logger.info(f"antennas:  {(', ').join(self.use_ants)}")
         if ata_control is None:
             self.test('Test freq')
         else:
@@ -141,7 +151,7 @@ class CommandHandler:
         if self.project_id is None:
             print("Need a project_id")
             return
-        metadata.logger.info(f"Backend {self.backend} for project {self.project_id}")
+        logger.info(f"Backend {self.backend} for project {self.project_id}")
         if ata_control is None:
             print("Test backend")
         else:
@@ -174,30 +184,30 @@ class CommandHandler:
 
         if ',' in self.location:
             x, y = [float(_v) for _v in self.location.split(',')]
-        metadata.logger.info(f'move to: {self.location}  {self.coord_type}')
+        logger.info(f'move to: {self.location}  {self.coord_type}')
         if ata_control is None:
             self.test('test move')
             return
 
         if self.coord_type == 'azel':
             ata_control.set_az_el(self.use_ants, x, y)
-            metadata.logger.info(f"azel: {x},{y}")
+            logger.info(f"azel: {x},{y}")
         elif self.coord_type == 'radec':
             source = ata_control.track_source(self.use_ants, radec=[x, y])
-            metadata.logger.info(f"radec: {x},{y}")
+            logger.info(f"radec: {x},{y}")
         elif self.coord_type == 'source':
             source = ata_control.track_source(self.use_ants, source=self.location)
-            metadata.logger.info(f"source: {self.location}")
+            logger.info(f"source: {self.location}")
         elif self.coord_type == 'traj':
-            from obsnerds.trajectory_engine import TRACK_YAML_FILENAME
+            from obsnerd.trajectory_engine import TRACK_YAML_FILENAME
             ephem = ata_control.upload_ephemeris(self.location)
             ata_control.track_ephemeris(ephem, self.use_ants, wait=True)
-            metadata.logger.info(f"traj: {self.location}")
+            logger.info(f"traj: {self.location}")
             try:
                 with open(TRACK_YAML_FILENAME, 'r') as fp:
                     for line in fp:
                         if len(line) > 2:
-                            metadata.logger.info(f"track: {line.strip()}")
+                            logger.info(f"track: {line.strip()}")
             except FileNotFoundError:
                 pass
     
@@ -213,7 +223,7 @@ class CommandHandler:
         if self.notation is None:
             print("Need to include a note.")
         else:
-            metadata.logger.info(f"note: {self.notation}")
+            logger.info(f"note: {self.notation}")
 
     def source(self, **kwargs):
         """
@@ -227,11 +237,8 @@ class CommandHandler:
         """
         self._setvar({'name': None, 'datestamp': None}, kwargs)
         self.datestamp = onutil.make_datetime(date=self.datestamp)
-        metadata.logger.info([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
-
-    def summary(self, **kwargs):
-        summary = metadata.get_summary()
+        logger.info([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
 
     def test(self, msg='test'):
         print(msg)
-        metadata.logger.info(msg)
+        logger.info(msg)

@@ -12,16 +12,6 @@ TIME_FORMATS = ['%Y-%m-%dT%H:%M', '%y-%m-%dT%H:%M',
                 '%Y%m%d%H%M', '%y%m%d%H%M'
             ]
 
-def get_url(url):
-    import requests
-
-    try:
-        xxx = requests.get(url)
-    except Exception as e:
-        print(f"Error reading {url}:  {e}")
-        return
-    return xxx.json()
-
 
 def strip_tz(this_datetime):
     if not isinstance(this_datetime, str):

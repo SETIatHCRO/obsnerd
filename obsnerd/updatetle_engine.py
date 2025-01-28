@@ -1,8 +1,14 @@
 import requests
 from html.parser import HTMLParser
 from os import path
-from . import metadata
+import logging
+from odsutils import logger_setup
+from . import LOG_FILENAME
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel('DEBUG')  # Set to lowest
+logger_setup.Logger(logger, conlog='INFO', filelog='INFO', log_filename=LOG_FILENAME, path='.')
 
 class DataParser(HTMLParser):
     def handle_data(self, data):
@@ -55,4 +61,4 @@ def updatetle(base_path, base_url):
                 print("{}:  {}".format(outfile, tlefiles[lll]), file=master)
 
 def update_log():
-    metadata.logger.info('Updating TLEs')
+    logger.info('Updating TLEs')
