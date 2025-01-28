@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from sys import stdout
 from astropy.time import Time
-from osdutils import ods_engine
+from odsutils import ods_tools as tools
 
 
 try:
@@ -50,26 +50,26 @@ class Observer:
             lo ('a', 'b') or 'max'
 
         """
-        self.sources = OS.listify(sources)
-        self.integrations = augment([float(x) for x in OS.listify(integrations)], len(self.sources), msg="Number of integrations and sources should match.")
-        self.start_times = self.sched(augment(OS.listify(start_times), len(self.sources), msg="Number of start_times and sources should match."))
+        self.sources = tools.listify(sources)
+        self.integrations = augment([float(x) for x in tools.listify(integrations)], len(self.sources), msg="Number of integrations and sources should match.")
+        self.start_times = self.sched(augment(tools.listify(start_times), len(self.sources), msg="Number of start_times and sources should match."))
         self.focus_on = focus_on
         self.logger = logger_defaults.getProgramLogger("observe", loglevel=logging.INFO)
         self.obs_delay = OS.OBS_START_DELAY + obs_fiddle
         self.data_record = data_record
         
-        self.ant_list = OS.listify(ant_list, {'rfsoc_active': snap_config.get_rfsoc_active_antlist()})
+        self.ant_list = tools.listify(ant_list, {'rfsoc_active': snap_config.get_rfsoc_active_antlist()})
         if not len(self.ant_list):
             raise ValueError("No antennas specified.")
-        for badun in OS.listify(known_bad):
+        for badun in tools.listify(known_bad):
             if badun in self.ant_list:
                 print(f"Removing antenna {badun}")
                 ant_list.remove(badun)
-        self.freqs = OS.dictionify(freqs)
+        self.freqs = freqs
         # Check/set freqs same for all antennas
         max_freq = {'val': 0.0, 'lo': ''}
         for lo in self.freqs:
-            self.freqs[lo] = OS.listify(self.freqs[lo])
+            self.freqs[lo] = tools.listify(self.freqs[lo])
             if len(self.freqs[lo]) == 1:
                 self.freqs[lo] = self.freqs[lo] * len(self.ant_list)
             if self.freqs[lo][0] > max_freq['val']:

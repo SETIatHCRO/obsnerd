@@ -8,10 +8,8 @@ from sopp.custom_dataclasses.frequency_range.frequency_range import FrequencyRan
 import datetime
 import matplotlib.pyplot as plt
 from tabulate import tabulate
-from . import onutil
 import pandas as pd
-import numpy as np
-
+from odsutils import ods_timetools as timetools
 
 
 
@@ -22,7 +20,7 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
     """
     Parameters
     ----------
-    start : onutil.make_datetime
+    start : ods_timetools.interpret_date
         Time to start observation
     duration : float
         Duration in minutes
@@ -81,7 +79,7 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
     #     filterer.add_filter(getattr(filters, f"filter_is_{orbit_type}")())
 
     # Observation Window
-    starttime = onutil.make_datetime(date=start, tz=timezone)
+    starttime = timetools.interpret_date(start, fmt='datetime')
     stoptime = starttime + datetime.timedelta(minutes=duration)
     configuration = (
         ConfigurationBuilder()
@@ -116,11 +114,7 @@ def main(start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
 
     # Determine Satellite Interference
     sopp = Sopp(configuration=configuration)
-
-    if ftype == 'horizon':
-        events = sopp.get_satellites_above_horizon()
-    else:
-        events = sopp.get_satellites_crossing_main_beam()
+    events = sopp.get_satellites_above_horizon() if ftype == 'horizon' else events = sopp.get_satellites_crossing_main_beam()
 
     # Display configuration
     print('\nFinding satellite interference events for:\n')

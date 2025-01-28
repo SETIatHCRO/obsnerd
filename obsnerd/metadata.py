@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 import yaml
-from . import onutil
+from odsutils import ods_timetools as timetools
 import logging
 import hashlib
 
@@ -131,7 +131,7 @@ def get_meta():
         meta = yaml.safe_load(fp)
     for key in ['tstart', 'tstop', 'tle', 'expected']:
         if key in meta:
-            meta.update({key: onutil.make_datetime(**{key: meta[key]})})
+            meta.update({key: timetools.interpret_date(meta[key], fmt='Time')})
     return meta
 
 

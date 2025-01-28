@@ -1,8 +1,8 @@
 import numpy as np
 import h5py
 from astropy.time import Time
-from . import metadata, onutil
-
+from . import metadata
+from odsutils import ods_timetools
 
 """
 Convert the gnuradio-companion spectrum file to hdf5
@@ -16,11 +16,9 @@ def make_filename(**kwargs):
         kwargs['date'] = meta['expected']
     if kwargs['date'] is None:
         return kwargs['tag']
-    if 'timezone' not in kwargs:
-        kwargs['timezone'] = 0.0
-    this_dt = onutil.make_datetime(date=kwargs['date'], timezone=kwargs['timezone'])
+    this_dt = ods_timetools.interpret_date(kwargs['date'], '%y%m%d_%H%M%S')
 
-    return f"{kwargs['tag']}_{this_dt.strftime('%y%m%d_%H%M%S')}.h5"
+    return f"{kwargs['tag']}_{this_dt}.h5"
 
 
 class HDF5HeaderInfo:

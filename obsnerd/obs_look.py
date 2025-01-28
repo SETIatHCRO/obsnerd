@@ -6,6 +6,7 @@ from . import obs_base
 from datetime import datetime
 import os.path as path
 from . import obs_sys as OS
+from odsutils import ods_tools as tools
 
 
 def toMag(x, use_dB=True):
@@ -301,8 +302,8 @@ class Look:
         self.obs = obs_base.Base()
         self.obs.read_obsinfo(obs=obsinfo)
         cnode = ','.join(self.cnode)
-        ants = OS.listify(ants)
-        pols = OS.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
+        ants = tools.listify(ants)
+        pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
         show_diff = ' --show_diff ' if show_diff else ''
         with open(script_fn, 'w') as fp:
             for obsid in self.obs.obsinfo.obsid:

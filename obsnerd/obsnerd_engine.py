@@ -9,11 +9,10 @@ except ImportError:
     print("SNAPobs not found.")
     snap_config = None
 import atexit
-from . import onutil, __version__
-from odsutils import logger_setup
+from . import __version__, LOG_FILENAME
+from odsutils import logger_setup, ods_timetools
 import subprocess
 from copy import copy
-from . import LOG_FILENAME
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
@@ -236,7 +235,7 @@ class CommandHandler:
 
         """
         self._setvar({'name': None, 'datestamp': None}, kwargs)
-        self.datestamp = onutil.make_datetime(date=self.datestamp)
+        self.datestamp = ods_timetools.interpret_date(self.datestamp)
         logger.info([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
 
     def test(self, msg='test'):

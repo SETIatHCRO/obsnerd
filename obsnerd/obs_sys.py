@@ -1,3 +1,5 @@
+from odsutils.ods_tools import listify
+
 FREQ_CONVERT = {'MHz': 1E6, 'GHz': 1E9}
 ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
 ALL_LOS = ['A', 'B']
@@ -5,44 +7,6 @@ AXIS_OPTIONS = {'b': 'boresight', 'd': 'datetime', 's': 'seconds'}
 FILTER_AXIS = {'time': 0, 'freq': 1}
 OBS_START_DELAY = 10  # sec
 FEED_FOCUS_SLEEP = 20
-
-
-def listify(x, d={}, sep=','):
-    if isinstance(x, list) or x is None:
-        return x
-    if isinstance(x, str) and x in d:
-        return d[x]
-    if isinstance(x, str):
-        return x.split(sep)
-    return [x]
-
-
-def dictionify(x):
-    """
-    Simple dictionary making from a string.
-
-    key:val;key:val1,val2;
-
-    Parameter
-    ---------
-    x : str, dict
-
-    """
-    if isinstance(x, dict):
-        return x
-    d = {}
-    for t in x.split(';'):
-        key, val = t.split(':')
-        if ',' in val:
-            y = listify(val)
-            try:
-                y = [float(a) for a in y]
-            except ValueError:
-                pass
-            d[key] = y
-        else:
-            d[key] = val
-    return d
 
 
 def make_cnode(cns):

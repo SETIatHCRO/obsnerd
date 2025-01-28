@@ -5,7 +5,7 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 from argparse import Namespace
-from . import onutil
+from odsutils import ods_timetools as timetools
 
 EPHEM_FILENAME = 'track.ephem'
 TRAJECTORY_FILENAME = 'track'
@@ -109,7 +109,7 @@ class Trajectory:
         if isinstance(start_time, str) and start_time.lower() == 'none':
             self.start_time = None
         else:
-            self.start_time = Time(onutil.make_datetime(date=start_time, timezone=tz))
+            self.start_time = timetools.interpret_date(start_time, fmt='Time')
         self.el_horizon = float(el_horizon)
         self.duration = float(duration) * 60.0 * u.second
         self.tstep = float(tstep) * u.second

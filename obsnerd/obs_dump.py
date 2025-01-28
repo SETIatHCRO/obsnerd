@@ -2,6 +2,7 @@ import numpy as np
 from copy import copy
 from . import obs_sys as OS
 from . import obs_look, obs_base
+from odsutils import ods_tools as tools
 
 
 def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
@@ -13,7 +14,7 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
         for x in listdir(base_path):
             print(f"\t{x}")
         return
-    LOs = OS.listify(LOs, {'all': OS.ALL_LOS})
+    LOs = tools.listify(LOs, {'all': OS.ALL_LOS})
     CNODEs = OS.make_cnode(CNODEs)
 
     dbase_path = path.join(base_path, date_path)
@@ -55,8 +56,8 @@ class Dump:
 
         """
         self.look = obs_look.Look(self.obsinput, lo=self.lo, cnode=self.cnodes)
-        ants = OS.listify(ants, {'all': self.look.ant_names})
-        pols = OS.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
+        ants = tools.listify(ants, {'all': self.look.ant_names})
+        pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
         outdata = {'ants': ants, 'freqs': self.look.freqs, 'pols': pols, 'source': self.look.source, 'uvh5': self.look.fn, 'freq_unit': self.look.freq_unit}
         print(f"Dumping autos in {self.look.fn} for {','.join(ants)} {','.join(pols)}", end=' ... ')
         for ant in ants:
@@ -87,8 +88,8 @@ class Dump:
             look = obs_look.Look(obsid, self.lo, cnode=self.cnodes)
             look.get_time_axes()
             if not i:
-                ants = OS.listify(ants, {'all': look.ant_names})
-                pols = OS.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
+                ants = tools.listify(ants, {'all': look.ant_names})
+                pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
                 outdata = {'ants': ants, 'freqs': look.freqs, 'pols': pols}
             else:
                 if abs(outdata['freqs'][0] - look.freqs[0]) > 1.0:

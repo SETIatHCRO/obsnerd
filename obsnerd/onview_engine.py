@@ -1,11 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-from astropy.time import Time
 from datetime import timedelta, datetime
 from copy import copy
 from .convert2hdf5 import HDF5HeaderInfo
-from . import onutil
+from odsutils import ods_timetools as timetools
 
 
 class StateVariable:
@@ -57,7 +56,7 @@ class StateVariable:
             del(kwargs['tz'])
         if 'time' in kwargs and kwargs['time'] is not None:
             if isinstance(kwargs['time'], str):
-                kwargs['time'] = onutil.make_datetime(date=kwargs['time'], tz=self.tz)
+                kwargs['time'] = timetools(kwargs['time'], tz=self.tz)
         else:
             kwargs['time'] = None
 
@@ -168,14 +167,14 @@ class Data:
         # Post-process from_ fields
         for field in self.h5.from_datetime:
             if field in fields_present:
-                setattr(self, field, Time(getattr(self, field), format='jd'))
+                setattr(self, field, timetools.interpret_date(getattr(self, field), fmt='jd'))
         print("COMMENTED OUT READING YAML INFO FROM H5 (onview_engine.pyL173)")
         #for field in self.h5.from_yaml:
         #    if field in fields_present:
         #        setattr(self, field, yaml.safe_load(getattr(self, field)))
         # Set time axis
-        tstartdt = onutil.make_datetime(date=self.tstart.datetime, tz=self.sv.tz)
-        tstopdt = onutil.make_datetime(date=self.tstop.datetime, tz=self.sv.tz)
+        tstartdt = self.tstart.datetime
+        tstopdt = self.tstop.datetime
         self.t_info = Axis(tstartdt, tstopdt, len(self.data[:, 0]), tstartdt.tzname())
         self.t = self.t_info.array()
         print(self.t_info)
@@ -188,7 +187,7 @@ class Data:
         # Other info
         missing_data = self.decimation is None or self.bw is None or self.nfft is None
         self.int_time = None if missing_data else (self.decimation / self.bw) * self.nfft
-        self.tle = None if self.tle is None else Time(self.tle, format='jd')
+        self.tle = None if self.tle is None else timetools.interpret_date(self.tle, fmt='Time')
         if self.tle is not None:
             print(f"Updated TLEs: {self.tle.datetime}")
         
@@ -196,7 +195,7 @@ class Data:
         X = self.filename.split('_')
         if len(X) == 3:
             X2 = X[2].split('.')[0]
-            _datetime = onutil.make_datetime(date=f"{X[1]}_{X2}", tz=self.sv.tz)
+            _datetime = timetools.interpret_date(.make_datetime(date=f"{X[1]}_{X2}", tz=self.sv.tz)
         else:
             _datetime = None
         return X[0], _datetime
@@ -325,8 +324,8 @@ class Data:
             plt.plot(self.t[self.tslice], self._fmt_data(self.power[self.tslice]), lw=4, color='k')
 
         if self.sv.beamfit:
-            from obsnerds import beamfit
-            expected = onutil.make_datetime(date=self.expected.datetime, tz=self.sv.tz)
+            from obsnerd import beamfit
+            expected = timetools.interpret_date(.make_datetime(date=self.expected.datetime, tz=self.sv.tz)
             print(f"--Results--\n{'Expected:':{N}s}{expected}")
             if expected>=self.t[self.tslice.start] and expected<=self.t[self.tslice.stop-1]:  
                 plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')
