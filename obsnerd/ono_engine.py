@@ -1,13 +1,19 @@
 try:
-    from ATATools import ata_control  # type: ignore
+    from ATATools import ata_control
+    from SNAPobs import snap_if
+    from SNAPobs.snap_hpguppi import record_in as hpguppi_record_in
+    from SNAPobs.snap_hpguppi import snap_hpguppi_defaults as hpguppi_defaults
+    from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary
+    from SNAPobs import snap_config
 except ImportError:
-    print("ATATools not found.")
-    ata_control = None
-try:
-    from SNAPobs import snap_config  # type: ignore
-except ImportError:
-    print("SNAPobs not found.")
-    snap_config = None
+    from .ono_debug import Empty
+    ata_control = Empty()
+    snap_if = Empty()
+    hpguppi_record_in = Empty()
+    hpguppi_defaults = Empty()
+    hpguppi_auxillary = Empty()
+    snap_config = Empty()
+
 import atexit
 from . import __version__, LOG_FILENAME
 from odsutils import logger_setup, ods_timetools
@@ -40,7 +46,7 @@ class CommandHandler:
                 setattr(self, key, val)
         self._setantlists()
 
-    def _setantlists(self, known_lists=['rfsoc_active']):
+    def setantlists(self, known_lists=['rfsoc_active']):
         known_lists += list(ANT_LISTS.keys())
         for ant_list in ['group_ants', 'use_ants']:
             if hasattr(self, ant_list):

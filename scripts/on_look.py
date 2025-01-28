@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import argparse
 ap = argparse.ArgumentParser()
-from obsnerd import obs_look
+from obsnerd import onv_look
 from obsnerd.on_sys import AXIS_OPTIONS
 
 

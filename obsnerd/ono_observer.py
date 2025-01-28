@@ -21,7 +21,8 @@ def augment(arr, N, msg="Lengths must be equal"):
 
 
 class Observer:
-    def __init__(self, sources, integrations, start_times=None, freqs={'a': 1410, 'b': 5500}, ant_list='rfsoc_active', known_bad='', focus_on='max', obs_fiddle=5, data_record='hpguppi'):
+    def __init__(self, sources, integrations, start_times=None, freqs={'a': 1410, 'b': 5500},
+                 ant_list='rfsoc_active', known_bad='', focus_on='max', obs_fiddle=5, data_record='hpguppi'):
         """
         Parameters
         ----------
@@ -38,9 +39,11 @@ class Observer:
         self.integrations = augment([float(x) for x in tools.listify(integrations)], len(self.sources), msg="Number of integrations and sources should match.")
         self.start_times = self.sched(augment(tools.listify(start_times), len(self.sources), msg="Number of start_times and sources should match."))
         self.focus_on = focus_on
-        self.logger = logger_defaults.getProgramLogger("observe", loglevel=logging.INFO)
         self.obs_delay = OS.OBS_START_DELAY + obs_fiddle
         self.data_record = data_record
+
+        self.obs = ono_engine.CommandHandler()
+        self.obs.setants(ant_list)
         
         self.ant_list = tools.listify(ant_list, {'rfsoc_active': snap_config.get_rfsoc_active_antlist()})
         if not len(self.ant_list):

@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import argparse
-from obsnerd import onview_engine as oe
+from obsnerd import onv_engine as oe
 
 ap = argparse.ArgumentParser()
 ap.add_argument('fn', help="Name of hdf5 datafile")
