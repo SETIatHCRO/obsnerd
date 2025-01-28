@@ -1,5 +1,5 @@
 import atexit
-from . import obs_sys as OS
+from . import on_sys as OS
 import time
 import logging
 from datetime import datetime
@@ -7,23 +7,7 @@ from sys import stdout
 from astropy.time import Time
 from odsutils import ods_tools as tools
 
-
-try:
-    from ATATools import ata_control, logger_defaults
-    from SNAPobs import snap_if
-    from SNAPobs.snap_hpguppi import record_in as hpguppi_record_in
-    from SNAPobs.snap_hpguppi import snap_hpguppi_defaults as hpguppi_defaults
-    from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary
-    from SNAPobs import snap_config
-except ImportError:
-    from .obs_debug import Empty
-    ata_control = Empty()
-    logger_defaults = Empty()
-    snap_if = Empty()
-    hpguppi_record_in = Empty()
-    hpguppi_defaults = Empty()
-    hpguppi_auxillary = Empty()
-    snap_config = Empty()
+from obsnerd import ono_engine
 
 
 def augment(arr, N, msg="Lengths must be equal"):
