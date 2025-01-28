@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import argparse
-from obsnerds import obs_look
-from obsnerds.obs_sys import AXIS_OPTIONS
+from obsnerd import obs_look
+from obsnerd.obs_sys import AXIS_OPTIONS
 
 
 ap = argparse.ArgumentParser()

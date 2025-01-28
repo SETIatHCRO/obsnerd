@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerds import trajectory_engine as te
+from obsnerd import trajectory_engine as te
 import argparse
 
 ap = argparse.ArgumentParser()

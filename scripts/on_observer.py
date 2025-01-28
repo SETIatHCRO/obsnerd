@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import argparse
-from obsnerds import obs_sources
+from obsnerd import obs_sources
 
 
 ap = argparse.ArgumentParser()

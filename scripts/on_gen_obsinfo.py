@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerds import obs_look
+from obsnerd import obs_look
 from os import listdir, path
 import argparse
 import json

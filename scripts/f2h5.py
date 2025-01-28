@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerds import convert2hdf5
+from obsnerd import convert2hdf5
 import argparse
 
 """

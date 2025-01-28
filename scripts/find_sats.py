@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import argparse
-from obsnerds import sopp_engine as se
+from obsnerd import sopp_engine as se
 
 
 ap = argparse.ArgumentParser()
