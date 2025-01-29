@@ -39,7 +39,7 @@ class CommandHandler:
         self.project_id = str(kw['project_id'])
         logger.info(f"session start: {self.observer} -- {self.project_id}")
 
-    def setants(self, ant_list, remove_ants=[], park_when_done=True):
+    def setants(self, ant_list='rfsoc_active', remove_ants=[], park_when_done=True):
         if ant_list == 'rfsoc_active':
             self.ant_list = snap_config.get_rfsoc_active_antlist()
         elif ant_list in on_sys.ANT_LISTS:
@@ -52,7 +52,7 @@ class CommandHandler:
             if badun in self.ant_list:
                 logger.info(f"Removing antenna {badun}")
                 self.ant_list.remove(badun)
-        ata_control.move_ant_group(self.ant_list, 'none', 'sats')
+        ata_control.move_ant_group(self.ant_list, 'none', 'atagr')
         logger.info(f"antennas:  {(', ').join(self.ant_list)}")
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
 
