@@ -52,7 +52,7 @@ class CommandHandler:
             if badun in self.ant_list:
                 logger.info(f"Removing antenna {badun}")
                 self.ant_list.remove(badun)
-        ata_control.move_ant_group(self.ant_list, 'none', 'atagr')
+        ata_control.move_ant_group(self.ant_list, 'none', 'bfa')
         logger.info(f"antennas:  {(', ').join(self.ant_list)}")
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
 
@@ -71,7 +71,7 @@ class CommandHandler:
         self.freq = ods_tools.listify(freq)
         self.lo = ods_tools.listify(lo)
         flim = 100.0 if focus_on is None else 0.99 * max(self.freq)
-        logger.info(f"fcen: {', '.join(self.freq)}")
+        logger.info(f"fcen: {', '.join([str(x) for x in self.freq])}")
         logger.info(f"lo: {', '.join(self.lo)}")
         for freq, lo in zip(self.freq, self.lo):
             this_freq = [freq] * len(self.ant_list)
