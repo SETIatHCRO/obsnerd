@@ -56,7 +56,7 @@ class CommandHandler:
         logger.info(f"antennas:  {(', ').join(self.ant_list)}")
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
 
-    def freq(self, freq, lo=['A', 'B'], focus_on=None):
+    def setfreq(self, freq, lo=['A', 'B'], focus_on=None):
         """
         Parameters (kwargs)
         -------------------
@@ -81,7 +81,7 @@ class CommandHandler:
             ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
                                             [[self.attenuation, self.attenuation] for ant in self.ant_list])
 
-    def backend(self, backend='xpgu'):
+    def setbackend(self, backend='xpgu'):
         """
         Parameters (kwargs)
         -------------------
