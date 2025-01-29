@@ -7,170 +7,103 @@ try:
     from SNAPobs import snap_config
 except ImportError:
     from .ono_debug import Empty
-    ata_control = Empty()
-    snap_if = Empty()
-    hpguppi_record_in = Empty()
-    hpguppi_defaults = Empty()
-    hpguppi_auxillary = Empty()
-    snap_config = Empty()
+    ata_control = Empty('ata_control')
+    snap_if = Empty('snap_if')
+    hpguppi_record_in = Empty('hpguppi_record_in')
+    hpguppi_defaults = Empty('hpguppi_defaults')
+    hpguppi_auxillary = Empty('hpguppi_auxillary')
+    snap_config = Empty('snap_config')
 
 import atexit
-from . import __version__, LOG_FILENAME
-from odsutils import logger_setup, ods_timetools
+from . import __version__, LOG_FILENAME, on_sys
+from odsutils import logger_setup, ods_timetools, ods_tools
 import subprocess
 from copy import copy
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
 
-ANT_LISTS = {'old_feeds': ['']}
-DEFAULTS = {'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME}
+DEFAULTS = {'observer': None, 'project_id': None,
+            'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME}
 
 
 class CommandHandler:
     def __init__(self, **kwargs):
-        for key, val in kwargs.items():
-            setattr(self, key, val)
-        self._setantlists()
-        kw = {}
-        for key, val in DEFAULTS.itmes():
-            kw[key] = kwargs[key] if key in kwargs else val
-        self.logset = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'], log_filename=kw['log_filename'], path=kw['path'])
+        kw = copy(DEFAULTS)
+        kw.update(kwargs)
+        self.logset = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'],
+                                          log_filename=kw['log_filename'], path=kw['path'])
         logger.debug(f"{__name__} ver. {__version__}")
 
-    def _setvar(self, initargs, kwargs):
-        for key, val in initargs.items():
-            if key in kwargs:  # Definitely change if kwarg
-                setattr(self, key, kwargs[key])
-            elif not hasattr(self, key):  # Only set to initialize value if not already set
-                setattr(self, key, val)
-        self._setantlists()
+        self.observer = str(kw['observer'])
+        self.project_id = str(kw['project_id'])
+        logger.info(f"session start: {self.observer} -- {self.project_id}")
 
-    def setantlists(self, known_lists=['rfsoc_active']):
-        known_lists += list(ANT_LISTS.keys())
-        for ant_list in ['group_ants', 'use_ants']:
-            if hasattr(self, ant_list):
-                this_list = copy(getattr(self, ant_list))
-                if isinstance(this_list, list):
-                    pass
-                elif this_list in known_lists:
-                    if this_list in ANT_LISTS.keys():
-                        setattr(self, ant_list, ANT_LISTS[this_list])
-                    elif this_list == 'rfsoc_active':
-                        if snap_config is None:
-                            print(f"snap_config not loaded to get {this_list}")
-                            setattr(self, ant_list, None)
-                        else:
-                            setattr(self, ant_list, snap_config.get_rfsoc_active_antlist())
-                elif isinstance(this_list, str):
-                    setattr(self, ant_list, getattr(self, ant_list).split(','))
-                else:
-                    setattr(self, ant_list, None)
-        if hasattr(self, 'use_ants') and self.use_ants is None:
-            self.use_ants = self.group_ants
+    def setants(self, ant_list, remove_ants=[], park_when_done=True):
+        if ant_list == 'rfsoc_active':
+            self.ant_list = snap_config.get_rfsoc_active_antlist()
+        elif ant_list in on_sys.ANT_LISTS:
+            self.ant_list = copy(on_sys.ANT_LIST[ant_list])
+        elif isinstance(ant_list, str):
+            self.ant_list = ods_tools.listify(ant_list)
+        if not len(self.ant_list):
+            raise ValueError("No antennas specified.")
+        for badun in remove_ants:
+            if badun in self.ant_list:
+                logger.info(f"Removing antenna {badun}")
+                self.ant_list.remove(badun)
+        ata_control.move_ant_group(self.ant_list, 'none', 'sats')
+        logger.info(f"antennas:  {(', ').join(self.ant_list)}")
+        atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
 
-    def start(self, **kwargs):
+    def freq(self, freq, lo=['A', 'B'], focus_on=None):
         """
         Parameters (kwargs)
         -------------------
-        initials : str
-            Initials of observer
-        project_id : str
-            Project identifier
-        group_ants : list
-            list of ants to move into the reserved group
-
-        """
-        self._setvar({'initials': None, 'project_id': None, 'group_ants': ['1a']}, kwargs)
-
-        if self.initials is None:
-            print("Please include your name or initials.")
-        elif ata_control is None:
-            self.test(f'test start:  {self.initials} for project {self.project_id}')
-        else:
-            ata_control.move_ant_group(self.group_ants, 'none', 'atagr')
-        logger.info(f"session start: {self.initials} -- reserving {', '.join(self.group_ants)}")
-        logger.info(f"project_id: {self.project_id}")
-
-    def end(self, **kwargs):
-        """
-        Parameters (kwargs)
-        -------------------
-        group_ants : list
-            Antenna list in the group to unreserve
-        use_ants : list
-            Antenna list to park, default use group_ants
-
-        """
-        self._setvar({'group_ants': ['1a'], 'use_ants': None}, kwargs)
-
-        if ata_control is None:
-            self.test("test end")
-        else:
-            atexit.register(ata_control.park_antennas, self.use_ants)
-            atexit.register(ata_control.move_ant_group, self.group_ants, 'atagr', 'none')
-        logger.info(f"parking: {', '.join(self.use_ants)}")
-        logger.info(f"end: {', '.join(self.group_ants)}")
-
-    def freq(self, **kwargs):
-        """
-        Parameters (kwargs)
-        -------------------
-        frequency : float
-            Frequency of observation [GHz]
-        lo : str
+        frequency : list of floats
+            Frequency of observation [GHz], must match length of lo
+        lo : list
             LO to use A/B/C/D
-        use_ants : list or None
-            List of antennas to use, if None, assume group_ants
         attenuation : int
             Attenuation setting
 
         """
-        self._setvar({'frequency': None, 'lo': 'A', 'use_ants': None, 'attenuation': 20, 'group_ants': ['1a']}, kwargs)
-        if self.frequency is None:
-            print("Need a frequency in GHz -- no action")
-            return
+        self.freq = ods_tools.listify(freq)
+        self.lo = ods_tools.listify(lo)
+        flim = 100.0 if focus_on is None else 0.99 * max(self.freq)
+        logger.info(f"fcen: {', '.join(self.freq)}")
+        logger.info(f"lo: {', '.join(self.lo)}")
+        for freq, lo in zip(self.freq, self.lo):
+            this_freq = [freq] * len(self.ant_list)
+            ata_control.set_freq(this_freq, self.ant_list, lo=lo.lower(), nofocus=freq>flim)
+            ata_control.autotune(self.ant_list)
+            ata_control.rf_switch_thread(self.ant_list)
+            ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
+                                            [[self.attenuation, self.attenuation] for ant in self.ant_list])
 
-        logger.info(f"fcen: {self.frequency}")
-        logger.info(f"lo: {self.lo}")
-        logger.info(f"antennas:  {(', ').join(self.use_ants)}")
-        if ata_control is None:
-            self.test('Test freq')
-        else:
-            ata_control.set_freq(self.frequency, self.use_ants, lo=self.lo.lower())
-            ata_control.autotune(self.use_ants)
-            ata_control.rf_switch_thread(self.use_ants)
-            ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.use_ants], [[self.attenuation, self.attenuation] for ant in self.use_ants])
-    
-    def backend(self, **kwargs):
+    def backend(self, backend='xpgu'):
         """
         Parameters (kwargs)
         -------------------
         backend : str
             Name of backend to use
-        project_id : str
-            ID of project
 
         """
-        self._setvar({'backend': 'xgpu', 'project_id': None}, kwargs)
+        self.backend = backend
         if self.project_id is None:
-            print("Need a project_id")
-            return
+            self.project_id = input("Need a project_id:  ")
         logger.info(f"Backend {self.backend} for project {self.project_id}")
-        if ata_control is None:
-            print("Test backend")
+        if self.backend == 'xgpu':
+            subprocess.run("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
         else:
-            if self.backend == 'xgpu':
-                subprocess.run("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
-            else:
-                print(f"Invalid backend: {self.backend} -- no action")
-                return
-            subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_{self.project_id}.py")
+            logger.error(f"Invalid backend: {self.backend} -- no action")
+            return
+        subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_{self.project_id}.py")
 
     def observe(self, **kwargs):
-        print("GET THE GUPPI?ETC STUFF HERE")
+        print("GET THE GUPPI/ETC STUFF HERE")
 
-    def move(self, **kwargs):
+    def move(self, location=None, coord_type='azel', use_ants=None):
         """
         Parameters (kwargs)
         -------------------
@@ -182,31 +115,27 @@ class CommandHandler:
             List of antennas to move, default to group_ants
 
         """
-        self._setvar({'location': None, 'coord_type': 'azel', 'use_ants': None, 'group_ants': ['1a']}, kwargs)
-        if self.location is None:
-            print("Need target")
-            return
+        self.location = location
+        self.coord_type = coord_type
+        use_ants = self.ant_list if use_ants is None else ods_tools.listify(use_ants)
 
         if ',' in self.location:
             x, y = [float(_v) for _v in self.location.split(',')]
         logger.info(f'move to: {self.location}  {self.coord_type}')
-        if ata_control is None:
-            self.test('test move')
-            return
 
         if self.coord_type == 'azel':
-            ata_control.set_az_el(self.use_ants, x, y)
+            ata_control.set_az_el(use_ants, x, y)
             logger.info(f"azel: {x},{y}")
         elif self.coord_type == 'radec':
-            source = ata_control.track_source(self.use_ants, radec=[x, y])
+            source = ata_control.track_source(use_ants, radec=[x, y])
             logger.info(f"radec: {x},{y}")
         elif self.coord_type == 'source':
-            source = ata_control.track_source(self.use_ants, source=self.location)
+            source = ata_control.track_source(use_ants, source=self.location)
             logger.info(f"source: {self.location}")
         elif self.coord_type == 'traj':
             from obsnerd.trajectory_engine import TRACK_YAML_FILENAME
             ephem = ata_control.upload_ephemeris(self.location)
-            ata_control.track_ephemeris(ephem, self.use_ants, wait=True)
+            ata_control.track_ephemeris(ephem, use_ants, wait=True)
             logger.info(f"traj: {self.location}")
             try:
                 with open(TRACK_YAML_FILENAME, 'r') as fp:
@@ -216,19 +145,15 @@ class CommandHandler:
             except FileNotFoundError:
                 pass
     
-    def note(self, **kwargs):
+    def note(self, note):
         """
         Parameter (kwargs)
         ------------------
-        notation : str
+        note : str
             Note to log
 
         """
-        self._setvar({'notation': None}, kwargs)
-        if self.notation is None:
-            print("Need to include a note.")
-        else:
-            logger.info(f"note: {self.notation}")
+        logger.info(f"note: {note}")
 
     def source(self, **kwargs):
         """
@@ -240,10 +165,5 @@ class CommandHandler:
             Datestamp
 
         """
-        self._setvar({'name': None, 'datestamp': None}, kwargs)
         self.datestamp = ods_timetools.interpret_date(self.datestamp)
         logger.info([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])
-
-    def test(self, msg='test'):
-        print(msg)
-        logger.info(msg)

@@ -8,6 +8,7 @@ FILTER_AXIS = {'time': 0, 'freq': 1}
 OBS_START_DELAY = 10  # sec
 FEED_FOCUS_SLEEP = 20
 
+ANT_LISTS = {'old_feeds': ['']}
 
 def make_cnode(cns):
     """

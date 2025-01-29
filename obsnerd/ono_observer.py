@@ -22,7 +22,7 @@ def augment(arr, N, msg="Lengths must be equal"):
 
 class Observer:
     def __init__(self, sources, integrations, start_times=None, freqs={'a': 1410, 'b': 5500},
-                 ant_list='rfsoc_active', known_bad='', focus_on='max', obs_fiddle=5, data_record='hpguppi'):
+                 ant_list='rfsoc_active', remove_ants='', focus_on='max', obs_fiddle=5, data_record='hpguppi'):
         """
         Parameters
         ----------
@@ -43,7 +43,7 @@ class Observer:
         self.data_record = data_record
 
         self.obs = ono_engine.CommandHandler()
-        self.obs.setants(ant_list)
+        self.obs.setants(ant_list=ant_list, remove_ants=remove_ants)
         
         self.ant_list = tools.listify(ant_list, {'rfsoc_active': snap_config.get_rfsoc_active_antlist()})
         if not len(self.ant_list):
