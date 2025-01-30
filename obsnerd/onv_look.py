@@ -2,10 +2,10 @@ from pyuvdata import UVData
 from astropy.time import Time
 import numpy as np
 import matplotlib.pyplot as plt
-from . import obs_base
+from . import onv_base
 from datetime import datetime
 import os.path as path
-from . import obs_sys as OS
+from . import on_sys as OS
 from odsutils import ods_tools as tools
 
 
@@ -299,7 +299,7 @@ class Look:
             t/x axis to use in plot [a/b/d]
     
         """
-        self.obs = obs_base.Base()
+        self.obs = onv_base.Base()
         self.obs.read_obsinfo(obs=obsinfo)
         cnode = ','.join(self.cnode)
         ants = tools.listify(ants)
@@ -473,5 +473,5 @@ class Look:
             plt.plot(self.times.datetime, toMag(self.data[:, i], use_dB))
 
     def get_obsinfo(self):
-        self.obs = obs_base.Base()
+        self.obs = onv_base.Base()
         self.obs.read_obsinfo(obs=self.obsid)
