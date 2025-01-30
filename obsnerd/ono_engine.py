@@ -1,6 +1,5 @@
 try:
     from ATATools import ata_control
-    from SNAPobs import snap_if
     from SNAPobs.snap_hpguppi import record_in as hpguppi_record_in
     from SNAPobs.snap_hpguppi import snap_hpguppi_defaults as hpguppi_defaults
     from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary
@@ -8,7 +7,6 @@ try:
 except ImportError:
     from .ono_debug import Empty
     ata_control = Empty('ata_control')
-    snap_if = Empty('snap_if')
     hpguppi_record_in = Empty('hpguppi_record_in')
     hpguppi_defaults = Empty('hpguppi_defaults')
     hpguppi_auxillary = Empty('hpguppi_auxillary')
@@ -56,7 +54,7 @@ class CommandHandler:
         logger.info(f"antennas:  {(', ').join(self.ant_list)}")
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
 
-    def setfreq(self, freq, lo=['A', 'B'], focus_on=None):
+    def setrf(self, freq, lo=['A', 'B'], attenuation=[8, 8], focus_on=None):
         """
         Parameters (kwargs)
         -------------------
@@ -64,22 +62,28 @@ class CommandHandler:
             Frequency of observation [GHz], must match length of lo
         lo : list
             LO to use A/B/C/D
-        attenuation : int
+        attenuation : list of int
             Attenuation setting
 
         """
         self.freq = ods_tools.listify(freq)
         self.lo = ods_tools.listify(lo)
-        flim = 100.0 if focus_on is None else 0.99 * max(self.freq)
-        logger.info(f"fcen: {', '.join([str(x) for x in self.freq])}")
+        self.attenuation = ods_tools.listify(attenuation)
+        flim = 100.0 if focus_on is None else max(self.freq)
+        logger.info(f"freq: {', '.join([str(x) for x in self.freq])}")
         logger.info(f"lo: {', '.join(self.lo)}")
+        logger.info(f"attenuation: {', '.join([str(x) for x in self.attenuation])}")
+        need_to_focus = False
         for freq, lo in zip(self.freq, self.lo):
             this_freq = [freq] * len(self.ant_list)
-            ata_control.set_freq(this_freq, self.ant_list, lo=lo.lower(), nofocus=freq>flim)
+            need_to_focus = freq > (0.99 * flim ) if not need_to_focus  else False
+            ata_control.set_freq(this_freq, self.ant_list, lo=lo.lower(), nofocus=freq<flim)
             ata_control.autotune(self.ant_list)
-            ata_control.rf_switch_thread(self.ant_list)
             ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
-                                            [[self.attenuation, self.attenuation] for ant in self.ant_list])
+                                            [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
+        if need_to_focus and focus_on is not None:
+            import time
+            time.sleep(20)
 
     def setbackend(self, backend='xpgu'):
         """
@@ -155,15 +159,3 @@ class CommandHandler:
         """
         logger.info(f"note: {note}")
 
-    def source(self, **kwargs):
-        """
-        Parameters (kwargs)
-        -------------------
-        source : str
-            Source name
-        datestamp : str
-            Datestamp
-
-        """
-        self.datestamp = ods_timetools.interpret_date(self.datestamp)
-        logger.info([f'source: {self.name}', f'expected: {self.datestamp.isoformat()}'])

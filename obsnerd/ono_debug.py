@@ -20,8 +20,6 @@ class Empty:
     def get_rfsoc_active_antlist(self):
         print(f"{self.clsname} not loaded.")
         return ['2b']
-    def tune_if_antslo(self, a):
-        print(f"{self.clsname} not loaded.")
     def copy(self):
         print(f"{self.clsname} not loaded.")
     def update(self, x):
