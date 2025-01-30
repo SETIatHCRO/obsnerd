@@ -19,5 +19,5 @@ args = ap.parse_args()
 
 args.time_axis = AXIS_OPTIONS[args.time_axis[0].lower()]
 
-obs = obs_look.Look(obsinput=None, lo=args.lo, cnode=args.cnode)
+obs = onv_look.Look(obsinput=None, lo=args.lo, cnode=args.cnode)
 obs.dashboard_gen(obsinfo=args.obsinfo, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.time_axis, show_diff=args.show_diff)
