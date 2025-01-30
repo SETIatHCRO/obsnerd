@@ -309,7 +309,7 @@ class Look:
             for obsid in self.obs.obsinfo.obsid:
                 for ant in ants:
                     for pol in pols:
-                        print(f"on_obs.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} {show_diff} --dash -s", file=fp)
+                        print(f"on_look.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} {show_diff} --dash -s", file=fp)
 
     def dashboard(self, ant='2b', pol='xx', time_axis='seconds', transit_time=4.0, **kwargs):
         """
