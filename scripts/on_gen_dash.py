@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import argparse
-from obsnerd import obs_look
+from obsnerd import onv_look
 from obsnerd.on_sys import AXIS_OPTIONS
 
 
