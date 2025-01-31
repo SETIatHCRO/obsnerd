@@ -14,10 +14,9 @@ except ImportError:
     snap_if = Empty('snap_if')
 
 import atexit
-from . import __version__, LOG_FILENAME
+from . import __version__, LOG_FILENAME, ono_record
 from . import on_sys as OS
 from odsutils import logger_setup
-from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 import subprocess
 from time import sleep
@@ -30,6 +29,7 @@ DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME}
 OBS_START_DELAY = 10  # time to prep data until collecting
 OBS_DAWDLE = 5  # extra time to "sleep" to make sure things are done
+LO_LIST = ['A', 'B']
 
 class CommandHandler:
     def __init__(self, **kwargs):
@@ -42,10 +42,14 @@ class CommandHandler:
         self.observer = str(kw['observer'])
         self.project_id = str(kw['project_id'])
         logger.info(f"session start: {self.observer} -- {self.project_id}")
+        self.rec = ono_record.Record(observer=self.observer, project_id=self.project_id)
 
     def setants(self, ant_list='rfsoc_active', remove_ants=[], park_when_done=True):
-        if ant_list == 'rfsoc_active':
+        if ant_list.startswith('rfsoc_active'):
             self.ant_list = snap_config.get_rfsoc_active_antlist()
+            xxx = ant_list.split('-')
+            if len(xxx) == 2:
+                remove_ants += tools.listify(xxx[1])
         elif ant_list in OS.ANT_LISTS:
             self.ant_list = copy(OS.ANT_LIST[ant_list])
         elif isinstance(ant_list, str):
@@ -59,6 +63,7 @@ class CommandHandler:
         ata_control.move_ant_group(self.ant_list, 'none', 'bfa')
         logger.info(f"antennas:  {(', ').join(self.ant_list)}")
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
+        self.rec.update(ants=self.ant_list)
 
     def setrf(self, freq, lo=['A', 'B'], attenuation=[8, 8], focus_on=None):
         """
@@ -81,17 +86,21 @@ class CommandHandler:
         logger.info(f"lo: {', '.join(self.lo)}")
         logger.info(f"attenuation: {', '.join([str(x) for x in self.attenuation])}")
         need_to_focus = False
+        focus_freq = None
         for freq, lo in zip(self.freq, self.lo):
             this_freq = [freq] * len(self.ant_list)
             need_to_focus = freq > (0.99 * flim ) if not need_to_focus  else False
+            if need_to_focus: focus_freq = freq
             ata_control.set_freq(this_freq, self.ant_list, lo=lo.lower(), nofocus=freq<flim)
         if need_to_focus:
             import time
             time.sleep(20)
         ata_control.autotune(self.ant_list)
+        print("ARE ATTEN PER LO???")
         ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
                                      [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
         snap_if.tune_if_antslo(antlo_list)
+        self.rec.update(freq=freq, lo=lo, attenuation=attenuation, focus=focus_freq)
 
     def setbackend(self, backend='xpgu'):
         """
@@ -111,6 +120,7 @@ class CommandHandler:
             logger.error(f"Invalid backend: {self.backend} -- no action")
             return
         subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_{self.project_id}.py")
+        self.rec.update(backend=backend)
 
     def move(self, location=None, coord_type='azel', use_ants=None):
         """
@@ -131,6 +141,7 @@ class CommandHandler:
         if ',' in self.location:
             x, y = [float(_v) for _v in self.location.split(',')]
         logger.info(f'move to: {self.location}  {self.coord_type}')
+        self.rec.update(x=x, y=y, coord=coord_type)
 
         if self.coord_type == 'azel':
             ata_control.set_az_el(use_ants, x, y)

@@ -1,9 +1,15 @@
 #!/usr/bin/env python
+"""
+This allows granular access to onv_engine -- NEED TO GO THROUGH IT
+
+For a full observation, use on_observer
+"""
 from obsnerd import ono_engine as oe
 import argparse
 
 ap = argparse.ArgumentParser()
-ap.add_argument('cmd', help="Action [start, freq,  move, end, note, source, summary]", choices=['start', 'freq', 'move', 'end', 'note', 'source', 'summary'])
+ap.add_argument('cmd', help="Action [single, start, freq,  move, end, note, source, summary]",
+                choices=['single', 'start', 'freq', 'move', 'end', 'note', 'source', 'summary'])
 ap.add_argument('-i', '--initials', help="Initials of user (cmd=start)", default=None)
 ap.add_argument('-p', '--project_id', help="Project ID designator (cmd=start;backend, default=p054)", default='p054')
 ap.add_argument('-g', '--group_ants', help="csv-list of antennas to reserve in group (cmd=start;end, default=rfsoc_active)", default='rfsoc_active')
@@ -21,4 +27,7 @@ ap.add_argument('-d', '--datetime', help="Reference datetime for source (cmd=sou
 args = ap.parse_args()
 
 session = oe.CommandHandler()
-getattr(session, args.cmd)(**vars(args))
+if args.cmd == 'single':  # Step through and take one complete observation
+    print("")
+else:
+    getattr(session, args.cmd)(**vars(args))

@@ -17,12 +17,18 @@ class Empty:
         print(f"{self.clsname} not loaded.")
     def publish_keyval_dict_to_redis(self, *args, **kwargs):
         print(f"{self.clsname} not loaded.")
+    def move_ant_group(self, a, b, c):
+        print(f"{self.clsname} not loaded")
     def get_rfsoc_active_antlist(self):
         print(f"{self.clsname} not loaded.")
-        return ['2b']
+        return ['1k', '2a', '2b']
     def copy(self):
         print(f"{self.clsname} not loaded.")
     def update(self, x):
         print(f"{self.clsname} not loaded.")
     def tune_if_antslo(self, antlo_list):
+        print(f"{self.clsname} not loaded.")
+    def set_atten_thread(self, a, b):
+        print(f"{self.clsname} not loaded.")
+    def track_source(self, a, radec):
         print(f"{self.clsname} not loaded.")

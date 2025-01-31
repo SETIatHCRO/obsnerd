@@ -1,126 +1,93 @@
-import atexit
 from . import on_sys as OS
-import time
 import logging
-from datetime import datetime
-from sys import stdout
-from astropy.time import Time
+from copy import copy
+from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
-from odsutils import logger_setup
-
-from obsnerd import ono_engine
+from odsutils import logger_setup, ods_engine
+from obsnerd import ono_engine, ono_record
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
-from . import LOG_FILENAME
+from . import LOG_FILENAME, __version__
 
-def augment(arr, N, msg="Lengths must be equal"):
-    if not isinstance(arr, list):
-        return [arr] * N
-    if len(arr) == 1:
-        return arr * N
-    if len(arr) != N:
-        raise ValueError(msg)
-    return arr
-
+DEFAULTS = {'observer': None, 'project_id': None,
+            'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
+            'observer': 'me', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'lo': ['A', 'B'],
+            'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int': 0.5}
 
 class Observer:
-    def __init__(self, sources, integrations, start_times=None, freqs={'a': 1410, 'b': 5500},
-                 ant_list='rfsoc_active', remove_ants='', focus_on='max', obs_fiddle=5,
-                 data_record='hpguppi'):
+    def __init__(self, **kwargs):
         """
         Parameters
         ----------
-        sources : list of str, str
-            Names of sources
-        integrations : list of float/int
-        start_time : list of str of times in isoformat or delays in seconds
-        freqs: 
-        focus_on : str
-            lo ('a', 'b') or 'max'
+
 
         """
-        self.sources = tools.listify(sources)
-        self.integrations = augment([float(x) for x in tools.listify(integrations)], len(self.sources), msg="Number of integrations and sources should match.")
-        self.start_times = self.sched(augment(tools.listify(start_times), len(self.sources), msg="Number of start_times and sources should match."))
-        self.focus_on = focus_on
-        self.obs_delay = OS.OBS_START_DELAY + obs_fiddle
-        self.data_record = data_record
+        kw = copy(DEFAULTS)
+        kw.update(kwargs)
+        self.logset = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'],
+                                          log_filename=kw['log_filename'], path=kw['path'])
+        logger.debug(f"{__name__} ver. {__version__}")
+        self.records = []  # ono_records to be made out of ODS
+        rec = ono_record.Record()
+        for key, val in kw.items():
+            if key in rec.fields:
+                setattr(self, key, val)
+        self.ods = ods_engine.ODS()
+        #'observer', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
+        #'source', 'x', 'y', 'coord',
+        #'time_per_int', 'start', 'end'
 
-        self.obs = ono_engine.CommandHandler()
-        self.obs.setants(ant_list=ant_list, remove_ants=remove_ants)
-        
+    def get_ods(self, fn):
+        if fn.endswith('.json'):
+            self.ods.read_ods(fn)
+        else:
+            self.ods.get_defaults_dict('defaults.json')
+            self.ods.add_from_file(fn)
+        self.ods.ods['primary'].sort()
+        self.groups = {}
+        for entry in self.ods.ods['primary'].entries:
+            key = (entry['src_start_utc'].datetime, entry['src_end_utc'].datetime)
+            self.groups.setdefault(key, [])
+            self.groups[key].append(entry)
+        self.ods.new_ods_instance('output')
 
-        self.freqs = freqs
-        # Check/set freqs same for all antennas
-        max_freq = {'val': 0.0, 'lo': ''}
-        for lo in self.freqs:
-            self.freqs[lo] = tools.listify(self.freqs[lo])
-            if len(self.freqs[lo]) == 1:
-                self.freqs[lo] = self.freqs[lo] * len(self.ant_list)
-            if self.freqs[lo][0] > max_freq['val']:
-                max_freq['val'] = self.freqs[lo][0]
-                max_freq['lo'] = lo
-        if self.focus_on == 'max':
-            self.focus_on = max_freq['lo']
+    def get_obs_from_ods(self):
+        self.records = []
+        for entries in self.groups.values():
+            rec = ono_record.Record(observer=self.observer, project_id=self.project_id, ants=self.ants,
+                                    attenuation=self.attenuation, focus=self.focus, backend=self.backend,
+                                    time_per_int=self.time_per_int, coord='radec', lo=self.lo)
+            freqs = []
+            for i in range(len(entries)):
+                freqs.append((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0)
+                if not i:
+                    source = entries[i]['src_id']
+                    x = entries[i]['src_ra_j2000_deg']
+                    y = entries[i]['src_dec_j2000_deg']
+                    start = entries[i]['src_start_utc']
+                    end = entries[i]['src_end_utc']
+                    new_entry = copy(entries[i])
+                    new_entry.update({'freq_lower_hz': 1990000000, 'freq_upper_hz': 1995000000})
+                    self.ods.add_new_record('output', **new_entry)
+                else:
+                    if entries[i]['src_id'] != source: logger.error(f"Sources don't match.")
+                    if entries[i]['src_ra_j2000_deg'] != x: logger.error("RAs don't match")
+                    if entries[i]['src_dec_j2000_deg'] != y: logger.error("Decs don't match")
+                    if entries[i]['src_start_utc'] != start: logger.error("Start times don't match")
+                    if entries[i]['src_end_utc'] != end: logger.error("End times don't match")
 
-        self.antlo_list = [ant+lo.upper() for lo in self.freqs for ant in self.ant_list]
+            rec.update(freq=freqs, source=source, x=x, y=y, start=start, end=end)
+            rec.proc()
+            self.records.append(rec)
+            self.ods.ods['output'].write('new_ods_output.json')
 
-    def sched(self, tlist):
-        """
-        Step through self.start_times to make delays and datetimes
-
-        """
-        starts = []
-        for t in tlist:
-            try:
-                d = float(t)
-            except ValueError:
-                d = Time(t).datetime
-            starts.append(d)
-        return starts
-
-    def setup_session(self):
-        yn = input("Have you set up the backend? ")
-        if yn[0].lower() == 'n':
-            raise RuntimeError("You need to set up the backend.")
-        ata_control.reserve_antennas(self.ant_list)
-        atexit.register(ata_control.release_antennas, self.ant_list, False)
-
-        self.dnodes = {}
-        for lo in self.freqs:
-            self.dnodes.update(getattr(hpguppi_defaults, f"hashpipe_targets_Lo{lo.upper()}").copy())
-
-        for lo in self.freqs:
-            nofocus = True if lo == self.focus_on else False
-            ata_control.set_freq(self.freqs[lo], self.ant_list, lo=lo, nofocus=nofocus)
-        print("Focusing feed.")
-        time.sleep(OS.FEED_FOCUS_SLEEP)
-
-        ata_control.autotune(self.ant_list)
-        snap_if.tune_if_antslo(self.antlo_list)
-
-    def step_obs(self, skip_cal_check=False):
-        cal_done = skip_cal_check
-        for source, integration, start in zip(self.sources, self.integrations, self.start_times):
-            if isinstance(start, datetime):
-                start = (start - datetime.now()).total_seconds()
-            if start > 1.0:
-                print(f"Waiting {start} seconds")
-                time.sleep(start)
-            self.take_obs(source, integration)
-            if not cal_done:
-                cal_done = input("Have you calibrated? ")
-
-    def take_obs(self, source, integration):
-        keyval_dict = {'XTIMEINT': integration}
-        hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, self.dnodes, postproc=False)
-        ata_control.make_and_track_ephems(source, self.ant_list)
-
-        hpguppi_record_in.record_in(OS.OBS_START_DELAY, integration, hashpipe_targets = self.dnodes)
-        print(f"Observing {source} for {integration:.2f} seconds...", end='')
-        stdout.flush()
-        time.sleep(integration + self.obs_delay)
-        if self.data_record == 'hpguppi':
-            hpguppi_record_in.record_in(OS.OBS_START_DELAY, integration, hashpipe_targets = self.dnodes)
-        print("Done")
+    def observe(self, is_actual=True):
+        if not is_actual:
+            self.backend = 'test'
+        self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id)
+        self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once
+        self.obs.setbackend(self.backend)  # And same backend
+        for source in self.records:
+            self.obs.setrf(freq=source.freq, lo=source.lo, attenuation=source.attenuation)
+            self.obs.move(f"{source.x},{source.y}", source.coord)

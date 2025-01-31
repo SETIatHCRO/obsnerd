@@ -1,7 +1,10 @@
 #! /usr/bin/env python
 import argparse
-from obsnerd import ono_sources
+from obsnerd import ono_observer
 
+"""
+This (WILL) read in a source file and step through observations
+"""
 
 ap = argparse.ArgumentParser()
 ap.add_argument('sources', help='Target list or json file with inputs')
