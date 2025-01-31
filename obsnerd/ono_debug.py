@@ -24,3 +24,5 @@ class Empty:
         print(f"{self.clsname} not loaded.")
     def update(self, x):
         print(f"{self.clsname} not loaded.")
+    def tune_if_antslo(self, antlo_list):
+        print(f"{self.clsname} not loaded.")

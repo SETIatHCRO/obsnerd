@@ -3,7 +3,7 @@ try:
     from SNAPobs.snap_hpguppi import record_in as hpguppi_record_in
     from SNAPobs.snap_hpguppi import snap_hpguppi_defaults as hpguppi_defaults
     from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary
-    from SNAPobs import snap_config
+    from SNAPobs import snap_config, snap_if
 except ImportError:
     from .ono_debug import Empty
     ata_control = Empty('ata_control')
@@ -11,11 +11,16 @@ except ImportError:
     hpguppi_defaults = Empty('hpguppi_defaults')
     hpguppi_auxillary = Empty('hpguppi_auxillary')
     snap_config = Empty('snap_config')
+    snap_if = Empty('snap_if')
 
 import atexit
-from . import __version__, LOG_FILENAME, on_sys
-from odsutils import logger_setup, ods_timetools, ods_tools
+from . import __version__, LOG_FILENAME
+from . import on_sys as OS
+from odsutils import logger_setup
+from odsutils import ods_timetools as ttools
+from odsutils import ods_tools as tools
 import subprocess
+from time import sleep
 from copy import copy
 import logging
 logger = logging.getLogger(__name__)
@@ -23,7 +28,8 @@ logger.setLevel('DEBUG')  # Set to lowest
 
 DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME}
-
+OBS_START_DELAY = 10  # time to prep data until collecting
+OBS_DAWDLE = 5  # extra time to "sleep" to make sure things are done
 
 class CommandHandler:
     def __init__(self, **kwargs):
@@ -40,10 +46,10 @@ class CommandHandler:
     def setants(self, ant_list='rfsoc_active', remove_ants=[], park_when_done=True):
         if ant_list == 'rfsoc_active':
             self.ant_list = snap_config.get_rfsoc_active_antlist()
-        elif ant_list in on_sys.ANT_LISTS:
-            self.ant_list = copy(on_sys.ANT_LIST[ant_list])
+        elif ant_list in OS.ANT_LISTS:
+            self.ant_list = copy(OS.ANT_LIST[ant_list])
         elif isinstance(ant_list, str):
-            self.ant_list = ods_tools.listify(ant_list)
+            self.ant_list = tools.listify(ant_list)
         if not len(self.ant_list):
             raise ValueError("No antennas specified.")
         for badun in remove_ants:
@@ -66,10 +72,11 @@ class CommandHandler:
             Attenuation setting
 
         """
-        self.freq = ods_tools.listify(freq)
-        self.lo = ods_tools.listify(lo)
-        self.attenuation = ods_tools.listify(attenuation)
-        flim = 100.0 if focus_on is None else max(self.freq)
+        self.freq = tools.listify(freq)
+        self.lo = tools.listify(lo)
+        self.attenuation = tools.listify(attenuation)
+        antlo_list = [ant+lo.upper() for lo in lo for ant in self.ant_list]
+        flim = 10000.0 if focus_on is None else max(self.freq)
         logger.info(f"freq: {', '.join([str(x) for x in self.freq])}")
         logger.info(f"lo: {', '.join(self.lo)}")
         logger.info(f"attenuation: {', '.join([str(x) for x in self.attenuation])}")
@@ -78,12 +85,13 @@ class CommandHandler:
             this_freq = [freq] * len(self.ant_list)
             need_to_focus = freq > (0.99 * flim ) if not need_to_focus  else False
             ata_control.set_freq(this_freq, self.ant_list, lo=lo.lower(), nofocus=freq<flim)
-            ata_control.autotune(self.ant_list)
-            ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
-                                            [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
-        if need_to_focus and focus_on is not None:
+        if need_to_focus:
             import time
             time.sleep(20)
+        ata_control.autotune(self.ant_list)
+        ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
+                                     [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
+        snap_if.tune_if_antslo(antlo_list)
 
     def setbackend(self, backend='xpgu'):
         """
@@ -104,9 +112,6 @@ class CommandHandler:
             return
         subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_{self.project_id}.py")
 
-    def observe(self, **kwargs):
-        print("GET THE GUPPI/ETC STUFF HERE")
-
     def move(self, location=None, coord_type='azel', use_ants=None):
         """
         Parameters (kwargs)
@@ -121,7 +126,7 @@ class CommandHandler:
         """
         self.location = location
         self.coord_type = coord_type
-        use_ants = self.ant_list if use_ants is None else ods_tools.listify(use_ants)
+        use_ants = self.ant_list if use_ants is None else tools.listify(use_ants)
 
         if ',' in self.location:
             x, y = [float(_v) for _v in self.location.split(',')]
@@ -148,7 +153,17 @@ class CommandHandler:
                             logger.info(f"track: {line.strip()}")
             except FileNotFoundError:
                 pass
-    
+
+    def observe(self, obs_time, time_per_int,
+                obs_start_delay=OBS_START_DELAY, obs_dawdle=OBS_DAWDLE):
+        d = hpguppi_defaults.hashpipe_targets_LoA.copy()
+        d.update(hpguppi_defaults.hashpipe_targets_LoB)
+        #d = {'seti-node3': [0], 'seti-node6': [1]}
+        keyval_dict = {'XTIMEINT': time_per_int}
+        hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=True)
+        hpguppi_record_in.record_in(obs_start_delay, obs_time, hashpipe_targets = d)
+        sleep(obs_start_delay + obs_time + obs_dawdle)
+
     def note(self, note):
         """
         Parameter (kwargs)
