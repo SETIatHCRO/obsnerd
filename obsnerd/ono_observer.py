@@ -91,3 +91,7 @@ class Observer:
         for source in self.records:
             self.obs.setrf(freq=source.freq, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(f"{source.x},{source.y}", source.coord)
+            tlength = ttools.wait_until(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
+            if tlength is None:
+                continue
+            self.obs.observe(source.obs_time, source.time_per_int)

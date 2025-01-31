@@ -167,6 +167,8 @@ class CommandHandler:
 
     def observe(self, obs_time, time_per_int,
                 obs_start_delay=OBS_START_DELAY, obs_dawdle=OBS_DAWDLE):
+        self.obs_start_delay = obs_start_delay
+        self.obs_dawdle = obs_dawdle
         d = hpguppi_defaults.hashpipe_targets_LoA.copy()
         d.update(hpguppi_defaults.hashpipe_targets_LoB)
         #d = {'seti-node3': [0], 'seti-node6': [1]}
