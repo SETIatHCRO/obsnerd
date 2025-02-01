@@ -7,11 +7,17 @@ class Record:
         'source', 'x', 'y', 'coord',
         'start', 'end', 'obs_time', 'time_per_int'
     ]
+    header = ['observer', 'project_id', 'ants', 'focus', 'time_per_int', 'backend', 'focus', 'attenuation', 'coord']
+    short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time']
+
     def __init__(self, **kwargs):
         self.update(**kwargs)
 
+    def __repr__(self, use='fields'):
+        return self.view(fields_to_show=getattr(self, use), bracket=['<', '>'], sep='  -- ')
+
     def __str__(self):
-        return self.view()
+        return self.view(fields_to_show=self.fields, bracket=['', ''], sep='\n')
 
     def update(self, **kwargs):
         for key, val in kwargs.items():
@@ -43,12 +49,19 @@ class Record:
         for key, dtype in {'freq': float, 'lo': str, 'attenuation':int}.items():
             self._listify(key, dtype)
 
-    def view(self):
-        s = ''
-        for fld in self.fields:
+    def view(self, fields_to_show=None, bracket=['', ''], sep='\n'):
+        if fields_to_show is None:
+            fields_to_show = self.fields
+        s = bracket[0]
+        for fld in fields_to_show:
             try:
                 val = getattr(self, fld)
+                if isinstance(val, list):
+                    val = ', '.join([str(x) for x in val])
+                s += f'{fld}: {val}{sep}'
             except AttributeError:
-                val = '-'
-            s += f'{fld}: {val}\n'
+                continue
+        s = s.strip(sep)
+        s += bracket[1]
         return s
+    

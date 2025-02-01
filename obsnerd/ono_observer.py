@@ -25,30 +25,38 @@ class Observer:
         """
         Parameters
         ----------
-
+        **kwargs: conlog, filelog, log_filename, path
 
         """
         kw = copy(DEFAULTS)
         kw.update(kwargs)
-        self.logset = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'],
-                                          log_filename=kw['log_filename'], path=kw['path'])
+        self.log_settings = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'],
+                                                log_filename=kw['log_filename'], path=kw['path'])
         logger.debug(f"{__name__} ver. {__version__}")
         self.records = []  # ono_records to be made out of ODS
         rec = ono_record.Record()
         for key, val in kw.items():
             if key in rec.fields:
                 setattr(self, key, val)
-        self.ods = ods_engine.ODS()
-        #'observer', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
-        #'source', 'x', 'y', 'coord',
-        #'time_per_int', 'start', 'end'
 
-    def get_ods(self, fn, defaults='defaults.json'):
-        if fn.endswith('.json') or fn.startswith('http'):
-            self.ods.read_ods(fn)
+    def get_ods(self, ods_input, defaults='defaults.json'):
+        """
+        Read an ODS input and make dictionary based on start/end.
+
+        Parmaeters
+        ----------
+        ods_input : str
+            ODS input, file or URL
+        defaults : str or None
+            Default values to use
+
+        """
+        self.ods = ods_engine.ODS()
+        if ods_input.endswith('.json') or ods_input.startswith('http'):
+            self.ods.read_ods(ods_input)
         else:
             self.ods.get_defaults_dict(defaults)
-            self.ods.add_from_file(fn)
+            self.ods.add_from_file(ods_input)
         self.ods.ods['primary'].sort()
         self.groups = {}
         for entry in self.ods.ods['primary'].entries:
@@ -57,6 +65,17 @@ class Observer:
             self.groups[key].append(entry)
 
     def get_obs_from_ods(self, lo_offset=10.0, lo_unit='MHz'):
+        """
+        Generate the obsnerd records based on an ods (as read in get_ods).
+
+        Parmaeters
+        ----------
+        lo_offset : float
+            LO offset to use for frequency.
+        lo_unit : str
+            Unit of LO offset
+
+        """
         self.records = []
         self.ods.new_ods_instance('output')
         for entries in self.groups.values():
@@ -102,7 +121,9 @@ class Observer:
         self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id)
         self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once
         self.obs.setbackend(self.backend)  # And same backend
-        for source in self.records:
+        for i, source in enumerate(self.records):
+            if not i: print(source.__repr__(use='header'))
+            print(f"{i+1}/{len(self.records)}: {source.__repr__(use='short')}")
             self.obs.setrf(freq=source.freq, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(f"{source.x},{source.y}", source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
