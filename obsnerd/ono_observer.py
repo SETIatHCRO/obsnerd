@@ -85,7 +85,8 @@ class Observer:
             freqs = []
             pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
             for i in range(len(entries)):
-                freqs.append((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0 - lo_offset*UNITS[lo_unit])
+                freq_ods = ((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0) * UNITS['MHz']
+                freqs.append(freq_ods - lo_offset*UNITS[lo_unit])
                 if not i:  # Get common parameters in first pass through and make consolidated new ods record
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
@@ -123,7 +124,8 @@ class Observer:
         self.obs.setbackend(self.backend)  # And same backend
         for i, source in enumerate(self.records):
             if not i: print(source.__repr__(use='header'))
-            print(f"{i+1}/{len(self.records)}: {source.__repr__(use='short')}")
+            ts = ttools.interpret_date('now', fmt='%H:%M:%S')
+            print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(use='short')}")
             self.obs.setrf(freq=source.freq, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(f"{source.x},{source.y}", source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))

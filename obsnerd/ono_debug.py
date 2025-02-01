@@ -1,34 +1,45 @@
+from datetime import datetime
+from time import sleep
+
+
 class Empty:
     def __init__(self, clsname, *args, **kwargs):
         self.clsname = clsname
         self.hashpipe_targets_LoA = {}
         self.hashpipe_targets_LoB = {}
+    def show(self, method):
+        ts = datetime.now().strftime('%H:%M:%S')
+        print(f"\t{ts} -- {self.clsname}.{method} not loaded.")
     def reserve_antennas(self, a):
-        print(f"{self.clsname} not loaded.")
+        self.show('reserve_antennas')
     def release_antennas(self, a, b):
-        print(f"{self.clsname} not loaded.")
+        self.show('release_antennas')
     def set_freq(self, *args, **kwargs):
-        print(f"{self.clsname} not loaded.")
+        self.show('set_freq')
     def autotune(self, a):
-        print(f"{self.clsname} not loaded.")
+        self.show('autotune')
     def make_and_track_ephems(self, a, b):
-        print(f"{self.clsname} not loaded.")
+        self.show('make_and_track_ephems')
     def record_in(self, *args, **kwargs):
-        print(f"{self.clsname} not loaded.")
+        self.show('record_in')
+        print("\t\tPretending to start up ...")
+        sleep(args[0])
+        ts = datetime.now().strftime('%H:%M:%S')
+        print(f"\t\t{ts} Pretending to record")
     def publish_keyval_dict_to_redis(self, *args, **kwargs):
-        print(f"{self.clsname} not loaded.")
+        self.show('publish_keyval_dict_to_redis')
     def move_ant_group(self, a, b, c):
-        print(f"{self.clsname} not loaded")
+        self.show('move_ant_group')
     def get_rfsoc_active_antlist(self):
-        print(f"{self.clsname} not loaded.")
+        self.show('get_rfsoc_active_antlist')
         return ['1k', '2a', '2b']
     def copy(self):
-        print(f"{self.clsname} not loaded.")
+        self.show('copy')
     def update(self, x):
-        print(f"{self.clsname} not loaded.")
+        self.show('update')
     def tune_if_antslo(self, antlo_list):
-        print(f"{self.clsname} not loaded.")
+        self.show('tune_if_antslo')
     def set_atten_thread(self, a, b):
-        print(f"{self.clsname} not loaded.")
+        self.show('set_atten_thread')
     def track_source(self, a, radec):
-        print(f"{self.clsname} not loaded.")
+        self.show('track_source')

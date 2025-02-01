@@ -25,11 +25,13 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
 
-DEFAULTS = {'observer': None, 'project_id': None,
-            'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME}
+
 OBS_START_DELAY = 10  # time to prep data until collecting
 OBS_DAWDLE = 5  # extra time to "sleep" to make sure things are done
 LO_LIST = ['A', 'B']
+DEFAULTS = {'observer': None, 'project_id': None,
+            'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
+            'obs_start_delay': OBS_START_DELAY, 'obs_dawdle': OBS_DAWDLE}
 
 class CommandHandler:
     def __init__(self, **kwargs):
@@ -39,8 +41,8 @@ class CommandHandler:
                                           log_filename=kw['log_filename'], path=kw['path'])
         logger.debug(f"{__name__} ver. {__version__}")
 
-        self.observer = str(kw['observer'])
-        self.project_id = str(kw['project_id'])
+        for this_attr in ['observer', 'project_id', 'obs_start_delay', 'obs_dawdle']:
+            setattr(self, this_attr, kw[this_attr])
         logger.info(f"session start: {self.observer} -- {self.project_id}")
         self.rec = ono_record.Record(observer=self.observer, project_id=self.project_id)
 
@@ -96,7 +98,6 @@ class CommandHandler:
             import time
             time.sleep(20)
         ata_control.autotune(self.ant_list)
-        print("ARE ATTEN PER LO???")
         ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
                                      [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
         snap_if.tune_if_antslo(antlo_list)
@@ -165,17 +166,16 @@ class CommandHandler:
             except FileNotFoundError:
                 pass
 
-    def observe(self, obs_time, time_per_int,
-                obs_start_delay=OBS_START_DELAY, obs_dawdle=OBS_DAWDLE):
-        self.obs_start_delay = obs_start_delay
-        self.obs_dawdle = obs_dawdle
+    def observe(self, obs_time, time_per_int):
         d = hpguppi_defaults.hashpipe_targets_LoA.copy()
         d.update(hpguppi_defaults.hashpipe_targets_LoB)
         #d = {'seti-node3': [0], 'seti-node6': [1]}
         keyval_dict = {'XTIMEINT': time_per_int}
         hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=True)
-        hpguppi_record_in.record_in(obs_start_delay, obs_time, hashpipe_targets = d)
-        sleep(obs_start_delay + obs_time + obs_dawdle)
+        hpguppi_record_in.record_in(self.obs_start_delay, obs_time, hashpipe_targets = d)
+        sleepy = float(self.obs_start_delay + obs_time + self.obs_dawdle)
+        if sleepy > 0.0:
+            sleep(sleepy)
 
     def note(self, note):
         """
