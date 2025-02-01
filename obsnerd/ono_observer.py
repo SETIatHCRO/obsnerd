@@ -15,6 +15,11 @@ DEFAULTS = {'observer': None, 'project_id': None,
             'observer': 'me', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'lo': ['A', 'B'],
             'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int': 0.5}
 
+UNITS = {'Hz': 1.0, 'kHz': 1E3, 'MHz': 1E6, 'GHz': 1E9}
+SPACEX_LO = 1990 * UNITS['MHz']
+SPACEX_HI = 1995 * UNITS['MHz']
+
+
 class Observer:
     def __init__(self, **kwargs):
         """
@@ -38,11 +43,11 @@ class Observer:
         #'source', 'x', 'y', 'coord',
         #'time_per_int', 'start', 'end'
 
-    def get_ods(self, fn):
-        if fn.endswith('.json'):
+    def get_ods(self, fn, defaults='defaults.json'):
+        if fn.endswith('.json') or fn.startswith('http'):
             self.ods.read_ods(fn)
         else:
-            self.ods.get_defaults_dict('defaults.json')
+            self.ods.get_defaults_dict(defaults)
             self.ods.add_from_file(fn)
         self.ods.ods['primary'].sort()
         self.groups = {}
@@ -50,37 +55,46 @@ class Observer:
             key = (entry['src_start_utc'].datetime, entry['src_end_utc'].datetime)
             self.groups.setdefault(key, [])
             self.groups[key].append(entry)
-        self.ods.new_ods_instance('output')
 
-    def get_obs_from_ods(self):
+    def get_obs_from_ods(self, lo_offset=10.0, lo_unit='MHz'):
         self.records = []
+        self.ods.new_ods_instance('output')
         for entries in self.groups.values():
             rec = ono_record.Record(observer=self.observer, project_id=self.project_id, ants=self.ants,
                                     attenuation=self.attenuation, focus=self.focus, backend=self.backend,
                                     time_per_int=self.time_per_int, coord='radec', lo=self.lo)
             freqs = []
+            pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
             for i in range(len(entries)):
-                freqs.append((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0)
-                if not i:
-                    source = entries[i]['src_id']
-                    x = entries[i]['src_ra_j2000_deg']
-                    y = entries[i]['src_dec_j2000_deg']
-                    start = entries[i]['src_start_utc']
-                    end = entries[i]['src_end_utc']
+                freqs.append((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0 - lo_offset*UNITS[lo_unit])
+                if not i:  # Get common parameters in first pass through and make consolidated new ods record
+                    for par in list(pars.keys()):
+                        pars[par] = entries[i][par]
                     new_entry = copy(entries[i])
-                    new_entry.update({'freq_lower_hz': 1990000000, 'freq_upper_hz': 1995000000})
+                    new_entry.update({'freq_lower_hz': SPACEX_LO, 'freq_upper_hz': SPACEX_HI})
                     self.ods.add_new_record('output', **new_entry)
-                else:
-                    if entries[i]['src_id'] != source: logger.error(f"Sources don't match.")
-                    if entries[i]['src_ra_j2000_deg'] != x: logger.error("RAs don't match")
-                    if entries[i]['src_dec_j2000_deg'] != y: logger.error("Decs don't match")
-                    if entries[i]['src_start_utc'] != start: logger.error("Start times don't match")
-                    if entries[i]['src_end_utc'] != end: logger.error("End times don't match")
-
-            rec.update(freq=freqs, source=source, x=x, y=y, start=start, end=end)
+                else:  # Just check if different
+                    for par in list(pars.keys()):
+                        pars[par] = entries[i][par]
+                        if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
+            rec.update(freq=freqs, source=pars['src_id'], x=pars['src_ra_j2000_deg'], y=pars['src_dec_j2000_deg'],
+                       start=pars['src_start_utc'], end=pars['src_end_utc'])
             rec.proc()
             self.records.append(rec)
-            self.ods.ods['output'].write('new_ods_output.json')
+
+    def update_ods(self, ods_input, ods_output):
+        """
+        Update the working ods with the new additions.
+
+        Parameters
+        ----------
+        ods_input : str
+            Location of current working ods
+        ods_output : str
+            Location of the one to write.  If None use ods_input
+
+        """
+        self.ods.pipe('output', intake=ods_input, output=ods_output)
 
     def observe(self, is_actual=True):
         if not is_actual:
