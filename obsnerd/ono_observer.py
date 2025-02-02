@@ -12,8 +12,8 @@ from . import LOG_FILENAME, __version__
 
 DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
-            'observer': 'me', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'lo': ['A', 'B'], 'embargo': [],
-            'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int': 0.5}
+            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'embargo': [],
+            'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int': 0.5}
 
 UNITS = {'Hz': 1.0, 'kHz': 1E3, 'MHz': 1E6, 'GHz': 1E9}
 SPACEX_LO = 1990 * UNITS['MHz']
@@ -130,12 +130,13 @@ class Observer:
         t0 = t0.replace(minute=(t0.minute // 5) * 5)
         t1 = ttools.t_delta(t1.replace(minute=(t1.minute // 5) * 5), 5, 'm')
         cal_day = ttools.interpret_date(self.overall.start, '%Y-%m-%d')
-        # from aocalendar import google_calendar_sync
-        # self.google_calendar = google_calendar_sync.SyncCal()
-        # self.google_calendar.get_aocal(self, calfile=cal_day, path=self.log_settings.path, conlog=self.log_settings.conlog,
-        #                                filelog=self.log_settings.filelog, start_new=True)
-        # self.google_calendar.add_event_to_google_calendar(self.this_cal.events[cal_day][self.aoc_nind])
-        
+        from aocalendar import google_calendar_sync
+        self.google_calendar = google_calendar_sync.SyncCal()
+        self.google_calendar.get_aocal(self, calfile=cal_day, path=self.log_settings.path, conlog=self.log_settings.conlog,
+                                       filelog=self.log_settings.filelog, start_new=True)
+        self.google_calendar.add_event_to_google_calendar(self.this_cal.events[cal_day][self.aoc_nind])
+        self.google_calendar.aocal.add(program=self.overall.project_name, pid=self.overall.project_id, observer=self.overall.observer,
+                                       utc_start=t0, utc_stop=t1)
 
     def update_ods(self, ods_input, ods_output):
         """

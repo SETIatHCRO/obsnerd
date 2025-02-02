@@ -3,11 +3,11 @@ from odsutils import ods_tools as tools
 
 class Record:
     fields = [
-        'observer', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
+        'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
         'source', 'x', 'y', 'coord',
         'start', 'end', 'obs_time', 'time_per_int'
     ]
-    header = ['observer', 'project_id', 'ants', 'focus', 'time_per_int', 'backend', 'focus', 'attenuation', 'coord']
+    header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int', 'backend', 'focus', 'attenuation', 'coord']
     short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time']
 
     def __init__(self, **kwargs):

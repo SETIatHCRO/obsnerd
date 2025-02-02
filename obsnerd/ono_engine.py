@@ -29,7 +29,7 @@ logger.setLevel('DEBUG')  # Set to lowest
 OBS_START_DELAY = 10  # time to prep data until collecting
 OBS_DAWDLE = 5  # extra time to "sleep" to make sure things are done
 LO_LIST = ['A', 'B']
-DEFAULTS = {'observer': None, 'project_id': None,
+DEFAULTS = {'observer': None, 'project_id': None, 'project_name': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'obs_start_delay': OBS_START_DELAY, 'obs_dawdle': OBS_DAWDLE}
 
@@ -41,7 +41,7 @@ class CommandHandler:
                                           log_filename=kw['log_filename'], path=kw['path'])
         logger.debug(f"{__name__} ver. {__version__}")
 
-        for this_attr in ['observer', 'project_id', 'obs_start_delay', 'obs_dawdle']:
+        for this_attr in ['observer', 'project_id', 'project_name', 'obs_start_delay', 'obs_dawdle']:
             setattr(self, this_attr, kw[this_attr])
         logger.info(f"session start: {self.observer} -- {self.project_id}")
         self.rec = ono_record.Record(observer=self.observer, project_id=self.project_id)
