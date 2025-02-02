@@ -1,0 +1,76 @@
+Notes for Starlink testing
+
+Terminology:
+  source - a unique source name.  For starlink that is S#####
+  obsid - a unique observation identifier:  source_MJD{.4f}
+  obsrec - a unique observation/hardware identifier:  <obsid>_LO_CNODE
+  Obsrec file - the filename holding the obsrec information (generally <obsrec>.npz)
+  experiment - a session looking at sources (typically within an MJD day or two)
+  obsinfo - a file containing information on obsids for a given experiment:  obsinfo_MJD.json
+  obsmeta - a json file containing index to the obsinfo files: obsmeta.json
+
+
+[[[In the examples below, the file from SpaceX is ATARunDec12_obs.csv in format 'd' from Dec 12 spanning mid 60656,60657]]]
+
+1 - SpaceX sends ephemerides (in some format)
+
+2 - Read using starlink_input.py
+    Python > from obsnerds import starlink_io
+    Python > sl = starlink_io.Input()
+    Python > sl.read_SpaceX('ATARunDec12_obs.csv', ftype='d')
+    Python > starlink_io.write(sl.sats, src_tag='1212')
+	generates two files
+        	sources.json - contains the observation information that is read in by observe_starlink.py
+        	sources_list.txt - contains the obs info in a way that odsutils can make 
+
+3 - write the ods.json file
+    # > obsuser.py -f source_list.txt -d defaults.json -w ods.json
+    	Copy it to /opt/mnt/shared/ods_upload at least 10 minutes before you observe
+
+4 - generate obsinfo file and update obsmeta.json
+    # > on_gen_obsinfo.py 60656,60657
+    	updates obsmeta and generates obsinfo_60656.json
+
+5 - add boresight info to obsinfo
+    	SpaceX sends info
+           or
+    	use SOPP (see SOPP on bottom of file)
+    Python > from obsnerds import obs_base
+    Python > obs = obs_base.Base()
+    Python > obs.update_obsinfo_boresight_format_d('ATARunsDec12_obs.csv', 'obsinfo_60656.json')
+
+6 - Observe using observe_starlink.py (edit sources.json appropriately for e.g. frequency)
+	log into obs-node1 as sonata and go to rfsoc_obs_scripts/p054
+	scp the sources.json file (double-checking observe_starlink.py just in case)
+    # > python observe_starlink.py
+
+7 - Generate bash script to convert observation files
+	log into obs-node1 as ddeboer
+    # > on_gen_dump.py ?
+	Find what date you want to use e.g. 2024-12-12-22:22:01
+    # > on_gen_dump.py 2024-12-12-22:22:01
+	This writes dump_autos.sh
+
+8 - Dump the autos into npz files
+    # > bash dump_autos.sh
+	This generates lots of npz files
+
+
+9 - Move the npz files locally to work on (can do it on obs-node1, but...)
+	on local machine in directory matching the one stated in obsinfo
+    # > scp "ddeboer@obs-node1.hcro.org:./*.npz" .
+
+10 - Look at the data, for dashboard, can use script with an obsid listed in obsinfo
+     # > on_gen_dash.py obsinfo_60656.json
+
+
+
+SOPPSOPPSOPPSOPPSOPPSOPP NOT UPDATED
+! - Run SOPP to get the satellite ephemerides  NOPE
+    First can use the helper script generator:
+    from obsnerds import starlink_eph
+    sl = starlink_eph.Eph()
+    sl.find_sats_gen(fephfilename)
+    Then bash find_sats.sh
+    You then need to rename the generated txt files to have the form S11116.txt
+
