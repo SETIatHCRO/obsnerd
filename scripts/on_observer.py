@@ -7,35 +7,20 @@ This (WILL) read in a source file and step through observations
 """
 
 ap = argparse.ArgumentParser()
-ap.add_argument('sources', help='Target list or json file with inputs')
-ap.add_argument('integrations', help="Integration times in seconds for each source", nargs='?', default=None)
-ap.add_argument('starts', help="Start times of observations (seconds or datetime.isoformat)", nargs='?', default=0)
-ap.add_argument('-a', '--freq_loA', help='Freq LO A in MHz', default=1500, type=float)
-ap.add_argument('-b', '--freq_loB', help='Freq LO B in MHz', default=6000, type=float)
-ap.add_argument('-t', '--integration_times', help="Integration times for sources [sec]", default='300')
-ap.add_argument('--ant_list', help="List of antennas or group list", default='rfsoc_active')
-ap.add_argument('--known_bad', help='List of known bad antennas', default='')
-ap.add_argument('--fiddle', help="Extra fiddle time in seconds", default=5)
+ap.add_argument('source', help='Target list or json file with inputs')
+ap.add_argument('-t', '--source_type', help="Type of source above", choices=['ods'], default='ods')
+ap.add_argument('-o', '--observer', help="Name of observer", default="Was a loser and didn't give an observer")
+ap.add_argument('-p', '--project_id', help="Project ID for observations", default="Was a loser and didn't give a project ID")
+ap.add_argument('-a', '--ant_list', help="List of antennas or group list", default='rfsoc_active')
+ap.add_argument('--embargo', help='List of known antennas to not include', default='1k')
 ap.add_argument('--focus', help="Focus parameter", choices=['a', 'b', 'max'], default='max')
-ap.add_argument('--data_record', help="Data recording to use", choices=['gnuradio', 'hpguppi'], default='hpguppi')
+ap.add_argument('--go', help="Flag to go 'live' for now for testing", action='store_true')
+# ap.add_argument('--data_record', help="Data recording to use", choices=['gnuradio', 'hpguppi'], default='hpguppi')
 args = ap.parse_args()
 
-if args.sources.endswith('.json'):
-    import json
-    with open(args.sources, 'r') as fp:
-        vals = json.load(fp)
-    args.sources = None
-    argv = vars(args)
-    argv.update(vals)
-    args = argparse.Namespace(**argv)
-if args.sources is None or args.integrations is None:
-    raise ValueError("Must specify sources and integration times.")
-
-freqs = {'a': args.freq_loA,
-         'b': args.freq_loB}
-
-observer = obs_sources.Observer(args.sources, args.integrations, start_times=args.starts, freqs=freqs,
-                                ant_list=args.ant_list, known_bad=args.known_bad, focus_on=args.focus,
-                                obs_fiddle=args.fiddle, data_record=args.data_record)
-observer.setup_session()
-observer.step_obs()
+observer = ono_observer.Observer(observer=args.observer, project_id=args.project_id, ants=args.ant_list, embargo=args.embargo)
+if args.source_type == 'ods':
+    observer.get_ods(args.source, defaults='defaults.json')
+    observer.get_obs_from_ods()
+    observer.update_ods("https://www.seti.org/sites/default/files/HCRO/ods.json", "ods_test.json")
+observer.observe(args.go)

@@ -12,7 +12,7 @@ from . import LOG_FILENAME, __version__
 
 DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
-            'observer': 'me', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'lo': ['A', 'B'],
+            'observer': 'me', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'lo': ['A', 'B'], 'embargo': [],
             'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int': 0.5}
 
 UNITS = {'Hz': 1.0, 'kHz': 1E3, 'MHz': 1E6, 'GHz': 1E9}
@@ -35,6 +35,7 @@ class Observer:
         logger.debug(f"{__name__} ver. {__version__}")
         self.records = []  # ono_records to be made out of ODS
         rec = ono_record.Record()
+        self.embargo = tools.listify(kw['embargo'])
         for key, val in kw.items():
             if key in rec.fields:
                 setattr(self, key, val)
@@ -64,7 +65,7 @@ class Observer:
             self.groups.setdefault(key, [])
             self.groups[key].append(entry)
 
-    def get_obs_from_ods(self, lo_offset=10.0, lo_unit='MHz'):
+    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz'):
         """
         Generate the obsnerd records based on an ods (as read in get_ods).
 
@@ -101,6 +102,41 @@ class Observer:
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
             rec.proc()
             self.records.append(rec)
+        self.get_overall()
+        if add_to_calendar:
+            self.update_calendar()
+
+    def get_overall(self):
+        kw = {}
+        try:
+            t0 = min([rec.start for rec in self.records])
+            t1 = max([rec.end for rec in self.records])
+        except AttributeError:
+            logger.error("Need to make observer records before you can get the overall.")
+            return
+        self.overall = ono_record.Record()
+        for fld in self.overall.fields:
+            try:  # Tragically assume that the first record has most of the same stuff as the rest...
+                kw[fld] = getattr(self.records[0], fld)
+            except (AttributeError, IndexError):
+                continue
+        kw['start'] = t0
+        kw['end'] = t1
+        self.overall.update(**kw)
+
+    def update_calendar(self):
+        # Get times to 5minutes
+        t0 = ttools.interpret_date(ttools.interpret_date(self.overall.start, '%Y-%m-%dT%H:%M'), 'datetime')
+        t1 = ttools.interpret_date(ttools.interpret_date(self.overall.end, '%Y-%m-%dT%H:%M'), 'datetime')
+        t0 = t0.replace(minute=(t0.minute // 5) * 5)
+        t1 = ttools.t_delta(t1.replace(minute=(t1.minute // 5) * 5), 5, 'm')
+        cal_day = ttools.interpret_date(self.overall.start, '%Y-%m-%d')
+        # from aocalendar import google_calendar_sync
+        # self.google_calendar = google_calendar_sync.SyncCal()
+        # self.google_calendar.get_aocal(self, calfile=cal_day, path=self.log_settings.path, conlog=self.log_settings.conlog,
+        #                                filelog=self.log_settings.filelog, start_new=True)
+        # self.google_calendar.add_event_to_google_calendar(self.this_cal.events[cal_day][self.aoc_nind])
+        
 
     def update_ods(self, ods_input, ods_output):
         """
