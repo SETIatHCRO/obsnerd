@@ -120,8 +120,7 @@ class Observer:
                 kw[fld] = getattr(self.records[0], fld)
             except (AttributeError, IndexError):
                 continue
-        kw['start'] = t0
-        kw['end'] = t1
+        kw['start'], kw['end'] = t0, t1
         self.overall.update(**kw)
 
     def update_calendar(self):
