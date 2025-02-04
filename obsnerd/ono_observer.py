@@ -169,7 +169,8 @@ class Observer:
             if not i: print(source.__repr__(use='header'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(use='short')}")
-            self.obs.setrf(freq=source.freq, lo=source.lo, attenuation=source.attenuation)
+            freqs = [x / 1E6 for x in source.freq]
+            self.obs.setrf(freq=freqs, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(f"{source.x},{source.y}", source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
