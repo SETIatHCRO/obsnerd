@@ -82,7 +82,7 @@ class Observer:
         for entries in self.groups.values():
             rec = ono_record.Record(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                     ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
-                                    time_per_int=self.time_per_int, coord='radec', lo=self.lo)
+                                    time_per_int=self.time_per_int, coord='source', lo=self.lo)
             freqs = []
             pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
             for i in range(len(entries)):
@@ -171,8 +171,7 @@ class Observer:
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(use='short')}")
             freqs = [x / 1E6 for x in source.freq]
             print(f"freqs: {', '.join([str(x) for x in freqs])}")
-            print("SKIIPPING LO SETTING FOR NOW")
-            #self.obs.setrf(freq=freqs, lo=source.lo, attenuation=source.attenuation)
+            self.obs.setrf(freq=freqs, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(f"{source.x},{source.y}", source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
