@@ -24,5 +24,5 @@ observer = ono_observer.Observer(observer=args.observer, project_name=args.proje
 if args.source_type == 'ods':
     observer.get_ods(args.source, defaults='defaults.json')
     observer.get_obs_from_ods(add_to_calendar=args.calendar)
-    observer.update_ods("https://www.seti.org/sites/default/files/HCRO/ods.json", "ods_test.json")
+    observer.update_ods("https://www.seti.org/sites/default/files/HCRO/ods.json", "/opt/mnt/share/ods_upload/ods.json")
 observer.observe(args.go)

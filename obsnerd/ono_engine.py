@@ -116,7 +116,7 @@ class CommandHandler:
             self.project_id = input("Need a project_id:  ")
         logger.info(f"Backend {self.backend} for project {self.project_id}")
         if self.backend == 'xgpu':
-            subprocess.run("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
+            subprocess.run("sudo ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
         else:
             logger.error(f"Invalid backend: {self.backend} -- no action")
             return
