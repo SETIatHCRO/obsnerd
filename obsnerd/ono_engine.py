@@ -111,16 +111,21 @@ class CommandHandler:
             Name of backend to use
 
         """
+        import os
         self.backend = backend
         if self.project_id is None:
             self.project_id = input("Need a project_id:  ")
         logger.info(f"Backend {self.backend} for project {self.project_id}")
         if self.backend == 'xgpu':
-            subprocess.run("sudo ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
+            # subprocess.run("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
+            try:
+                os.system("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
+            except FileNotFoundError:
+                logger.error("Ansible playbook not found, cannot start backend")
         else:
             logger.error(f"Invalid backend: {self.backend} -- no action")
             return
-        subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_{self.project_id}.py")
+        subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
         self.rec.update(backend=backend)
 
     def move(self, location=None, coord_type='azel', use_ants=None):
