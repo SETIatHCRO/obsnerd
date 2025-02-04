@@ -125,7 +125,7 @@ class Observer:
         if len(self.records):
             print("Now type the following on obs@control:")
             for rec in self.records:
-                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source} {rec.x},{rec.y}")
+                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source} {rec.x / 15.0:.4f},{rec.y:.4f}")
 
     def update_calendar(self):
         # Get times to 5minutes
