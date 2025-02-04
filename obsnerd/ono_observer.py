@@ -157,6 +157,9 @@ class Observer:
         self.ods.pipe('output', intake=ods_input, output=ods_output)
 
     def observe(self, is_actual=True):
+        if not len(self.records):
+            logger.error("Need to make observer records before you can observe.")
+            return
         if not is_actual:
             self.backend = 'test'
         self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id)
