@@ -10,7 +10,7 @@ logger.setLevel('DEBUG')  # Set to lowest
 from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'observer': None, 'project_id': None,
-            'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
+            'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'embargo': [],
             'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int': 0.5}
 
@@ -170,7 +170,9 @@ class Observer:
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(use='short')}")
             freqs = [x / 1E6 for x in source.freq]
-            self.obs.setrf(freq=freqs, lo=source.lo, attenuation=source.attenuation)
+            print(f"freqs: {', '.join([str(x) for x in freqs])}")
+            print("SKIIPPING LO SETTING FOR NOW")
+            #self.obs.setrf(freq=freqs, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(f"{source.x},{source.y}", source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
