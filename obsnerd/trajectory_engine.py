@@ -66,7 +66,7 @@ class Track:
         tai = np.array(self.timestamp, dtype=int)
         az = np.array(self.az, dtype=float)
         el = np.array(self.el, dtype=float)
-        print("!!!!NEED TO GET DISTANCES FROM SOPP!!!! (FOR from_file?)")
+        print("!!!!NEED TO GET DISTANCES FROM SOPP!!!! (OR from_file?)")
         if self.name.startswith('Gal'):
             self.ir = np.zeros(len(tai)) + 1E-20
         ephem = ((np.array([tai, az, el, self.ir], dtype=object)))

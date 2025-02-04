@@ -1,4 +1,3 @@
-from . import on_sys as OS
 import logging
 from copy import copy
 from odsutils import ods_timetools as ttools
@@ -8,7 +7,7 @@ from obsnerd import ono_engine, ono_record
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
-from . import LOG_FILENAME, __version__
+from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
@@ -31,7 +30,8 @@ class Observer:
         kw = copy(DEFAULTS)
         kw.update(kwargs)
         self.log_settings = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'],
-                                                log_filename=kw['log_filename'], path=kw['path'])
+                                                log_filename=kw['log_filename'], path=kw['path'],
+                                                filelog_format=LOG_FORMATS['filelog_format'], conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
         self.records = []  # ono_records to be made out of ODS
         rec = ono_record.Record()
@@ -80,8 +80,8 @@ class Observer:
         self.records = []
         self.ods.new_ods_instance('output')
         for entries in self.groups.values():
-            rec = ono_record.Record(observer=self.observer, project_id=self.project_id, ants=self.ants,
-                                    attenuation=self.attenuation, focus=self.focus, backend=self.backend,
+            rec = ono_record.Record(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
+                                    ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
                                     time_per_int=self.time_per_int, coord='radec', lo=self.lo)
             freqs = []
             pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
@@ -122,6 +122,10 @@ class Observer:
                 continue
         kw['start'], kw['end'] = t0, t1
         self.overall.update(**kw)
+        if len(self.records):
+            print("Now type the following on obs@control:")
+            for rec in self.records:
+                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source} {rec.x},{rec.y}")
 
     def update_calendar(self):
         # Get times to 5minutes
@@ -132,11 +136,11 @@ class Observer:
         cal_day = ttools.interpret_date(self.overall.start, '%Y-%m-%d')
         from aocalendar import google_calendar_sync
         self.google_calendar = google_calendar_sync.SyncCal()
-        self.google_calendar.get_aocal(self, calfile=cal_day, path=self.log_settings.path, conlog=self.log_settings.conlog,
+        self.google_calendar.get_aocal(calfile=cal_day, path=self.log_settings.path, conlog=self.log_settings.conlog,
                                        filelog=self.log_settings.filelog, start_new=True)
-        self.google_calendar.add_event_to_google_calendar(self.this_cal.events[cal_day][self.aoc_nind])
         self.google_calendar.aocal.add(program=self.overall.project_name, pid=self.overall.project_id, observer=self.overall.observer,
                                        utc_start=t0, utc_stop=t1)
+        self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
     def update_ods(self, ods_input, ods_output):
         """
