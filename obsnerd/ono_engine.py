@@ -125,7 +125,8 @@ class CommandHandler:
         else:
             logger.error(f"Invalid backend: {self.backend} -- no action")
             return
-        subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
+        # subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
+        os.system(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
         self.rec.update(backend=backend)
 
     def move(self, location=None, coord_type='azel', use_ants=None):
