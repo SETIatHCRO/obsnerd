@@ -102,7 +102,7 @@ class CommandHandler:
         logger.info(f"attenuation: {', '.join([str(x) for x in self.attenuation])}")
         for fMHz, llo in zip(freq_MHz, self.lo):
             this_freq = [fMHz] * len(self.ant_list)
-            print("NOFOCUS")
+            print("NOFOCUS", fMHz, ffoc)
             ata_control.set_freq(this_freq, self.ant_list, lo=llo.lower(), nofocus=True)#nofocus=fMHz<ffoc)
         if focus:
             import time
@@ -126,16 +126,16 @@ class CommandHandler:
             self.project_id = input("Need a project_id:  ")
         logger.info(f"Backend {self.backend} for project {self.project_id}")
         if self.backend == 'xgpu':
-            # subprocess.run("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
             try:
                 os.system("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
+                # subprocess.run("ansible-playbook /home/sonata/src/ansible_playbooks/hashpipe/xgpu_record.yml")
             except FileNotFoundError:
                 logger.error("Ansible playbook not found, cannot start backend")
         else:
             logger.error(f"Invalid backend: {self.backend} -- no action")
             return
-        # subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
         try:
+            # subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
             os.system(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
         except FileNotFoundError:
             logger.error("Script not found, cannot start backend")
@@ -175,7 +175,8 @@ class CommandHandler:
             source = ata_control.track_source(use_ants, radec=[x.to_value('hourangle'), y.to_value('deg')])
             logger.info(f"radec: {x},{y}")
         elif self.coord_type == 'source':
-            source = ata_control.track_source(use_ants, source=self.location)
+            # source = ata_control.track_source(use_ants, source=self.location)
+            ata_control.make_and_track_ephems(self.location, use_ants)
             logger.info(f"source: {self.location}")
         elif self.coord_type == 'traj':
             from obsnerd.trajectory_engine import TRACK_YAML_FILENAME
