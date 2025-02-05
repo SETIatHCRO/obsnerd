@@ -91,19 +91,18 @@ class CommandHandler:
         else:
             freq = tools.listify(freq) * u.Unit(freq_unit)
         self.freq = freq
-        freq_MHz = [x.to_value('MHz') for x in self.freq]
+        freq_MHz = [x.to_value('MHz') for x in self.freq][0]
         self.lo = tools.listify(lo)
         self.attenuation = tools.listify(attenuation)
         # antlo_list = [ant+lo.upper() for lo in lo for ant in self.ant_list]
         # snap_if.tune_if_antslo(antlo_list)
-        ffoc = 1E9 if not focus else max(self.freq.to_value('MHz'))
+        ffoc = 1E9 if not focus else max(freq_MHz)
         logger.info(f"freq: {', '.join([str(x) for x in freq_MHz])} MHz")
         logger.info(f"lo: {', '.join(self.lo)}")
         logger.info(f"attenuation: {', '.join([str(x) for x in self.attenuation])}")
         for fMHz, llo in zip(freq_MHz, self.lo):
             this_freq = [fMHz] * len(self.ant_list)
-            print("NOFOCUS", fMHz, ffoc)
-            ata_control.set_freq(this_freq, self.ant_list, lo=llo.lower(), nofocus=True)#nofocus=fMHz<ffoc)
+            ata_control.set_freq(this_freq, self.ant_list, lo=llo.lower(), nofocus=fMHz<ffoc)
         if focus:
             import time
             time.sleep(20)
