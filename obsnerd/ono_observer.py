@@ -171,7 +171,7 @@ class Observer:
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(use='short')}")
             print(f"freqs: {', '.join([str(x) for x in source.freq])}")
-            self.obs.setrf(freq=self.freqs.to_value('MHz'), lo=source.lo, attenuation=source.attenuation)
+            self.obs.setrf(freq=source.freq.to_value('MHz'), lo=source.lo, attenuation=source.attenuation)
             self.obs.move(f"{source.x},{source.y}", source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
