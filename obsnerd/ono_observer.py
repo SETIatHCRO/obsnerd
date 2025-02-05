@@ -57,6 +57,7 @@ class Observer:
         if ods_input.endswith('.json') or ods_input.startswith('http'):
             if not self.ods.read_ods(ods_input):
                 logger.error("Unable to read ODS file")
+                self.groups = None
                 return
         else:
             self.ods.get_defaults_dict(defaults)
@@ -82,6 +83,9 @@ class Observer:
         """
         self.records = []
         self.ods.new_ods_instance('output')
+        if self.groups is None:
+            logger.error("Unable to read ODS file")
+            return
         for entries in self.groups.values():
             rec = ono_record.Record(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                     ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
@@ -110,6 +114,9 @@ class Observer:
             self.update_calendar()
 
     def get_overall(self):
+        if not len(self.records):
+            logger.error("Need to make observer records before you can get the overall.")
+            return
         kw = {}
         try:
             t0 = min([rec.start for rec in self.records])
