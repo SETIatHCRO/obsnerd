@@ -41,5 +41,5 @@ class Empty:
         self.show('tune_if_antslo')
     def set_atten_thread(self, a, b):
         self.show('set_atten_thread')
-    def track_source(self, a, radec):
+    def track_source(self, a, **kwargs):
         self.show('track_source')

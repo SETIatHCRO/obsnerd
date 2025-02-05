@@ -24,7 +24,7 @@ class Record:
             if key in self.fields:
                 setattr(self, key, val)
 
-    def _listify(self, key, dtype=str):
+    def _listify(self, key, dtype=None):
         try:
             setattr(self, key, tools.listify(getattr(self, key), dtype=dtype))
         except AttributeError:
@@ -46,7 +46,7 @@ class Record:
             self.end = ttools.t_delta(self.start, self.obs_time_sec, 's')
         elif t['start'] is None or t['start'] == '-':
             self.start = ttools.t_delta(self.end, -1.0 * self.obs_time_sec, 's')
-        for key, dtype in {'freq': float, 'lo': str, 'attenuation':int}.items():
+        for key, dtype in {'freq': None, 'lo': str, 'attenuation':int}.items():
             self._listify(key, dtype)
 
     def view(self, fields_to_show=None, bracket=['', ''], sep='\n'):
