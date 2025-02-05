@@ -99,7 +99,7 @@ class Observer:
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
                         if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
-            rec.update(freq=freqs, source=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
+            rec.update(freq=freqs * u.Hz, source=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
             rec.proc()
             self.records.append(rec)
