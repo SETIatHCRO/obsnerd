@@ -4,11 +4,11 @@ from odsutils import ods_tools as tools
 class Record:
     fields = [
         'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
-        'source', 'x', 'y', 'coord',
+        'source_name', 'x', 'y', 'coord',
         'start', 'end', 'obs_time_sec', 'time_per_int_sec'
     ]
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
-    short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time_sec']
+    short = ['freq', 'source_name', 'x', 'y', 'start', 'end', 'obs_time_sec']
 
     def __init__(self, **kwargs):
         self.update(**kwargs)

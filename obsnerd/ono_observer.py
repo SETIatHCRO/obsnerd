@@ -99,7 +99,7 @@ class Observer:
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
                         if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
-            rec.update(freq=freqs * u.Hz, source=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
+            rec.update(freq=freqs * u.Hz, source_name=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
             rec.proc()
             self.records.append(rec)
@@ -126,7 +126,7 @@ class Observer:
         if len(self.records):
             print("Now type the following on obs@control:")
             for rec in self.records:
-                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source} {rec.x.to_value('hourangle'):.4f},{rec.y.to_value('deg'):.4f}")
+                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source_name} {rec.x.to_value('hourangle'):.4f},{rec.y.to_value('deg'):.4f}")
 
     def update_calendar(self):
         # Get times to 5minutes
@@ -163,18 +163,21 @@ class Observer:
             return
         if not is_actual:
             self.backend = 'test'
-        self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id)
+        self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id, conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
         self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once
         self.obs.setbackend(self.backend)  # And same backend
         for i, source in enumerate(self.records):
+            if source.coord != 'name':
+                logger.error(f"Currently only support 'name' coord type, not '{self.coord}'")
+                continue
             if not i: print(source.__repr__(use='header'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(use='short')}")
             print(f"freqs: {', '.join([str(x) for x in source.freq])}")
             these_freq = [x.to_value('MHz') for x in source.freq]
             self.obs.setrf(freq=these_freq, lo=source.lo, attenuation=source.attenuation)
-            self.obs.move(f"{source.x},{source.y}", source.coord)
+            self.obs.move(source=source.source_name, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
                 continue
-            self.obs.observe(source.obs_time_sec, source.time_per_int_sec)
+            self.obs.take_data(source.obs_time_sec, source.time_per_int_sec)

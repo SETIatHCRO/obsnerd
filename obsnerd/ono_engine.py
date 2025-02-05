@@ -67,7 +67,7 @@ class CommandHandler:
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
         self.rec.update(ants=self.ant_list)
 
-    def setrf(self, freq, lo=['A', 'B'], attenuation=[8, 8], focus=True, freq_unit='MHz'):
+    def setrf(self, freq, lo=['A', 'B'], attenuation=[8, 8], focus=False, freq_unit='MHz'):
         """
         Parameters (kwargs)
         -------------------
@@ -157,40 +157,41 @@ class CommandHandler:
             Unit of y
 
         """
-        self.source = source
-        if not isinstance(self.source, str) or len(self.source) == 0:
+        if not isinstance(source, str) or len(source) == 0:
             logger.error("Need a valid source")
             return
-        self.coord_type = coord_type
-        if self.coord_type not in ['azel', 'radec', 'name', 'traj']:
-            logger.error(f"Invalid coord_type: {self.coord_type}")
+        if coord_type not in ['azel', 'radec', 'name', 'traj']:
+            logger.error(f"Invalid coord_type: {coord_type}")
             return
         use_ants = self.ant_list if use_ants is None else tools.listify(use_ants)
         if not len(use_ants):
             logger.error("Need antennas to move")
             return
 
-        if ',' in self.source:
+        if ',' in source:
             x = self.source.split(',')[0] * u.Unit(x_unit)
             y = self.source.split(',')[1] * u.Unit(y_unit)
-        logger.info(f'move to: {self.source}  {self.coord_type}')
-        self.rec.update(x=x, y=y, coord=coord_type)
-
-        if self.coord_type == 'azel':
+            source = coord_type
+            logger.info(f'move to: {coord_type}:  {x}, {y}')
+        else:
+            x, y = None, None
+            logger.info(f'move to: {source}')
+        self.rec.update(source_name=source, x=x, y=y, coord=coord_type)
+        if coord_type == 'azel':
             logger.info(f"azel: {x},{y}")
-            ata_control.set_az_el(use_ants, x.to_value('deg'), y.to_value('deg'))
-        elif self.coord_type == 'radec':
+            sr = ata_control.set_az_el(use_ants, x.to_value('deg'), y.to_value('deg'))
+        elif coord_type == 'radec':
             logger.info(f"radec: {x},{y}")
-            source = ata_control.track_source(use_ants, radec=[x.to_value('hourangle'), y.to_value('deg')])
-        elif self.coord_type == 'source':
+            sr = ata_control.track_source(use_ants, radec=[x.to_value('hourangle'), y.to_value('deg')])
+        elif coord_type == 'name':
             # source = ata_control.track_source(use_ants, source=self.source)
-            logger.info(f"source: {self.source}")
-            ata_control.make_and_track_ephems(self.source, use_ants)
-        elif self.coord_type == 'traj':
+            logger.info(f"source: {source}")
+            sr = ata_control.make_and_track_ephems(source, use_ants)
+        elif coord_type == 'traj':
             logger.info(f"traj: {self.source}")
             from obsnerd.trajectory_engine import TRACK_YAML_FILENAME
             ephem = ata_control.upload_ephemeris(self.source)
-            ata_control.track_ephemeris(ephem, use_ants, wait=True)
+            sr = ata_control.track_ephemeris(ephem, use_ants, wait=True)
             try:
                 with open(TRACK_YAML_FILENAME, 'r') as fp:
                     for line in fp:
@@ -199,7 +200,7 @@ class CommandHandler:
             except FileNotFoundError:
                 pass
 
-    def observe(self, obs_time_sec, time_per_int_sec):
+    def take_data(self, obs_time_sec, time_per_int_sec):
         self.rec.update(obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
         d = hpguppi_defaults.hashpipe_targets_LoA.copy()
         d.update(hpguppi_defaults.hashpipe_targets_LoB)
