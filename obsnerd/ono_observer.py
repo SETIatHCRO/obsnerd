@@ -12,7 +12,7 @@ from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
-            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'embargo': [],
+            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': 'rfsoc_active-1k,4e,4l', 'embargo': [],
             'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
 
 SPACEX_LO = 1990 * u.MHz
@@ -83,7 +83,7 @@ class Observer:
         for entries in self.groups.values():
             rec = ono_record.Record(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                     ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
-                                    time_per_int_sec=self.time_per_int_sec, coord='source', lo=self.lo)
+                                    time_per_int_sec=self.time_per_int_sec, coord='name', lo=self.lo)
             freqs = []
             pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
             for i in range(len(entries)):
