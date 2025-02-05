@@ -13,12 +13,12 @@ except ImportError:
     snap_config = Empty('snap_config')
     snap_if = Empty('snap_if')
 
-import atexit
+import atexit, os
+import astropy.units as u
 from . import __version__, LOG_FILENAME, ono_record
-from . import on_sys as OS
+from . import on_sys
 from odsutils import logger_setup
 from odsutils import ods_tools as tools
-import subprocess
 from time import sleep
 from copy import copy
 import logging
@@ -52,8 +52,8 @@ class CommandHandler:
             xxx = ant_list.split('-')
             if len(xxx) == 2:
                 remove_ants += tools.listify(xxx[1])
-        elif ant_list in OS.ANT_LISTS:
-            self.ant_list = copy(OS.ANT_LIST[ant_list])
+        elif ant_list in on_sys.ANT_LISTS:
+            self.ant_list = copy(on_sys.ANT_LIST[ant_list])
         elif isinstance(ant_list, str):
             self.ant_list = tools.listify(ant_list)
         if not len(self.ant_list):
@@ -67,41 +67,49 @@ class CommandHandler:
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
         self.rec.update(ants=self.ant_list)
 
-    def setrf(self, freq, lo=['A', 'B'], attenuation=[8, 8], focus_on=None):
+    def setrf(self, freq, lo=['A', 'B'], attenuation=[8, 8], focus=True, freq_unit='MHz'):
         """
         Parameters (kwargs)
         -------------------
-        frequency : list of floats
-            Frequency of observation [GHz], must match length of lo
+        freq : *
+            Frequency of observation [MHz], must match length of lo
         lo : list
             LO to use A/B/C/D
         attenuation : list of int
             Attenuation setting
+        focus : bool
+            If True, focus the on max frequ
+        freq_unit : astropy.units
+            Unit of frequency, default MHz
 
         """
-        self.freq = tools.listify(freq)
+        if isinstance(freq[0], u.Quantity):
+            freq_unit = freq[0].unit
+            logger.info(f"freq_unit: {freq_unit}")
+            if not isinstance(freq, u.Quantity):
+                freq = freq * u.Unit(freq_unit)
+        else:
+            freq = tools.listify(freq) * u.Unit(freq_unit)
+        self.freq = freq
+        freq_MHz = [x.to_value('MHz') for x in self.freq]
         self.lo = tools.listify(lo)
         self.attenuation = tools.listify(attenuation)
-        antlo_list = [ant+lo.upper() for lo in lo for ant in self.ant_list]
-        flim = 10000.0 if focus_on is None else max(self.freq)
-        logger.info(f"freq: {', '.join([str(x) for x in self.freq])}")
+        # antlo_list = [ant+lo.upper() for lo in lo for ant in self.ant_list]
+        # snap_if.tune_if_antslo(antlo_list)
+        ffoc = 1E9 if not focus else max(self.freq.to_value('MHz'))
+        logger.info(f"freq: {', '.join([str(x) for x in freq_MHz])} MHz")
         logger.info(f"lo: {', '.join(self.lo)}")
         logger.info(f"attenuation: {', '.join([str(x) for x in self.attenuation])}")
-        need_to_focus = False
-        focus_freq = None
-        for freq, lo in zip(self.freq, self.lo):
-            this_freq = [freq] * len(self.ant_list)
-            need_to_focus = freq > (0.99 * flim ) if not need_to_focus  else False
-            if need_to_focus: focus_freq = freq
-            ata_control.set_freq(this_freq, self.ant_list, lo=lo.lower(), nofocus=freq<flim)
-        if need_to_focus:
+        for fMHz, llo in zip(freq_MHz, self.lo):
+            this_freq = [fMHz] * len(self.ant_list)
+            ata_control.set_freq(this_freq, self.ant_list, lo=llo.lower(), nofocus=fMHz<ffoc)
+        if focus:
             import time
             time.sleep(20)
         ata_control.autotune(self.ant_list)
         ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
                                      [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
-        snap_if.tune_if_antslo(antlo_list)
-        self.rec.update(freq=freq, lo=lo, attenuation=attenuation, focus=focus_freq)
+        self.rec.update(freq=self.freq, lo=lo, attenuation=attenuation, focus=ffoc)
 
     def setbackend(self, backend='xpgu'):
         """
@@ -111,7 +119,6 @@ class CommandHandler:
             Name of backend to use
 
         """
-        import os
         self.backend = backend
         if self.project_id is None:
             self.project_id = input("Need a project_id:  ")
@@ -126,19 +133,27 @@ class CommandHandler:
             logger.error(f"Invalid backend: {self.backend} -- no action")
             return
         # subprocess.run(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
-        os.system(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
+        try:
+            os.system(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
+        except FileNotFoundError:
+            logger.error("Script not found, cannot start backend")
+            return
         self.rec.update(backend=backend)
 
-    def move(self, location=None, coord_type='azel', use_ants=None):
+    def move(self, location, coord_type='source', use_ants=None, x_unit='deg', y_unit='deg'):
         """
         Parameters (kwargs)
         -------------------
         location : str
-            target location (depends on coord_type)
+            target location (depends on coord_type) - source_name; x,y; filename
         coord_type : str
             coordination type (azel, radec, source, traj)
         use_ants : list
-            List of antennas to move, default to group_ants
+            List of antennas to move, default to self.ant_list
+        x_unit : astropy.units
+            Unit of x
+        y_unit : astropy.units 
+            Unit of y
 
         """
         self.location = location
@@ -146,15 +161,16 @@ class CommandHandler:
         use_ants = self.ant_list if use_ants is None else tools.listify(use_ants)
 
         if ',' in self.location:
-            x, y = [float(_v) for _v in self.location.split(',')]
+            x = self.location.split(',')[0] * u.Unit(x_unit)
+            y = self.location.split(',')[1] * u.Unit(y_unit)
         logger.info(f'move to: {self.location}  {self.coord_type}')
         self.rec.update(x=x, y=y, coord=coord_type)
 
         if self.coord_type == 'azel':
-            ata_control.set_az_el(use_ants, x, y)
+            ata_control.set_az_el(use_ants, x.to_value('deg'), y.to_value('deg'))
             logger.info(f"azel: {x},{y}")
         elif self.coord_type == 'radec':
-            source = ata_control.track_source(use_ants, radec=[x, y])
+            source = ata_control.track_source(use_ants, radec=[x.to_value('hourangle'), y.to_value('deg')])
             logger.info(f"radec: {x},{y}")
         elif self.coord_type == 'source':
             source = ata_control.track_source(use_ants, source=self.location)
@@ -172,14 +188,15 @@ class CommandHandler:
             except FileNotFoundError:
                 pass
 
-    def observe(self, obs_time, time_per_int):
+    def observe(self, obs_time_sec, time_per_int_sec):
+        self.rec.update(obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
         d = hpguppi_defaults.hashpipe_targets_LoA.copy()
         d.update(hpguppi_defaults.hashpipe_targets_LoB)
         #d = {'seti-node3': [0], 'seti-node6': [1]}
-        keyval_dict = {'XTIMEINT': time_per_int}
+        keyval_dict = {'XTIMEINT': time_per_int_sec}
         hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=True)
-        hpguppi_record_in.record_in(self.obs_start_delay, obs_time, hashpipe_targets = d)
-        sleepy = float(self.obs_start_delay + obs_time + self.obs_dawdle)
+        hpguppi_record_in.record_in(self.obs_start_delay, obs_time_sec, hashpipe_targets = d)
+        sleepy = float(self.obs_start_delay + obs_time_sec + self.obs_dawdle)
         if sleepy > 0.0:
             sleep(sleepy)
 

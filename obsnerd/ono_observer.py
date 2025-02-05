@@ -4,6 +4,7 @@ from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
 from obsnerd import ono_engine, ono_record
+import astropy.units as u
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
@@ -12,11 +13,10 @@ from . import LOG_FILENAME, LOG_FORMATS, __version__
 DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': 'rfsoc_active-1k', 'embargo': [],
-            'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int': 0.5}
+            'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
 
-UNITS = {'Hz': 1.0, 'kHz': 1E3, 'MHz': 1E6, 'GHz': 1E9}
-SPACEX_LO = 1990 * UNITS['MHz']
-SPACEX_HI = 1995 * UNITS['MHz']
+SPACEX_LO = 1990 * u.MHz
+SPACEX_HI = 1995 * u.MHz
 
 
 class Observer:
@@ -31,7 +31,8 @@ class Observer:
         kw.update(kwargs)
         self.log_settings = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'],
                                                 log_filename=kw['log_filename'], path=kw['path'],
-                                                filelog_format=LOG_FORMATS['filelog_format'], conlog_format=LOG_FORMATS['conlog_format'])
+                                                filelog_format=LOG_FORMATS['filelog_format'],
+                                                conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
         self.records = []  # ono_records to be made out of ODS
         rec = ono_record.Record()
@@ -82,23 +83,23 @@ class Observer:
         for entries in self.groups.values():
             rec = ono_record.Record(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                     ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
-                                    time_per_int=self.time_per_int, coord='source', lo=self.lo)
+                                    time_per_int_sec=self.time_per_int_sec, coord='source', lo=self.lo)
             freqs = []
             pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
             for i in range(len(entries)):
-                freq_ods = ((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0) * UNITS['MHz']
-                freqs.append(freq_ods - lo_offset*UNITS[lo_unit])
+                freq_ods = ((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0) * u.Hz
+                freqs.append(freq_ods - lo_offset*u.Unit(lo_unit))
                 if not i:  # Get common parameters in first pass through and make consolidated new ods record
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
                     new_entry = copy(entries[i])
-                    new_entry.update({'freq_lower_hz': SPACEX_LO, 'freq_upper_hz': SPACEX_HI})
+                    new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
                     self.ods.add_new_record('output', **new_entry)
                 else:  # Just check if different
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
                         if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
-            rec.update(freq=freqs, source=pars['src_id'], x=pars['src_ra_j2000_deg'], y=pars['src_dec_j2000_deg'],
+            rec.update(freq=freqs, source=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
             rec.proc()
             self.records.append(rec)
@@ -125,7 +126,7 @@ class Observer:
         if len(self.records):
             print("Now type the following on obs@control:")
             for rec in self.records:
-                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source} {rec.x / 15.0:.4f},{rec.y:.4f}")
+                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source} {rec.x.to_value('hourangle'):.4f},{rec.y.to_value('deg'):.4f}")
 
     def update_calendar(self):
         # Get times to 5minutes
@@ -176,4 +177,4 @@ class Observer:
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
                 continue
-            self.obs.observe(source.obs_time, source.time_per_int)
+            self.obs.observe(source.obs_time_sec, source.time_per_int_sec)
