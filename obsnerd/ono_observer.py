@@ -55,7 +55,9 @@ class Observer:
         """
         self.ods = ods_engine.ODS()
         if ods_input.endswith('.json') or ods_input.startswith('http'):
-            self.ods.read_ods(ods_input)
+            if not self.ods.read_ods(ods_input):
+                logger.error("Unable to read ODS file")
+                return
         else:
             self.ods.get_defaults_dict(defaults)
             self.ods.add_from_file(ods_input)
