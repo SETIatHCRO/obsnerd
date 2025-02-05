@@ -102,7 +102,8 @@ class CommandHandler:
         logger.info(f"attenuation: {', '.join([str(x) for x in self.attenuation])}")
         for fMHz, llo in zip(freq_MHz, self.lo):
             this_freq = [fMHz] * len(self.ant_list)
-            ata_control.set_freq(this_freq, self.ant_list, lo=llo.lower(), nofocus=fMHz<ffoc)
+            print("NOFOCUS")
+            ata_control.set_freq(this_freq, self.ant_list, lo=llo.lower(), nofocus=True)#nofocus=fMHz<ffoc)
         if focus:
             import time
             time.sleep(20)
