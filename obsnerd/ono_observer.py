@@ -107,6 +107,7 @@ class Observer:
                         if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
             rec.update(freq=freqs * u.Hz, source_name=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
+            ono_engine.update_source(src_id=rec.source_name, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             rec.proc()
             self.records.append(rec)
         self.get_overall()
@@ -132,10 +133,6 @@ class Observer:
                 continue
         kw['start'], kw['end'] = t0, t1
         self.overall.update(**kw)
-        if len(self.records):
-            print("Now type the following on obs@control:")
-            for rec in self.records:
-                print(f"\tataupdatecatalog ddeboer --category starlink {rec.source_name} {rec.x.to_value('hourangle'):.4f},{rec.y.to_value('deg'):.4f}")
 
     def update_calendar(self):
         # Get times to 5minutes

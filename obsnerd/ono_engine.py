@@ -1,5 +1,6 @@
 try:
     from ATATools import ata_control  # type: ignore
+    from ATATools import ata_sources  # type: ignore
     from SNAPobs.snap_hpguppi import record_in as hpguppi_record_in  # type: ignore
     from SNAPobs.snap_hpguppi import snap_hpguppi_defaults as hpguppi_defaults  # type: ignore
     from SNAPobs.snap_hpguppi import auxillary as hpguppi_auxillary  # type: ignore
@@ -7,6 +8,7 @@ try:
 except ImportError:
     from .ono_debug import Empty
     ata_control = Empty('ata_control')
+    ata_sources = Empty('ata_sources')
     hpguppi_record_in = Empty('hpguppi_record_in')
     hpguppi_defaults = Empty('hpguppi_defaults')
     hpguppi_auxillary = Empty('hpguppi_auxillary')
@@ -32,6 +34,31 @@ LO_LIST = ['A', 'B']
 DEFAULTS = {'observer': None, 'project_id': None, 'project_name': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'obs_start_delay': OBS_START_DELAY, 'obs_dawdle': OBS_DAWDLE}
+
+
+def update_source(src_id, ra_hr, dec_deg, owner='ddeboer', category='starlink'):
+    """
+    Update a source entry -- if exists will delete it and re-add.
+
+    Parameters
+    ----------
+    src_id : str
+        Source ID to update
+    ra_hr : float
+        Right ascension in hours
+    dec_deg : float
+        Declination in degrees
+    owner : str
+        Owner of the source
+    category : str
+        Category of the source
+
+    """
+    sources = [x['Source'] for x in  ata_sources.list_catalog(owner=owner, category=category)]
+    if src_id in sources:
+        ata_sources.delete_catalog_entry(owner=owner, category=category, source=src_id)
+    ata_sources.add_catalog_entry(owner=owner, category=category, source=src_id, ra=ra_hr, dec=dec_deg)
+
 
 class CommandHandler:
     def __init__(self, **kwargs):

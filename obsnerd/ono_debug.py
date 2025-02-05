@@ -43,3 +43,7 @@ class Empty:
         self.show('set_atten_thread')
     def track_source(self, a, **kwargs):
         self.show('track_source')
+    def delete_catalog_entry(self, **kwargs):
+        self.show('delete_catalog')
+    def add_catalog_entry(self, **kwargs):
+        self.show('add_catalog')
