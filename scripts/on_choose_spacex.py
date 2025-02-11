@@ -33,6 +33,7 @@ if args.show_sats:
     print(tabulate(table))
     print("\nPipeline is:\n\ton_chose_spacex.py -s\n\ton_chose_spacex.py -t -n <satname>")
     print("\ton_chose_spacex.py -c <tracks>\n\ton_chose_spacex.py -x\n")
+    print("Also, summary_par (az/el) obslin_min and freqs are options")
 else:
     try:
         with open(PROC_FILENAME, 'r') as fp:
