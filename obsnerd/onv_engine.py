@@ -195,7 +195,8 @@ class Data:
         X = self.filename.split('_')
         if len(X) == 3:
             X2 = X[2].split('.')[0]
-            _datetime = timetools.interpret_date(.make_datetime(date=f"{X[1]}_{X2}", tz=self.sv.tz)
+            print("ONVE:L197 -- next line may be bad.")
+            _datetime = timetools.interpret_date(timetools.make_datetime(date=f"{X[1]}_{X2}", tz=self.sv.tz))
         else:
             _datetime = None
         return X[0], _datetime
@@ -325,7 +326,8 @@ class Data:
 
         if self.sv.beamfit:
             from obsnerd import beamfit
-            expected = timetools.interpret_date(.make_datetime(date=self.expected.datetime, tz=self.sv.tz)
+            print("ONVE:L328 -- next line may be bad.")
+            expected = timetools.interpret_date(timetools.make_datetime(date=self.expected.datetime, tz=self.sv.tz))
             print(f"--Results--\n{'Expected:':{N}s}{expected}")
             if expected>=self.t[self.tslice.start] and expected<=self.t[self.tslice.stop-1]:  
                 plt.plot([self.filename_datetime, self.filename_datetime], yaxlim, '--', lw=2, color='k')

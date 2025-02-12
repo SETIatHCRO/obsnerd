@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import Namespace
+import json
 
 
 BASE_URL = "https://api.starlink.com/public-files/ephemerides/"
@@ -75,14 +76,14 @@ class SpaceX:
 
         self.meta, self.times, self.r_eci, self.v_eci, self.df = parse_ephemeris(data)
 
-        self.times = Time(self.times)
+        self.times = Time(self.times, format='datetime')
         self.pst = self.times - TimeDelta(8 * 3600, format='sec')
-        satpath = coord.CartesianRepresentation(x=self.df['r_ecix'],
-                                                y=self.df['r_eciy'],
-                                                z=self.df['r_eciz'])
+        satpath = coord.CartesianRepresentation(x=self.df['r_ecix'] * u.m,
+                                                y=self.df['r_eciy'] * u.m,
+                                                z=self.df['r_eciz'] * u.m)
         self.gcrs = coord.GCRS(satpath, obstime=self.times)
         self.azel = coord.SkyCoord(self.gcrs.ra, self.gcrs.dec).transform_to(coord.AltAz(location=self.loc, obstime=self.times))
-        dt = np.diff(self.pst.jd) * 24 * 3600
+        dt = np.diff(self.pst.mjd) * 24 * 3600
         self.daz = self.azel.az.diff().to_value('deg')
         wrap = np.where(abs(self.daz) > 180.0)
         dwrap = wrap[0] - 1
@@ -141,42 +142,80 @@ class SpaceX:
         plt.axis(ymin=axlim[2], ymax=axlim[3])
 
     def choose_tracks(self, ctrks):
-        self.chose = [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]
-        for this in self.chose:
+        self.chose = []
+        ch = [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]
+        for this in ch:
             if this[1] == 'l':
                 ind = (self.tracks[this[0]].start['ind'] + self.tracks[this[0]].peak['ind']) // 2
             elif this[1] == 'm' or this[1] == 'p':
                 ind = self.tracks[this[0]].peak['ind']
             elif this[1] == 'r':
                 ind = (self.tracks[this[0]].peak['ind'] + self.tracks[this[0]].stop['ind']) // 2
-            this.append(ind)
+            self.chose.append({'track': this[0], 'type': this[1], 'ind': ind})
             par = 'alt' if self.par == 'el' else 'az'
             plt.plot(self.pst[ind].datetime, getattr(self.azel, par)[ind], 'rx')
 
     def proc_tracks(self, obslen_min=8, freqs=[1990.0, 5500.0], freq_unit='MHz'):
         from odsutils import ods_engine
         self.obslen_min = obslen_min
+        self.obslen_TD2 = TimeDelta(obslen_min * 60.0 / 2.0, format='sec')
         self.freqs = [(f * u.Unit(freq_unit)).to_value('Hz') for f in freqs]
         self.new_tracks = []
         for this in self.chose:
-            newstart = self.times[this[2]] - TimeDelta(self.obslen_min * 60.0 / 2.0, format='sec')
-            newstop = self.times[this[2]] + TimeDelta(self.obslen_min * 60.0 / 2.0, format='sec')
-            self.new_tracks.append({'src_id':f"S{self.tracks[this[0]].satname}",
-                                    'src_ra_j2000_deg': self.gcrs.ra[this[2]].to_value('deg'),
-                                    'src_dec_j2000_deg': self.gcrs.dec[this[2]].to_value('deg'),
+            newstart = self.times[this['ind']] - self.obslen_TD2
+            newstop = self.times[this['ind']] + self.obslen_TD2
+            self.new_tracks.append({'src_id':f"S{self.tracks[this['track']].satname}",
+                                    'src_ra_j2000_deg': self.gcrs.ra[this['ind']].to_value('deg'),
+                                    'src_dec_j2000_deg': self.gcrs.dec[this['ind']].to_value('deg'),
                                     'src_start_utc': f"{newstart.datetime.isoformat(timespec='seconds')}",
                                     'src_end_utc': f"{newstop.datetime.isoformat(timespec='seconds')}",
                                     'freq_lower_hz': self.freqs[0]-10.0E6,
                                     'freq_upper_hz': self.freqs[0]+10.0E6})
-            self.new_tracks.append({'src_id':f"S{self.tracks[this[0]].satname}",
-                                    'src_ra_j2000_deg': self.gcrs.ra[this[2]].to_value('deg'),
-                                    'src_dec_j2000_deg': self.gcrs.dec[this[2]].to_value('deg'),
+            self.new_tracks.append({'src_id':f"S{self.tracks[this['track']].satname}",
+                                    'src_ra_j2000_deg': self.gcrs.ra[this['ind']].to_value('deg'),
+                                    'src_dec_j2000_deg': self.gcrs.dec[this['ind']].to_value('deg'),
                                     'src_start_utc': f"{newstart.datetime.isoformat(timespec='seconds')}",
                                     'src_end_utc': f"{newstop.datetime.isoformat(timespec='seconds')}",
                                     'freq_lower_hz': self.freqs[1]-10.0E6,
                                     'freq_upper_hz': self.freqs[1]+10.0E6})
         with ods_engine.ODS() as ods:
             ods.pipe(self.new_tracks, intake='ods.json', defaults='defaults.json')
+
+    def write_obsinfo(self, filter_file='filters.json'):
+        from astropy.coordinates import angular_separation
+        from copy import copy
+        keys = ['ra', 'dec', 'az', 'el', 'tref', 'off_time', 'off_angle', 'ods']
+        with open(filter_file, 'r') as fp:
+            filter = json.load(fp)['Filters']
+        obsinfo = {}
+        start_mjd = None
+        for this in self.chose:
+            mjd = self.times[this['ind']].mjd
+            if start_mjd is None:
+                start_mjd = copy(mjd)
+            satname = f"S{self.tracks[this['track']].satname}_{mjd:.4f}"
+            obsinfo[satname] = {}
+            obsinfo[satname]['ra'] = self.gcrs.ra[this['ind']].to_value('deg')
+            obsinfo[satname]['dec'] = self.gcrs.dec[this['ind']].to_value('deg')
+            obsinfo[satname]['tref'] = self.times[this['ind']].datetime.isoformat(timespec='seconds')
+            obsinfo[satname]['az'] = self.azel.az[this['ind']].to_value('deg')
+            obsinfo[satname]['el'] = self.azel.alt[this['ind']].to_value('deg')
+            obsinfo[satname]['off_time'] = []
+            obsinfo[satname]['off_angle'] = []
+            newstart = self.times[this['ind']] - self.obslen_TD2
+            newstop = self.times[this['ind']] + self.obslen_TD2
+            istart = np.where(self.times > newstart)[0][0] - 1
+            istop = np.where(self.times < newstop)[0][-1] + 1
+            for i in range(istart, istop+1):
+                dt = self.times[i] - self.times[this['ind']]
+                da = angular_separation(self.gcrs.ra[i], self.gcrs.dec[i],
+                                        self.gcrs.ra[this['ind']], self.gcrs.dec[this['ind']]) * np.sign(dt)
+                obsinfo[satname]['off_time'].append(np.round(dt.to_value('sec'), 1))
+                obsinfo[satname]['off_angle'].append(np.round(da.to_value('deg'), 2))
+        fnout = f"obsinfo_{start_mjd:.0f}.json"
+        with open(fnout, 'w') as fp:
+            json.dump(obsinfo, fp, indent=4)
+        self.obsinfo = obsinfo
 
     def horizon(self):
         self.up = np.where(self.azel.alt > self.elmin)
@@ -187,7 +226,7 @@ class SpaceX:
     def bounds(self, hr_start=11, hr_stop=16, el_min=40.0, el_max=60.0):
         self.view = Namespace(pst=[], az=[], el=[], ra=[], dec=[])
         start_day = self.pst[0].value.day
-        dt = np.diff(self.pst.jd) * 24 * 3600
+        dt = np.diff(self.pst.mjd) * 24 * 3600
         radotcos = (self.gcrs.ra.diff().to_value('deg') / dt) * np.cos(self.gcrs.dec.to_value('rad')[1:])
         decdot = self.gcrs.dec.diff().to_value('deg') / dt
         omega = np.sqrt(radotcos**2 + decdot**2)
@@ -246,22 +285,25 @@ def parse_ephemeris_metadata(data_input):
         line2 = data_input[1]
         line3 = data_input[2]
 
-    try:
-        meta[line1[:line1.find(':')]] = datetime.strptime(line1[line1.find(':')+1:-5], '%Y-%m-%d %H:%M:%S')
-    except:
-        meta['line1'] = line1
-    
-    try:
-        meta[line2[:line2.find(':')]] = datetime.strptime(line2[line2.find(':')+1:-57], '%Y-%m-%d %H:%M:%S')
-        meta[line2[40:][:line2[40:].find(':')]] = datetime.strptime(line2[40:][line2[40:].find(':')+1:-18], '%Y-%m-%d %H:%M:%S')
-        meta[line2[-13:-4]] = float(line2[-3:])
-    except:
-        meta['line2'] = line2
-    
-    try:
-        meta[line3[:line3.find(':')]] = line3[line3.find(':')+1:-1]    
-    except:
-        meta['line3'] = line3
+    meta['line1'] = line1
+    data = line1.split()
+    created,cdate = data[0].split(':')
+    meta[created] = datetime.strptime(f"{cdate} {data[1]}", '%Y-%m-%d %H:%M:%S')
+
+    meta['line2'] = line2    
+    data = line2.split()
+    start,sdate = data[0].split(':')
+    stime = data[1]
+    stop,odate = data[3].split(':')
+    otime = data[4]
+    ss,st = data[6].split(':')
+    meta[start] = datetime.strptime(f"{sdate} {stime}", '%Y-%m-%d %H:%M:%S')
+    meta[stop] = datetime.strptime(f"{odate} {otime}", '%Y-%m-%d %H:%M:%S')
+    meta[ss] = float(st)
+
+    meta['line3'] = line3
+    es,blend = line3.split(':')
+    meta[es] = blend
     return meta
 
 def parse_ephemeris(data_input):
