@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from argparse import Namespace
-import json
+from obsnerd import onp_plan
 
 
 BASE_URL = "https://api.starlink.com/public-files/ephemerides/"
@@ -17,55 +17,40 @@ CELESTRAK = 'http://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle'
 FZERO = 1E-9
 
 
-class Track:
-    def __init__(self, satname, elmin):
-        self.satname = satname
-        self.elmin = elmin
-
-    def update(self, state, ind, azdot, t, az, el):
-        if state == 'start':
-            self.start = {'ind': ind, 'azdot': azdot, 't': t, 'az': az, 'el': el}
-        elif state == 'stop':
-            self.stop = {'ind': ind, 'azdot': azdot, 't': t, 'az': az, 'el': el}
-        elif state == 'peak':
-            self.peak = {'ind': ind, 'azdot': azdot, 't': t, 'az': az, 'el': el}
-
-    def set_duration(self):
-        self.duration = self.stop['t'] - self.start['t']
-        self.midpoint = self.start['t'] + self.duration / 2.0
-        self.maxazdot = self.peak['azdot']
-
-
 class SpaceX:
-    def __init__(self, base_url=BASE_URL, manifest_file=MANIFEST, elmin=15.0, loc=ATA):
-        self.base_url = base_url
-        self.manifest = manifest_file
-        self.loc = loc
-        manifest_url = self.base_url + self.manifest
-        print(f"Reading {manifest_url}")
-        try:
-            xxx = requests.get(manifest_url)
-        except Exception as e:
-            print(f"Error reading {manifest_url}:  {e}")
-        self.manifest = xxx.text.splitlines()
-        try:
-            xxx = requests.get(CELESTRAK)
-        except Exception as e:
-            print(f"Error reading {CELESTRAK}")
-        self.celestrak = xxx.text.splitlines()
+    def __init__(self, load_dtc=True, base_url=BASE_URL, manifest_file=MANIFEST, elmin=15.0, loc=ATA):
         self.elmin = elmin * u.deg
-        self.dtc = []
-        for line in self.celestrak:
-            if 'starlink' in line.lower() and 'dtc' in line.lower():
-                self.dtc.append(line.split('[')[0].strip())
+        self.loc = loc
+        if load_dtc:
+            self.base_url = base_url
+            self.manifest = manifest_file
+            manifest_url = self.base_url + self.manifest
+            print(f"Reading {manifest_url}")
+            try:
+                xxx = requests.get(manifest_url)
+            except Exception as e:
+                print(f"Error reading {manifest_url}:  {e}")
+            self.manifest = xxx.text.splitlines()
+            try:
+                xxx = requests.get(CELESTRAK)
+            except Exception as e:
+                print(f"Error reading {CELESTRAK}")
+            self.celestrak = xxx.text.splitlines()
+            self.dtc = []
+            for line in self.celestrak:
+                if 'starlink' in line.lower() and 'dtc' in line.lower():
+                    self.dtc.append(line.split('[')[0].strip())
 
-    def get_satellite(self, satname):
-        self.satname = satname
+    def get_satellite(self, satname=None):
+        self.satname = self.satname if satname is None else satname
         for entry in self.manifest:
-            if satname in entry:
+            if self.satname in entry:
                 ephem_url = self.base_url + entry
                 self.satinfo = entry
                 break
+        else:
+            print(f"Satellite {self.satname} not found in manifest")
+            return
 
         print(f"Getting {ephem_url}")
         try:
@@ -81,9 +66,15 @@ class SpaceX:
         satpath = coord.CartesianRepresentation(x=self.df['r_ecix'] * u.m,
                                                 y=self.df['r_eciy'] * u.m,
                                                 z=self.df['r_eciz'] * u.m)
-        self.gcrs = coord.GCRS(satpath, obstime=self.times)
+        print("NEED OBSGEOLOC")
+        obsgeoloc = coord.ITRS(self.r_eci, obstime=self.times)
+        self.gcrs = coord.GCRS(satpath, obstime=self.times, obsgeoloc=obsgeoloc)
         self.azel = coord.SkyCoord(self.gcrs.ra, self.gcrs.dec).transform_to(coord.AltAz(location=self.loc, obstime=self.times))
-        dt = np.diff(self.pst.mjd) * 24 * 3600
+        #self.gcrs = coord.SkyCoord(satpath, frame='itrs', obstime=self.times)
+        #self.azel = self.gcrs.transform_to(coord.AltAz(location=self.loc, obstime=self.times))
+        #sky = coord.SkyCoord(obstime=self.times, frame='gcrs', location=self.loc)
+
+        dt = np.diff(self.times.mjd) * 24 * 3600
         self.daz = self.azel.az.diff().to_value('deg')
         wrap = np.where(abs(self.daz) > 180.0)
         dwrap = wrap[0] - 1
@@ -93,129 +84,42 @@ class SpaceX:
         self.azdot = abs(self.azdot)
         self.eldot = self.azel.alt.diff().to_value('deg') / dt
         self.eldot = np.insert(self.eldot, 0, self.eldot[0])
-        #self.eldot = abs(self.eldot)
         notviewable = np.where(self.azel.alt < self.elmin)
         self.azdot[notviewable] = 0.0
         self.eldot[notviewable] = 0.0
 
     def get_tracks(self):
-        self.tracks = []
-        in_track = self.azdot[0] > 0.01
-        if in_track:
-            print("STARTING IN A TRACK -- HANDLE IT!!!")
-            print("CAN'T YET SO SKIPPING")
-            return
-        this_track = Track(satname=self.satname, elmin=self.elmin)
-        for i, azdot in enumerate(self.azdot):
-            if not in_track and azdot > FZERO:
-                this_track.update('start', ind=i, azdot=azdot, t=self.pst[i], az=self.azel.az[i], el=self.azel.alt[i])
+        self.tracks = {self.satname: []}
+        istart = 0
+        if self.azdot[0] > FZERO:
+            print("Starting in-track ", end=' ')
+            for istart in range(len(self.azdot)):
+                if self.azdot[istart] < FZERO:
+                    break
+        print(f"istart = {istart} {self.times[istart]}")
+        in_track = False
+        this_track = onp_plan.Track(satname=self.satname)
+        for i in range(istart+1, len(self.azdot)):
+            if not in_track and self.azdot[i] > FZERO:
+                this_track.update('start', ind=i, azdot=self.azdot[i], utc=self.times[i], pst=self.pst[i], az=self.azel.az[i], el=self.azel.alt[i])
                 in_track = True
                 peak = {'value': 0.0, 'index': i}
-            elif in_track and azdot < FZERO:
-                this_track.update('stop', ind=i-1, azdot=azdot, t=self.pst[i-1], az=self.azel.az[i-1], el=self.azel.alt[i-1])
-                this_track.update('peak', ind=peak['index'], azdot=peak['value'], t=self.pst[peak['index']],
+            elif in_track and self.azdot[i] < FZERO:
+                this_track.update('stop', ind=i-1, azdot=self.azdot[i], utc=self.times[i], pst=self.pst[i-1], az=self.azel.az[i-1], el=self.azel.alt[i-1])
+                this_track.update('peak', ind=peak['index'], azdot=peak['value'], utc=self.times[peak['index']], pst=self.pst[peak['index']],
                                   az=self.azel.az[peak['index']], el=self.azel.alt[peak['index']])
+                this_track.set_track(utc=self.times[this_track.start['ind']:this_track.stop['ind']+1],
+                                     ra=self.gcrs.ra[this_track.start['ind']:this_track.stop['ind']+1],
+                                     dec=self.gcrs.dec[this_track.start['ind']:this_track.stop['ind']+1],
+                                     az=self.azel.az[this_track.start['ind']:this_track.stop['ind']+1],
+                                     el=self.azel.alt[this_track.start['ind']:this_track.stop['ind']+1])
                 in_track = False
                 this_track.set_duration()
-                self.tracks.append(this_track)
-                this_track = Track(satname=self.satname, elmin=self.elmin)
+                self.tracks[self.satname].append(this_track)
+                this_track = onp_plan.Track(satname=self.satname)
             if in_track:
-                if azdot > peak['value']:
-                    peak = {'value': azdot, 'index': i}
-
-    def plot_track_summary(self, par='el'):
-        self.par = par
-        for i, trk in enumerate(self.tracks):
-            # plt.plot([trk.start['t'].datetime, trk.peak['t'].datetime, trk.stop['t'].datetime],
-            #          [trk.start[par].value, trk.peak[par].value, trk.stop[par].value], 'r-')
-            if par == 'el':
-                plt.plot(self.pst[trk.start['ind']:trk.stop['ind']+1].datetime, self.azel.alt[trk.start['ind']:trk.stop['ind']+1], 'k')
-            elif par == 'az':
-                plt.plot(self.pst[trk.start['ind']:trk.stop['ind']+1].datetime, self.azel.az[trk.start['ind']:trk.stop['ind']+1], 'k')
-            plt.plot(trk.peak['t'].datetime, trk.peak[par].value, 'c.')
-            plt.text(trk.peak['t'].datetime, trk.peak[par].value, f"{i}")
-            # plt.plot(trk.start['t'].datetime, trk.start[par].value, 'g|')
-            # plt.plot(trk.stop['t'].datetime, trk.stop[par].value, 'b|')
-        axlim = plt.axis()
-        now = Time.now() - TimeDelta(8 * 3600, format='sec')
-        plt.plot([now.datetime, now.datetime], [axlim[2], axlim[3]], 'g--')
-        plt.axis(ymin=axlim[2], ymax=axlim[3])
-
-    def choose_tracks(self, ctrks):
-        self.chose = []
-        ch = [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]
-        for this in ch:
-            if this[1] == 'l':
-                ind = (self.tracks[this[0]].start['ind'] + self.tracks[this[0]].peak['ind']) // 2
-            elif this[1] == 'm' or this[1] == 'p':
-                ind = self.tracks[this[0]].peak['ind']
-            elif this[1] == 'r':
-                ind = (self.tracks[this[0]].peak['ind'] + self.tracks[this[0]].stop['ind']) // 2
-            self.chose.append({'track': this[0], 'type': this[1], 'ind': ind})
-            par = 'alt' if self.par == 'el' else 'az'
-            plt.plot(self.pst[ind].datetime, getattr(self.azel, par)[ind], 'rx')
-
-    def proc_tracks(self, obslen_min=8, freqs=[1990.0, 5500.0], freq_unit='MHz'):
-        from odsutils import ods_engine
-        self.obslen_min = obslen_min
-        self.obslen_TD2 = TimeDelta(obslen_min * 60.0 / 2.0, format='sec')
-        self.freqs = [(f * u.Unit(freq_unit)).to_value('Hz') for f in freqs]
-        self.new_tracks = []
-        for this in self.chose:
-            newstart = self.times[this['ind']] - self.obslen_TD2
-            newstop = self.times[this['ind']] + self.obslen_TD2
-            self.new_tracks.append({'src_id':f"S{self.tracks[this['track']].satname}",
-                                    'src_ra_j2000_deg': self.gcrs.ra[this['ind']].to_value('deg'),
-                                    'src_dec_j2000_deg': self.gcrs.dec[this['ind']].to_value('deg'),
-                                    'src_start_utc': f"{newstart.datetime.isoformat(timespec='seconds')}",
-                                    'src_end_utc': f"{newstop.datetime.isoformat(timespec='seconds')}",
-                                    'freq_lower_hz': self.freqs[0]-10.0E6,
-                                    'freq_upper_hz': self.freqs[0]+10.0E6})
-            self.new_tracks.append({'src_id':f"S{self.tracks[this['track']].satname}",
-                                    'src_ra_j2000_deg': self.gcrs.ra[this['ind']].to_value('deg'),
-                                    'src_dec_j2000_deg': self.gcrs.dec[this['ind']].to_value('deg'),
-                                    'src_start_utc': f"{newstart.datetime.isoformat(timespec='seconds')}",
-                                    'src_end_utc': f"{newstop.datetime.isoformat(timespec='seconds')}",
-                                    'freq_lower_hz': self.freqs[1]-10.0E6,
-                                    'freq_upper_hz': self.freqs[1]+10.0E6})
-        with ods_engine.ODS() as ods:
-            ods.pipe(self.new_tracks, intake='ods.json', defaults='defaults.json')
-
-    def write_obsinfo(self, filter_file='filters.json'):
-        from astropy.coordinates import angular_separation
-        from copy import copy
-        keys = ['ra', 'dec', 'az', 'el', 'tref', 'off_time', 'off_angle', 'ods']
-        with open(filter_file, 'r') as fp:
-            filter = json.load(fp)['Filters']
-        obsinfo = {}
-        start_mjd = None
-        for this in self.chose:
-            mjd = self.times[this['ind']].mjd
-            if start_mjd is None:
-                start_mjd = copy(mjd)
-            satname = f"S{self.tracks[this['track']].satname}_{mjd:.4f}"
-            obsinfo[satname] = {}
-            obsinfo[satname]['ra'] = self.gcrs.ra[this['ind']].to_value('deg')
-            obsinfo[satname]['dec'] = self.gcrs.dec[this['ind']].to_value('deg')
-            obsinfo[satname]['tref'] = self.times[this['ind']].datetime.isoformat(timespec='seconds')
-            obsinfo[satname]['az'] = self.azel.az[this['ind']].to_value('deg')
-            obsinfo[satname]['el'] = self.azel.alt[this['ind']].to_value('deg')
-            obsinfo[satname]['off_time'] = []
-            obsinfo[satname]['off_angle'] = []
-            newstart = self.times[this['ind']] - self.obslen_TD2
-            newstop = self.times[this['ind']] + self.obslen_TD2
-            istart = np.where(self.times > newstart)[0][0] - 1
-            istop = np.where(self.times < newstop)[0][-1] + 1
-            for i in range(istart, istop+1):
-                dt = self.times[i] - self.times[this['ind']]
-                da = angular_separation(self.gcrs.ra[i], self.gcrs.dec[i],
-                                        self.gcrs.ra[this['ind']], self.gcrs.dec[this['ind']]) * np.sign(dt)
-                obsinfo[satname]['off_time'].append(np.round(dt.to_value('sec'), 1))
-                obsinfo[satname]['off_angle'].append(np.round(da.to_value('deg'), 2))
-        fnout = f"obsinfo_{start_mjd:.0f}.json"
-        with open(fnout, 'w') as fp:
-            json.dump(obsinfo, fp, indent=4)
-        self.obsinfo = obsinfo
+                if self.azdot[i] > peak['value']:
+                    peak = {'value': self.azdot[i], 'index': i}
 
     def horizon(self):
         self.up = np.where(self.azel.alt > self.elmin)
