@@ -109,7 +109,7 @@ class Plan:
             from . import sopp_engine
             self.tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, el_limit=el_limit,
                                            verbose=False, show_plots=False)
-            logger.info(f"Found the following satellites above {el_limit}: {self.tracks.keys()}")
+            logger.info(f"Found the following satellites above {el_limit}: {', '.join(self.tracks.keys())}")
             self.satname = list(self.tracks.keys())[0]
             logger.info(f"Using: {self.satname}")
         elif source == 'spacex':
@@ -137,17 +137,15 @@ class Plan:
         self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
         this_sat = self.tracks[self.satname]
         for ch in [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]:
-            this_duration = min(self.obslen, this_sat[trk].duration)
-            Ni = int((this_duration / 2.0) / (this_sat[0].utc[1] - this_sat[0].utc[0])) + 1
             trk, pos = ch
-            if pos == 'l':
-                ind = Ni
+            this_duration = min(self.obslen, this_sat[trk].duration)
+            Ni = int((this_duration / 2.0) / (this_sat[0].utc[1] - this_sat[0].utc[0]))
             if pos == 'm' or pos == 'p':
                 ind = this_sat[trk].imax
             elif pos == 'l':
-                ind = min(Ni, len(this_sat[trk].utc) - Ni)
+                ind = Ni
             elif pos == 'r':
-                ind = max(Ni, len(this_sat[trk].utc) - Ni)  
+                ind = len(this_sat[trk].utc)
             this_sat[trk].set_par(iobs=ind, ods=[])
             plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].el[ind].value, 'r.')
             plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].az[ind].value, 'r.')
@@ -156,14 +154,22 @@ class Plan:
         from odsutils import ods_engine
         obslen_TD2 = self.obslen / 2.0
         new_tracks = []
-        for track in self.tracks[self]:
+        for track in self.tracks[self.satname]:
             if track.iobs is None:
                 continue
             tobs =  track.utc[track.iobs]
             tstart = tobs - obslen_TD2
+            if tstart < track.utc[0]:
+                tstart = track.utc[0]
+                istart = 0
+            else:
+                istart = np.where(track.utc > tstart)[0][0] - 1
             tstop = tobs + obslen_TD2
-            istart = np.where(track.utc > tstart)[0][0] - 1
-            istop = np.where(track.utc < tstop)[0][-1] + 1
+            if tstop > track.utc[-1]:
+                tstop = track.utc[-1]
+                istop = len(track.utc) - 1
+            else:
+                istop = np.where(track.utc < tstop)[0][-1] + 1
             track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
             for ff in self.freqs:
                 odict = {'src_id':f"{track.srcname}",
@@ -182,9 +188,12 @@ class Plan:
         from astropy.coordinates import angular_separation
         from copy import copy
         this_sat = self.tracks[self.satname]
-        with open(filter_file, 'r') as fp:
-            filter = json.load(fp)['Filters']
-        obsinfo = {}
+        try:
+            with open(filter_file, 'r') as fp:
+                filter = json.load(fp)['Filters']
+        except FileNotFoundError:
+            filter = {}
+        obsinfo = {'Filter': filter}
         start_mjd = None
         for track in this_sat:
             if track.iobs is None:
@@ -202,11 +211,16 @@ class Plan:
             obsinfo[satname]['off_time'] = []
             obsinfo[satname]['off_angle'] = []
             for i in range(track.istart, track.istop+1):
-                dt = track.utc[i] - track.tobs
-                da = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(dt)
-                obsinfo[satname]['off_time'].append(np.round(dt.to_value('sec'), 1))
-                obsinfo[satname]['off_angle'].append(np.round(da.to_value('deg'), 2))
+                toff = track.utc[i] - track.tobs
+                aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
+                obsinfo[satname]['off_time'].append(np.round(toff.to_value('sec'), 1))
+                obsinfo[satname]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
         fnout = f"obsinfo_{start_mjd.value:.0f}.json"
+        try:
+            with open(fnout, 'r') as fp:
+                oldinfo = json.load(fp)
+        except FileNotFoundError:
+            oldinfo = {}
+        self.obsinfo = oldinfo.update(obsinfo)
         with open(fnout, 'w') as fp:
             json.dump(obsinfo, fp, indent=4)
-        self.obsinfo = obsinfo

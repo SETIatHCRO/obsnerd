@@ -157,7 +157,8 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
         tracks[window.satellite.name].append(this_track)
         if satname is None or satname in window.satellite.name:  # Redundant get for now...
             fnout = f"{this_track.srcname}.txt"
-            print(f"Writing {fnout}")
+            if verbose:
+                print(f"Writing {fnout}")
             with open(fnout, 'w') as fpof:
                 for _t, _a, _e, _d in zip(tae, az, el, dist):
                     print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
@@ -173,9 +174,10 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             plt.figure('Time Trajectory')
             plt.plot(tae, az)
             plt.plot(tae, el, '--')
-        print(f'Satellite interference event #{i}:')
-        print(f'Satellite: {window.satellite.name}')
-        print(tabulate(table_data))
+        if verbose:
+            print(f'Satellite interference event #{i}:')
+            print(f'Satellite: {window.satellite.name}')
+            print(tabulate(table_data))
     ps4 = f" and {satname}" if satname else ""
     if verbose:
         print(f"Showing {shownctr} entries for {orbit_type}{ps4}")
