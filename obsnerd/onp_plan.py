@@ -121,6 +121,33 @@ class Plan:
 
     def get_tracks(self, satname, start, duration, freqs=[1990.0, 5990.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0,
                    DTC_only=True, time_resolution=10, source='sopp'):
+        """
+        Get satellite tracks for satellites regex-found from 'satname'.
+
+        Parameters
+        ----------
+        satname : str
+            Regex string to find satellites.
+        start : ods_timetools time input
+            Start time of the observation (UTC)
+        duration : float
+            Duration of the observation (minutes)
+        freqs : list, optional
+            Frequencies to observe, by default [1990.0, 5990.0] (currently ignored in search)
+        bandwidth : float, optional
+            Bandwidth of the observation, by default 100.0
+        freq_unit : str, optional
+            Frequency unit, by default 'MHz'
+        el_limit : float, optional
+            Minimum elevation limit in degrees, by default 15.0
+        DTC_only : bool, optional
+            If True, only DTC tracks are returned, by default True
+        time_resolution : int, optional
+            Time resolution in seconds, by default 10
+        source : str, optional
+            Source of satellite data, by default 'sopp'
+
+        """
         self.freqs = [f * u.Unit(freq_unit) for f in freqs]
         self.bandwidth = bandwidth * u.Unit(freq_unit)
         self.el_limit = el_limit * u.deg
@@ -172,6 +199,17 @@ class Plan:
         plt.legend()
 
     def choose_tracks(self, obslen_min=8, minimum_duration_min=5):
+        """
+        Interactive chooser of tracks to use -- edits the Track instances.
+
+        Parameters
+        ----------
+        obslen_min : float, optional
+            Observation length in minutes, by default 8
+        minimum_duration_min : float, optional
+            Minimum duration above el_limit in minutes, by default 5
+
+        """
         self.minimum_duration = TimeDelta(minimum_duration_min * 60.0, format='sec')
         self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
         for sat in self.tracks:
@@ -196,6 +234,15 @@ class Plan:
                 plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].az[ind].value, 'r.')
 
     def proc_tracks(self, filter_file='filters.json'):
+        """
+        After choosing tracks, write the ODS file and the obsinfo.json file.
+
+        Parameter
+        ---------
+        filter_file : str, optional
+            Filter file to use, by default 'filters.json' (just passed through to write_obsinfo)
+
+        """
         from odsutils import ods_engine
         obslen_TD2 = self.obslen / 2.0
         new_tracks = []
