@@ -16,7 +16,7 @@ from numpy import array
 
 
 def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-180, 360],
-         el_limit=0.0, ftype='horizon', orbit_type=None, exclude=False, time_resolution=1,
+         el_limit=0.0, DTC_only=True, ftype='horizon', orbit_type=None, exclude=False, time_resolution=10,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 60.0,
          tle_file='tle/active.tle', verbose=True, show_plots=True):
     """
@@ -123,20 +123,17 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
 
     ########################################################################
     print(f'There are {len(events)} satellite interference events during the reservation')
-
-    shownctr = 0
     jcadence = int(row_cadence / time_resolution)
 
     ### Frequency info incorporated
     for i, window in enumerate(events, start=1):
-        if satname and satname not in window.satellite.name:
+        if DTC_only and 'DTC' not in window.satellite.name:
             continue
 
         this_track = Track(window.satellite.name)
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
         az, el, tae, dist = [], [], [], []
         table_data = []
-
         for j, pos in enumerate(window.positions):
             if pos.position.azimuth < az_limit[0] or pos.position.azimuth > az_limit[1]:
                 continue
@@ -155,18 +152,16 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
         this_track.calc_properties()
         tracks.setdefault(window.satellite.name, [])
         tracks[window.satellite.name].append(this_track)
-        if satname is None or satname in window.satellite.name:  # Redundant get for now...
-            fnout = f"{this_track.srcname}.txt"
-            if verbose:
-                print(f"Writing {fnout}")
+        if verbose:
+            print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
+            fnout = f"{this_track.srcname.strip()}.txt"
+            print(f"Writing {fnout}")
             with open(fnout, 'w') as fpof:
                 for _t, _a, _e, _d in zip(tae, az, el, dist):
                     print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
-        if frequency:
-            print('Frequency information:  ', window.satellite.frequency, frequency)
-        if verbose:
-            print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
-        shownctr += 1
+            print(f'Satellite interference event #{i}:')
+            print(f'Satellite: {window.satellite.name}')
+            print(tabulate(table_data))
         if show_plots:
             plt.figure('AzEl Trajectory')
             plt.plot(az, el)
@@ -174,13 +169,8 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             plt.figure('Time Trajectory')
             plt.plot(tae, az)
             plt.plot(tae, el, '--')
-        if verbose:
-            print(f'Satellite interference event #{i}:')
-            print(f'Satellite: {window.satellite.name}')
-            print(tabulate(table_data))
-    ps4 = f" and {satname}" if satname else ""
-    if verbose:
-        print(f"Showing {shownctr} entries for {orbit_type}{ps4}")
+    if verbose and frequency:
+        print('Frequency information:  ', window.satellite.frequency, frequency)
     if show_plots:
         plt.figure('AzEl Trajectory')
         plt.xlabel('Az [deg]')
