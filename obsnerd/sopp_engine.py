@@ -15,10 +15,10 @@ import astropy.units as u
 from numpy import array
 
 
-def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 360],
+def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-180, 360],
          el_limit=0.0, ftype='horizon', orbit_type=None, exclude=False, time_resolution=1,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 60.0,
-         tle_file='tle/active.tle', show_plots=True):
+         tle_file='tle/active.tle', verbose=True, show_plots=True):
     """
     Parameters
     ----------
@@ -107,24 +107,22 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 
     events = sopp.get_satellites_above_horizon() if ftype == 'horizon' else sopp.get_satellites_crossing_main_beam()
 
     # Display configuration
-    print('\nFinding satellite interference events for:\n')
-    print(f'Facility: {configuration.reservation.facility.name}')
-    print(f'Location: {configuration.reservation.facility.coordinates} at elevation '
-          f'{configuration.reservation.facility.elevation}')
-    print(f'Reservation start time: {configuration.reservation.time.begin}')
-    print(f'Reservation end time: {configuration.reservation.time.end}')
-    print(f'Observation frequency: {configuration.reservation.frequency.frequency} MHz')
+    if verbose:
+        print('\nFinding satellite interference events for:\n')
+        print(f'Facility: {configuration.reservation.facility.name}')
+        print(f'Location: {configuration.reservation.facility.coordinates} at elevation '
+            f'{configuration.reservation.facility.elevation}')
+        print(f'Reservation start time: {configuration.reservation.time.begin}')
+        print(f'Reservation end time: {configuration.reservation.time.end}')
+        print(f'Observation frequency: {configuration.reservation.frequency.frequency} MHz')
 
-    if ftype == 'beam':
-        print(f'Observing celestial object at: '
-              f'Declination: {configuration.observation_target.declination} '
-              f'Right Ascension:{configuration.observation_target.right_ascension}')
+        if ftype == 'beam':
+            print(f'Observing celestial object at: '
+                f'Declination: {configuration.observation_target.declination} '
+                f'Right Ascension:{configuration.observation_target.right_ascension}')
 
     ########################################################################
-    s = f'There are {len(events)} satellite interference events during the reservation'
-    print('\n', '='*len(s))
-    print(s)
-    print('='*len(s) + '\n')
+    print(f'There are {len(events)} satellite interference events during the reservation')
 
     shownctr = 0
     jcadence = int(row_cadence / time_resolution)
@@ -165,7 +163,8 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 
                     print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
         if frequency:
             print('Frequency information:  ', window.satellite.frequency, frequency)
-        print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
+        if verbose:
+            print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
         shownctr += 1
         if show_plots:
             plt.figure('AzEl Trajectory')
@@ -178,7 +177,8 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[0, 
         print(f'Satellite: {window.satellite.name}')
         print(tabulate(table_data))
     ps4 = f" and {satname}" if satname else ""
-    print(f"Showing {shownctr} entries for {orbit_type}{ps4}")
+    if verbose:
+        print(f"Showing {shownctr} entries for {orbit_type}{ps4}")
     if show_plots:
         plt.figure('AzEl Trajectory')
         plt.xlabel('Az [deg]')

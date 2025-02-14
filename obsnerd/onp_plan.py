@@ -19,12 +19,12 @@ class Track:
     def __init__(self, satname, srcname=None):
         self.satname = satname
         self.srcname = satname if srcname is None else srcname
-        self.obs_ind = None
+        self.iobs = None
         self.ods = None
 
     def set_par(self, **kwargs):
         for par, val in kwargs.items():
-            if par not in ['obs_ind', 'ods']:
+            if par not in ['iobs', 'istart', 'istop', 'tobs', 'tstart', 'tstop', 'ods']:
                 logger.warning(f"Invalid parameter: {par}")
                 continue
             setattr(self, par, val)
@@ -83,6 +83,7 @@ class Plan:
         bool
             True if observation is possible, False otherwise.
         """
+        self.setupcal()
         self.tref = ttools.t_delta('now', start_in_sec + obs_len_sec/2.0, 's')
         self.start = ttools.t_delta('now', start_in_sec, 's')
         self.stop = ttools.t_delta(self.start, obs_len_sec, 's')
@@ -98,11 +99,17 @@ class Plan:
         self.this_cal.ods.view_ods()
         self.this_cal.ods.write_ods('test_ods.json')
 
-    def get_tracks(self, satname, start, duration, freqs=False, freq_unit='MHz', source='sopp'):
+    def get_tracks(self, satname, start, duration, freqs=[1990.0, 5990.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0, source='sopp'):
+        self.freqs = [f * u.Unit(freq_unit) for f in freqs]
+        self.bandwidth = bandwidth * u.Unit(freq_unit)
+        self.el_limit = el_limit * u.deg
         if source == 'sopp':
+            logger.info(f"SOPP not using frequency.")
+            freqs = False
             from . import sopp_engine
-            self.tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, show_plots=False)
-            logger.info(f"Found the following satellites: {self.tracks.keys()}")
+            self.tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, el_limit=el_limit,
+                                           verbose=False, show_plots=False)
+            logger.info(f"Found the following satellites above {el_limit}: {self.tracks.keys()}")
             self.satname = list(self.tracks.keys())[0]
             logger.info(f"Using: {self.satname}")
         elif source == 'spacex':
@@ -122,46 +129,51 @@ class Plan:
             plt.plot(trk.utc[trk.imax].datetime, trk.az[trk.imax].value, 'c.')
             plt.text(trk.utc[trk.imax].datetime, trk.az[trk.imax].value, f"{i}")
         axlim = plt.axis()
-        now = ttools.interpret_date('now') # - TimeDelta(8 * 3600, format='sec')
+        now = ttools.interpret_date('now')
         plt.plot([now.datetime, now.datetime], [axlim[2], axlim[3]], 'g--')
         plt.axis(ymin=axlim[2], ymax=axlim[3])
 
-    def choose_tracks(self, ctrks):
-        self.chose = []
+    def choose_tracks(self, ctrks, obslen_min=8):
+        self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
         this_sat = self.tracks[self.satname]
         for ch in [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]:
+            this_duration = min(self.obslen, this_sat[trk].duration)
+            Ni = int((this_duration / 2.0) / (this_sat[0].utc[1] - this_sat[0].utc[0])) + 1
             trk, pos = ch
             if pos == 'l':
-                ind = this_sat[trk].imax // 2
-            elif pos == 'm' or pos == 'p':
+                ind = Ni
+            if pos == 'm' or pos == 'p':
                 ind = this_sat[trk].imax
+            elif pos == 'l':
+                ind = min(Ni, len(this_sat[trk].utc) - Ni)
             elif pos == 'r':
-                ind = this_sat[trk].imax  + this_sat[trk].imax // 2
-            this_sat[trk].set_par(obs_ind=ind, ods=[])
-            self.chose.append({'track': trk, 'type': pos, 'ind': ind})
+                ind = max(Ni, len(this_sat[trk].utc) - Ni)  
+            this_sat[trk].set_par(iobs=ind, ods=[])
             plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].el[ind].value, 'r.')
             plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].az[ind].value, 'r.')
 
-    def proc_tracks(self, obslen_min=8, freqs=[1990.0, 5500.0], freq_unit='MHz'):
-        print("ONP142:  SHOULDN'T HAVE TO RE-SPECIFY FREQS")
+    def proc_tracks(self):
         from odsutils import ods_engine
-        obslen_min = obslen_min
-        obslen_TD2 = TimeDelta(obslen_min * 60.0 / 2.0, format='sec')
-        freqs = [(f * u.Unit(freq_unit)).to_value('Hz') for f in freqs]
+        obslen_TD2 = self.obslen / 2.0
         new_tracks = []
-        this_sat = self.tracks[self.satname]
-        for this in self.chose:
-            newstart = this_sat[this['track']].utc[this['ind']] - obslen_TD2
-            newstop = this_sat[this['track']].utc[this['ind']] - obslen_TD2
-            for ff in freqs:
-                odict = {'src_id':f"{this_sat[this['track']].srcname}",
-                         'src_ra_j2000_deg': this_sat[this['track']].ra[this['ind']].to_value('deg'),
-                         'src_dec_j2000_deg': this_sat[this['track']].dec[this['ind']].to_value('deg'),
-                         'src_start_utc': f"{newstart.datetime.isoformat(timespec='seconds')}",
-                         'src_end_utc': f"{newstop.datetime.isoformat(timespec='seconds')}",
-                         'freq_lower_hz': ff-10.0E6,
-                         'freq_upper_hz': ff+10.0E6}
-                this_sat[this['track']].ods.append(odict)
+        for track in self.tracks[self]:
+            if track.iobs is None:
+                continue
+            tobs =  track.utc[track.iobs]
+            tstart = tobs - obslen_TD2
+            tstop = tobs + obslen_TD2
+            istart = np.where(track.utc > tstart)[0][0] - 1
+            istop = np.where(track.utc < tstop)[0][-1] + 1
+            track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
+            for ff in self.freqs:
+                odict = {'src_id':f"{track.srcname}",
+                         'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
+                         'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
+                         'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
+                         'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
+                         'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
+                         'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz')}
+                track.ods.append(odict)
                 new_tracks.append(odict)
         with ods_engine.ODS() as ods:
             ods.pipe(new_tracks, intake='ods.json', defaults='defaults.json')
@@ -169,35 +181,32 @@ class Plan:
     def write_obsinfo(self, filter_file='filters.json'):
         from astropy.coordinates import angular_separation
         from copy import copy
-        keys = ['ra', 'dec', 'az', 'el', 'tref', 'off_time', 'off_angle', 'ods']
+        this_sat = self.tracks[self.satname]
         with open(filter_file, 'r') as fp:
             filter = json.load(fp)['Filters']
         obsinfo = {}
         start_mjd = None
-        for this in self.chose:
-            mjd = self.times[this['ind']].mjd
+        for track in this_sat:
+            if track.iobs is None:
+                continue
+            mjd = track.utc[track.istart]
             if start_mjd is None:
                 start_mjd = copy(mjd)
-            satname = f"S{self.tracks[this['track']].satname}_{mjd:.4f}"
+            satname = f"{track.srcname}"
             obsinfo[satname] = {}
-            obsinfo[satname]['ra'] = self.gcrs.ra[this['ind']].to_value('deg')
-            obsinfo[satname]['dec'] = self.gcrs.dec[this['ind']].to_value('deg')
-            obsinfo[satname]['tref'] = self.times[this['ind']].datetime.isoformat(timespec='seconds')
-            obsinfo[satname]['az'] = self.azel.az[this['ind']].to_value('deg')
-            obsinfo[satname]['el'] = self.azel.alt[this['ind']].to_value('deg')
+            obsinfo[satname]['ra'] = track.ra[track.iobs].to_value('deg')
+            obsinfo[satname]['dec'] = track.dec[track.iobs].to_value('deg')
+            obsinfo[satname]['tref'] = track.tobs.datetime.isoformat(timespec='seconds')
+            obsinfo[satname]['az'] = track.az[track.iobs].to_value('deg')
+            obsinfo[satname]['el'] = track.el[track.iobs].to_value('deg')
             obsinfo[satname]['off_time'] = []
             obsinfo[satname]['off_angle'] = []
-            newstart = self.times[this['ind']] - self.obslen_TD2
-            newstop = self.times[this['ind']] + self.obslen_TD2
-            istart = np.where(self.times > newstart)[0][0] - 1
-            istop = np.where(self.times < newstop)[0][-1] + 1
-            for i in range(istart, istop+1):
-                dt = self.times[i] - self.times[this['ind']]
-                da = angular_separation(self.gcrs.ra[i], self.gcrs.dec[i],
-                                        self.gcrs.ra[this['ind']], self.gcrs.dec[this['ind']]) * np.sign(dt)
+            for i in range(track.istart, track.istop+1):
+                dt = track.utc[i] - track.tobs
+                da = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(dt)
                 obsinfo[satname]['off_time'].append(np.round(dt.to_value('sec'), 1))
                 obsinfo[satname]['off_angle'].append(np.round(da.to_value('deg'), 2))
-        fnout = f"obsinfo_{start_mjd:.0f}.json"
+        fnout = f"obsinfo_{start_mjd.value:.0f}.json"
         with open(fnout, 'w') as fp:
             json.dump(obsinfo, fp, indent=4)
         self.obsinfo = obsinfo
