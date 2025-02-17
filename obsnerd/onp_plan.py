@@ -284,7 +284,7 @@ class Plan:
                 filter = json.load(fp)['Filters']
         except FileNotFoundError:
             filter = {}
-        obsinfo = {'Filter': filter}
+        obsinfo = {'dir_data': 'data', 'Filter': filter, "Sources": []}
         start_mjd = None
         for satname in self.tracks:
             for track in self.tracks[satname]:

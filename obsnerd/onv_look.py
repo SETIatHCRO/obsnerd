@@ -157,7 +157,10 @@ class Look:
 
         """
         self.file_type = 'npz'
-        fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
+        try:
+            fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
+        except AttributeError:
+            fn = obsrec_file
         try:
             self.npzfile[obsrec_file] = np.load(fn)
         except FileNotFoundError:

@@ -13,3 +13,12 @@ Try satname='1112'
 > plan.choose_tracks()
 Is you want to continue,
 > plan.proc_tracks()
+
+Now put that ods file into '/opt/mnt/share/ods_rados/ods_rados.json'
+
+- 2 Run the observation: 
+    aoctkuser.py --enable-rados
+    then hit the Observe button
+
+- 3 Copy the data into local npz files along with the obsinfo file
+    
