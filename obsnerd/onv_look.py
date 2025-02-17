@@ -7,6 +7,7 @@ from datetime import datetime
 import os.path as path
 from . import on_sys
 from odsutils import ods_tools as tools
+import astropy.units as u
 
 
 def toMag(x, use_dB=True):
@@ -133,7 +134,7 @@ class Look:
         self.ant_map = {}
         for antno, antna in zip(self.ant_numbers, self.ant_names):
             self.ant_map[antna] = antno
-        self.freqs = self.uv.freq_array[0] / on_sys.FREQ_CONVERT[self.freq_unit]
+        self.freqs = (self.uv.freq_array[0] * u.Unit(self.freq_unit)).to_value(self.freq_unit)
         return True
 
     def read_an_npz(self, obsrec_file):
@@ -332,7 +333,7 @@ class Look:
         """
         use_dB = kwargs['use_dB'] if 'use_dB' in kwargs else True
         save = kwargs['save'] if 'save' in kwargs else False
-        t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else [-120, 120, 20]
+        t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else 8
         f_wfticks = kwargs['f_wfticks'] if 'f_wfticks' in kwargs else 8
         zoom_time = kwargs['zoom_time'] if 'zoom_time' in kwargs else False
         zoom_freq = kwargs['zoom_freq'] if 'zoom_freq' in kwargs else False
