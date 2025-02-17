@@ -1,3 +1,13 @@
+Terminology:
+  source - a unique source name.  For starlink that is S#####
+  obsid - a unique observation identifier:  source_MJD{.4f}
+  obsrec - a unique observation/hardware identifier:  <obsid>_LO_CNODE
+  Obsrec file - the filename holding the obsrec information (generally <obsrec>.npz)
+  experiment - a session looking at sources (typically within an MJD day or two)
+  obsinfo - a file containing information on obsids for a given experiment:  obsinfo_MJD.json
+  obsmeta - a json file containing index to the obsinfo files: obsmeta.json
+
+
 Observing Recipe (most ingredients missing at the moment...)
 
 The focus right now is to observe the Starlink Direct-to-Cell (DTC) satellites.

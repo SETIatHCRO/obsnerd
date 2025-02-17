@@ -5,7 +5,7 @@ import astropy.units as u
 from argparse import Namespace
 from datetime import timedelta
 from copy import copy
-import json
+from . import on_sys
 
 
 class Observatory:
@@ -27,95 +27,47 @@ ATA = Observatory('ATA',
                   latency = 30.0  # time to acquire etc before/after slew, sec
 )
 
-class ObservationData:
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.times = []
-        self.ra = []
-        self.dec = []
-        self.az = []
-        self.el = []
-        for key, val in kwargs.items():
-            setattr(self, key, val)
-
-
 class Base:
-    def __init__(self, observatory=ATA, obsmeta_file='obsmeta.json'):
+    def __init__(self, observatory=ATA):
         """
         Parameters
         ----------
         observatory : class Observatory
             Observatory information
-        obsmeta_file : str
-            Name of file containing meta data about the obsfile json files.
 
         """
         self.observatory = observatory
-        self.obsmeta_file = obsmeta_file
-        try:
-            with open(obsmeta_file, 'r') as fp:
-                self.obsmeta_data = json.load(fp)
-        except FileNotFoundError:
-            self.obsmeta_data = {}
 
-    def read_obsinfo(self, obs):
+    def read_obsinfo(self, obsid):
         """
-        This reads the observation meta json files generated.
-        Makes an 'obsinfo' Namespace with 3 attributes: 'filename', 'array' and 'obsid'
+        Makes an 'obsinfo' Namespace with the obsinfo for the obsid
 
         Parameter
         ---------
-        obsid : str or None
-            If a .json extension, reads that file.  If not, it checks that obsid as found in the obsid_file
+        obsid : str
+            observation id (source_MJD.4)
         
         """
-        self.obsinfo = Namespace(array=ObservationData(name=[]), obsid={}, dir_data='.')
+        src, mjd = on_sys.split_obsid(obsid)
+        self.obsinfo = Namespace(obsid=obsid, src=src, mjd=mjd)
         import json
-        if obs.endswith('.json'):
-            self.obsinfo.filename = obs  # Assume that this is a full obsinfo filepath/name
-        else:
-            from os.path import join
-            dir2use = '.'
-            for key, val in self.obsmeta_data.items():
-                if key == 'dir_obsinfo':
-                    dir2use = val
-                elif obs in val:
-                    self.obsinfo.filename = join(dir2use, key)
-                    break
-            else:
-                self.obsinfo.filename = None
-                print(f"No obs file found for {obs}")
-                return
-        
-        parameters = {'name'}
-        self.obsinfo.obsinfo_keys = ['obsinfo_keys']
-        print(f"Reading {self.obsinfo.filename}", end=' - ')
-        with open(self.obsinfo.filename, 'r') as fp:
+        file = f"obsinfo_{str(mjd).split('.')[0]}.json"
+        with open(file, 'r') as fp:
             json_input = json.load(fp)
-            for key, val in json_input.items():  # Get non-'Sources' info
-                self.obsinfo.obsinfo_keys.append(key)
-                if key != 'Sources':
-                    setattr(self.obsinfo, key.lower(), val)
-            for src, data in json_input['Sources'].items():
-                self.obsinfo.array.name.append(src)
-                self.obsinfo.obsid[src] = ObservationData(name=src)
-                for key, value in data.items():
-                    parameters.add(key)
-                    if key[0] == 't': # Is Time format
-                        try:
-                            value = Time(value)
-                        except ValueError:
-                            raise ValueError(f"Parameters starting with 't' must be astropy.time.Time format:  {key}: {value}")
-                    try:
-                        getattr(self.obsinfo.array, key).append(value)
-                    except AttributeError:
-                        setattr(self.obsinfo.array, key, [value])
-                    setattr(self.obsinfo.obsid[src], key, value)
-        # print(f"\t{', '.join(self.obsinfo.array.name)}")
-        print(f"\t{', '.join(list(parameters))}")
-        for par in [x for x in parameters if x[0]=='t']:
-            value = Time(copy(getattr(self.obsinfo.array, par)))
-            setattr(self.obsinfo.array, par, value)
+            if 'dir_data' in json_input:
+                self.obsinfo.dir_data = json_input['dir_data']
+            else:
+                self.obsinfo.dir_data = '.'
+            if 'Filter' in json_input:
+                self.obsinfo.filters = json_input['Filter']
+            else:
+                self.obsinfo.filters = {}
+            if src in json_input['Sources']:
+                for key, val in json_input['Sources'][src].items():
+                    if key == 'tref':
+                        self.obsinfo.tref = Time(val)
+                    else:
+                        setattr(self.obsinfo, key.lower(), val)
 
     def write_sorted_obs_file(self, obslen=6.0, tz=0.0, fn='observe.dat', fmt=2):
         """

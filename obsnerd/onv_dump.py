@@ -20,6 +20,7 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
     dbase_path = path.join(base_path, date_path)
     print(f"Retrieving from {dbase_path}")
     files = {}
+    fp = open('download_files.sh', 'w')
     for basedir, _, filelist in walk(dbase_path):
         if base_path in basedir and '/Lo' in basedir:
             for fn in filelist:
@@ -27,7 +28,8 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
                 X = OS.parse_uvh5_filename(dfn)
                 if X['lo'] in LOs and X['cnode'] in CNODEs:
                     files[X['obsrec']] = copy(X)
-                
+                    fp.write(f'scp "sonata@obs-node1.hcro.org:./rfsoc_obs_scripts/p054/{X["obsrec"]}.npz" .\n')
+    fp.close()
     with open(script_filename, 'w') as fp:
         for obsrec, data in files.items():
             print(f"on_dump_autos.py {data['filename']} --ants {ants} --pols {pols}", file=fp)

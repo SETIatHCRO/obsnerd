@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from . import onv_base
 from datetime import datetime
 import os.path as path
-from . import on_sys as OS
+from . import on_sys
 from odsutils import ods_tools as tools
 
 
@@ -20,7 +20,7 @@ class Filter:
     def __init__(self, ftype=None, unit=None, lo=None, hi=None, norm=False, color='k', shape='rect', invert=False):
         self.use = True
         self.ftype = ftype
-        self.axis = OS.FILTER_AXIS[self.ftype]
+        self.axis = on_sys.FILTER_AXIS[self.ftype]
         self.unit = unit
         self.lo = lo
         self.hi = hi
@@ -78,33 +78,30 @@ class Filter:
 
 
 class Look:
-    def __init__(self, obsinput=None, lo='A', cnode='all', freq_unit='MHz', dir_data='.'):
+    def __init__(self, obsid=None, lo='A', cnode='all', freq_unit='MHz', dir_data='.'):
         """
         This initializes, but also reads in all of the data.
 
         Parameters
         ----------
-        obsinput : None, str
-            Either a file (ends with .uvh5 or .npz) or obsid
+        obsid : str
+            Obsid (source_MJD.4)
+        
 
         """
-        self.obsid = None
+        self.obsid = obsid
         self.lo = lo
-        self.cnode = OS.make_cnode(cnode)
+        self.cnode = on_sys.make_cnode(cnode)
         self.freq_unit = freq_unit
         self.dir_data = dir_data
         self.npzfile = {}
         self.freqs = []
         self.filters = {}
-        if obsinput is not None:
-            if obsinput.endswith('.uvh5') or obsinput.endswith('.npz'):
-                self.obsrec_files = obsinput.split(',')
-            else:
-                self.obsid = obsinput
-                self.get_obsinfo()
-                self.source, self.mjd = OS.split_obsid(self.obsid)
-                self.obsrec_files = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
-            self.read_in_files()
+
+        self.get_obsinfo()
+        self.source, self.mjd = on_sys.split_obsid(self.obsid)
+        self.obsrec_files = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
+        self.read_in_files()
 
     def read_in_files(self):
         for obsrec in self.obsrec_files:
@@ -121,7 +118,7 @@ class Look:
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
         self.file_type = 'uvh5'
-        self.uvh5_pieces = OS.parse_uvh5_filename(fn)
+        self.uvh5_pieces = on_sys.parse_uvh5_filename(fn)
         self.fn = fn
         self.source = self.uvh5_pieces['source']
         self.uv = UVData()
@@ -131,7 +128,7 @@ class Look:
         self.ant_map = {}
         for antno, antna in zip(self.ant_numbers, self.ant_names):
             self.ant_map[antna] = antno
-        self.freqs = self.uv.freq_array[0] / OS.FREQ_CONVERT[self.freq_unit]
+        self.freqs = self.uv.freq_array[0] / on_sys.FREQ_CONVERT[self.freq_unit]
         return True
 
     def read_an_npz(self, obsrec_file):
@@ -241,17 +238,17 @@ class Look:
                 'values': self.times.datetime,
                 'label': 'Time'},
             'seconds': {
-                'values': (self.times - self.obs.obsinfo.obsid[self.obsid].tref).to_value('sec'),
+                'values': (self.times - self.obs.obsinfo.tref).to_value('sec'),
                 'label': 'Seconds',
-                'reference': self.obs.obsinfo.obsid[self.obsid].tref}
+                'reference': self.obs.obsinfo.tref}
         }
         try:
-            self.xp = self.obs.obsinfo.obsid[self.obsid].off_times
-            self.yp = self.obs.obsinfo.obsid[self.obsid].off_boresight
+            self.xp = self.obs.obsinfo.off_time
+            self.yp = self.obs.obsinfo.off_angle
         except AttributeError:
             self.taxes['boresight'] = None
             return
-        x = self.taxes['seconds']['values'] - self.obs.obsinfo.obsid[self.obsid].offset
+        x = self.taxes['seconds']['values']
         # Now extrapolate xp, yp to the limits of x...
         m_lo = (self.yp[1] - self.yp[0]) / (self.xp[1] - self.xp[0])
         b_lo = self.yp[0] - m_lo * self.xp[0]
@@ -265,7 +262,6 @@ class Look:
         self.taxes['boresight'] = {
             'values': np.interp(x, self.xp, self.yp),
             'label': 'Degrees',
-            'offset': self.obs.obsinfo.obsid[self.obsid].offset
         }
         
     def _get_wf_ticks(self, dat, ticks=8, precision=-1):
@@ -338,7 +334,7 @@ class Look:
         filter_time = kwargs['filt_time'] if 'filt_time' in kwargs else {}
         show_diff = kwargs['show_diff'] if 'show_diff' in kwargs else False
 
-        self.time_axis = OS.AXIS_OPTIONS[time_axis[0].lower()]
+        self.time_axis = on_sys.AXIS_OPTIONS[time_axis[0].lower()]
         self.get_time_axes()
         if ant:  # Otherwise use existing
             self.get_bl(ant, pol=pol)
@@ -355,11 +351,7 @@ class Look:
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
-        self.suptitle = f"{self.obsid}: {self.obs.obsinfo.obsid[self.obsid].tref.datetime.isoformat()}"
-        try:
-            self.suptitle += f"  ({self.obs.obsinfo.obsid[self.obsid].bf_distance} km)"
-        except (AttributeError, KeyError):
-            pass
+        self.suptitle = f"{self.obsid}: {self.obs.obsinfo.tref.datetime.isoformat(timespec='seconds')}"
         self.suptitle += f'  --  ({self.a},{self.b}) {self.pol}'
         plt.suptitle(self.suptitle)
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
@@ -368,19 +360,19 @@ class Look:
 
         # Water fall plot
         f_wfticks, f_wftick_labels = self._get_wf_ticks(self.freqs, ticks=f_wfticks)
-        t_wfticks, t_wftick_labels = self._get_wf_ticks(self.taxes[time_axis]['values'], ticks=t_wfticks)
+        t_wfticks, t_wftick_labels = self._get_wf_ticks(self.taxes[self.time_axis]['values'], ticks=t_wfticks)
         axwf.imshow(toMag(self.data, use_dB))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
-        axwf.set_ylabel(self.taxes[time_axis]['label'])
+        axwf.set_ylabel(self.taxes[self.time_axis]['label'])
         axwf.set_xticks(f_wfticks, f_wftick_labels)
         axwf.set_yticks(t_wfticks, t_wftick_labels)
 
         # Time plot
         for key in [k for k in self.filters if self.filters[k].ftype=='freq']:
             if self.filters[key].apply(self.freqs, self.data):
-                axt.plot(self.taxes[time_axis]['values'], toMag(self.filters[key].power, use_dB), color=self.filters[key].color)
-        axt.set_xlabel(self.taxes[time_axis]['label'])
+                axt.plot(self.taxes[self.time_axis]['values'], toMag(self.filters[key].power, use_dB), color=self.filters[key].color)
+        axt.set_xlabel(self.taxes[self.time_axis]['label'])
         ylabel = 'dB' if use_dB else 'linear'
         axt.set_ylabel(ylabel)
         axtlim = axt.axis()
@@ -390,7 +382,7 @@ class Look:
             axf.plot(self.freqs, toMag(self.data[i], use_dB), '0.8')
         axf.set_xlabel(self.freq_unit)
         for key in [k for k in self.filters if self.filters[k].ftype=='time']:
-            if self.filters[key].apply(self.taxes[time_axis]['values'], self.data):
+            if self.filters[key].apply(self.taxes[self.time_axis]['values'], self.data):
                 axf.plot(self.freqs, toMag(self.filters[key].power, use_dB), color=self.filters[key].color)
         axf.set_ylabel(ylabel)
         axflim = axf.axis()
@@ -405,7 +397,7 @@ class Look:
         if zoom_time:
             axt.set_xlim(left=zoom_time[0], right=zoom_time[1])
         else:
-            axt.set_xlim(left=self.taxes[time_axis]['values'][0], right=self.taxes[time_axis]['values'][-1])
+            axt.set_xlim(left=self.taxes[self.time_axis]['values'][0], right=self.taxes[self.time_axis]['values'][-1])
         # ... freq
         axfshade = axflim[2] + 0.15 * (axflim[3] - axflim[2])
         for key in [k for k in self.filters if self.filters[k].ftype=='freq' and self.filters[k].use]:
@@ -477,4 +469,4 @@ class Look:
 
     def get_obsinfo(self):
         self.obs = onv_base.Base()
-        self.obs.read_obsinfo(obs=self.obsid)
+        self.obs.read_obsinfo(obsid=self.obsid)
