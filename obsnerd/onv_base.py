@@ -81,7 +81,6 @@ class Base:
             Just a way to keep track of arbitrary output format
 
         """
-        from copy import copy
         sorter = {}
     
         for src, data in self.obsid.items():

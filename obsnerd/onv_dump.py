@@ -1,7 +1,7 @@
 import numpy as np
 from copy import copy
-from . import obsnerd_sys as OS
-from . import obs_look, obs_base
+from . import on_sys
+from . import onv_look, onv_base
 from odsutils import ods_tools as tools
 
 
@@ -14,8 +14,8 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
         for x in listdir(base_path):
             print(f"\t{x}")
         return
-    LOs = tools.listify(LOs, {'all': OS.ALL_LOS})
-    CNODEs = OS.make_cnode(CNODEs)
+    LOs = tools.listify(LOs, {'all': on_sys.ALL_LOS})
+    CNODEs = on_sys.make_cnode(CNODEs)
 
     dbase_path = path.join(base_path, date_path)
     print(f"Retrieving from {dbase_path}")
@@ -25,7 +25,7 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
         if base_path in basedir and '/Lo' in basedir:
             for fn in filelist:
                 dfn = path.join(basedir, fn)
-                X = OS.parse_uvh5_filename(dfn)
+                X = on_sys.parse_uvh5_filename(dfn)
                 if X['lo'] in LOs and X['cnode'] in CNODEs:
                     files[X['obsrec']] = copy(X)
                     fp.write(f'scp "sonata@obs-node1.hcro.org:./rfsoc_obs_scripts/p054/{X["obsrec"]}.npz" .\n')
@@ -57,7 +57,7 @@ class Dump:
         self.obsinput should be an obsid
 
         """
-        self.look = obs_look.Look(self.obsinput, lo=self.lo, cnode=self.cnodes)
+        self.look = onv_look.Look(self.obsinput, lo=self.lo, cnode=self.cnodes)
         ants = tools.listify(ants, {'all': self.look.ant_names})
         pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
         outdata = {'ants': ants, 'freqs': self.look.freqs, 'pols': pols, 'source': self.look.source, 'uvh5': self.look.fn, 'freq_unit': self.look.freq_unit}
@@ -76,18 +76,18 @@ class Dump:
         self.obsinput should be an obsinfo file
 
         """
-        base = obs_base.Base()
+        base = onv_base.Base()
         base.read_obsinfo(self.obsinput)
         filters = {}
-        filters['on'] = obs_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='r')
-        filters['off'] = obs_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='k', invert=True)
-        filters['adjacent_feature'] = obs_look.Filter(color='r', ftype='freq', unit='MHz', lo=1975.0, hi=1985.0)
-        filters['dtz'] = obs_look.Filter(color='r', ftype='freq', unit='MHz', lo=1990.0, hi=1995.0, norm=True)
-        filters['low'] = obs_look.Filter(color='r', ftype='freq', unit='MHz', lo=1910.0, hi=1915.0, norm=True)
+        filters['on'] = onv_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='r')
+        filters['off'] = onv_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='k', invert=True)
+        filters['adjacent_feature'] = onv_look.Filter(color='r', ftype='freq', unit='MHz', lo=1975.0, hi=1985.0)
+        filters['dtz'] = onv_look.Filter(color='r', ftype='freq', unit='MHz', lo=1990.0, hi=1995.0, norm=True)
+        filters['low'] = onv_look.Filter(color='r', ftype='freq', unit='MHz', lo=1910.0, hi=1915.0, norm=True)
 
         for i, obsid in enumerate(base.obsinfo.array.name):
             print(f"Reading {obsid}")
-            look = obs_look.Look(obsid, self.lo, cnode=self.cnodes)
+            look = onv_look.Look(obsid, self.lo, cnode=self.cnodes)
             look.get_time_axes()
             if not i:
                 ants = tools.listify(ants, {'all': look.ant_names})

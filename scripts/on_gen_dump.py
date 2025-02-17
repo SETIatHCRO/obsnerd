@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import argparse
-from obsnerd import obs_dump
+from obsnerd import onv_dump
 
 
 ap = argparse.ArgumentParser()
@@ -13,7 +13,7 @@ ap.add_argument('--cnodes', help="CNODES to use.", default='all')
 ap.add_argument('--los', help="LOs to use", default='all')
 args = ap.parse_args()
 
-obs_dump.gen_uvh5_dump_script(args.date, base_path=args.base_dir,
+onv_dump.gen_uvh5_dump_script(args.date, base_path=args.base_dir,
                               ants=args.ants, pols=args.pols,
                               LOs=args.los, CNODEs=args.cnodes,
                               script_filename=args.script)

@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from obsnerd import obs_dump
+from obsnerd import onv_dump
 
 
 if __name__ == '__main__':
@@ -10,5 +10,5 @@ if __name__ == '__main__':
     ap.add_argument('--pols', help="Pols to use", default='all')
 
     args = ap.parse_args()
-    look = obs_dump.Dump(args.filename)
+    look = onv_dump.Dump(args.filename)
     look.dump_autos(args.ants, args.pols)
