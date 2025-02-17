@@ -83,8 +83,9 @@ class Base:
         """
         sorter = {}
     
-        for src, data in self.obsid.items():
-            sorter[data.tref.datetime] = ObservationData(name=src, ra=data.ra, dec=data.dec, az=data.az, el=data.el)
+        print("COMMENTED OUT LINES 87/88 IN OBSNERD BASE")
+        #for src, data in self.obsid.items():
+        #    sorter[data.tref.datetime] = ObservationData(name=src, ra=data.ra, dec=data.dec, az=data.az, el=data.el)
         with open(fn, 'w') as fp:
             if fmt == 1:
                 print("#Source,pause[s],obs[s],start,ref,ra,dec,az,el", file=fp)
