@@ -14,9 +14,9 @@ ap.add_argument('--los', help="LOs to use", default='all')
 args = ap.parse_args()
 
 if args.date == 'check':
-    remaining = onv_dump.cull_tracking_file()
-    print(f"Remaining files")
-    for cline in remaining:
+    needed = onv_dump.cull_tracking_file()
+    print(f"Needed files")
+    for cline in needed:
         filen = cline.split()[1].strip('"').split('/')[-1]
         print(f"\t{filen}")
 else:
