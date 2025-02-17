@@ -13,7 +13,14 @@ ap.add_argument('--cnodes', help="CNODES to use.", default='all')
 ap.add_argument('--los', help="LOs to use", default='all')
 args = ap.parse_args()
 
-onv_dump.gen_uvh5_dump_script(args.date, base_path=args.base_dir,
-                              ants=args.ants, pols=args.pols,
-                              LOs=args.los, CNODEs=args.cnodes,
-                              script_filename=args.script)
+if args.date == 'check':
+    remaining = onv_dump.cull_tracking_file()
+    print(f"Remaining files")
+    for cline in remaining:
+        filen = cline.split()[1].strip('"').split('/')[-1]
+        print(f"\t{filen}")
+else:
+    onv_dump.gen_uvh5_dump_script(args.date, base_path=args.base_dir,
+                                  ants=args.ants, pols=args.pols,
+                                  LOs=args.los, CNODEs=args.cnodes,
+                                  script_filename=args.script)

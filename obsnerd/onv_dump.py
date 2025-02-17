@@ -36,6 +36,21 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
             print(f"Adding {obsrec}")
 
 
+def cull_tracking_file(filename='download_files.sh'):
+    from glob import glob
+    npz = glob('*.npz')
+    remaining_files = []
+    with open(filename, 'r') as fp:
+        for line in fp:
+            line_present = False
+            for fn in npz:
+                if fn in line:
+                    line_present = True
+                    break
+            if not line_present:
+                remaining_files.append(line.strip())
+    return remaining_files
+
 class Dump:
     def __init__(self, obsinput=None, lo='A', cnodes='all'):
         """
