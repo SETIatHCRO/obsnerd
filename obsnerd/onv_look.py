@@ -85,7 +85,7 @@ class Look:
         Parameters
         ----------
         obsid : str
-            Obsid (source_MJD.4)
+            Obsid (source_MJD.4) or a UVH5 file or NPZ filename
         
 
         """
@@ -98,10 +98,15 @@ class Look:
         self.freqs = []
         self.filters = {}
 
-        self.get_obsinfo()
-        self.source, self.mjd = on_sys.split_obsid(self.obsid)
-        self.obsrec_files = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
-        self.read_in_files()
+        if obsid.endswith('.uvh5'):
+            self.read_a_uvh5(self.obsid)
+        elif obsid.endswith('.npz'):
+            self.read_an_npz(self.obsid)
+        else:
+            self.get_obsinfo()
+            self.source, self.mjd = on_sys.split_obsid(self.obsid)
+            self.obsrec_files = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
+            self.read_in_files()
 
     def read_in_files(self):
         for obsrec in self.obsrec_files:
