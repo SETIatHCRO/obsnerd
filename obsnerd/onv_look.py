@@ -161,20 +161,22 @@ class Look:
         """
         self.file_type = 'npz'
         try:
-            fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
+            self.fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
         except AttributeError:
-            fn = obsrec_file
+            self.fn = obsrec_file
         try:
-            self.npzfile[obsrec_file] = np.load(fn)
+            self.npzfile[obsrec_file] = np.load(self.fn)
         except FileNotFoundError:
-            print(f"Couldn't find {fn}")
+            print(f"Couldn't find {self.fn}")
             return False
         self.ant_names = list(self.npzfile[obsrec_file]['ants'])
         self.freqs += list(self.npzfile[obsrec_file]['freqs'])
+        self.freq_unit = str(self.npzfile[obsrec_file]['freq_unit'])
         self.times = Time(self.npzfile[obsrec_file]['times'], format='jd')
+        self.pols = list(self.npzfile[obsrec_file]['pols'])
         return True
 
-    def get_bl(self, a, b=None, pol='xx'):
+    def get_bl(self, a, b=None, pol='xx', auto_as_abs=True):
         """
         This reads in a baseline in all of the files read into obsrec_files.
 
@@ -186,6 +188,8 @@ class Look:
             Another antenna name, same as 'a' if None
         pol : str
             Polarization
+        auto_as_abs : bool
+            Flag to return autos as absolute value
         
         Attributes
         ----------
@@ -212,17 +216,28 @@ class Look:
         self.pol = pol
         if self.b is None:
             self.b = self.a
-        print(f"Reading ({self.a}, {self.b}){self.pol}", end='')
+        is_auto = (self.a == self.b)
+        if self.file_type == 'npz' and not is_auto:
+            raise ValueError("For no good reason I've limited npz files to autos only")
+        print(f"Reading ({self.a},{self.b}){self.pol}", end='')
         dataf = []
         if self.file_type == 'uvh5':  # Only one file
             self.ano = self.ant_map[self.a]
             self.bno = self.ant_map[self.b]
             self.data = self.uv.get_data(self.ano, self.bno, pol)
+            if is_auto and auto_as_abs:
+                self.data = np.abs(self.data)
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
         elif self.file_type == 'npz':
             for obsrec_file in self.obsrec_files:
-                dataf.append(self.npzfile[obsrec_file][f"{self.a}{pol}"])
-            self.data = np.concatenate(dataf, axis=1)
+                if f"{self.a}{pol}" not in self.npzfile[obsrec_file].keys():
+                    continue
+                if is_auto and auto_as_abs:
+                    dataf.append(np.abs(self.npzfile[obsrec_file][f"{self.a}{pol}"]))
+                else:
+                    dataf.append(self.npzfile[obsrec_file][f"{self.a}{pol}"])
+            if len(dataf):
+                self.data = np.concatenate(dataf, axis=1)
 
         self.datamin = np.min(np.abs(self.data))
         self.datamax = np.max(np.abs(self.data))

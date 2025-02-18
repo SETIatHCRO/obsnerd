@@ -36,6 +36,30 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
             print(f"Adding {obsrec}")
 
 
+def redump(obsid, ants, pols='xx,yy,xy,yx'):
+    from glob import glob
+    import shutil
+    keys2use = ['times', 'freqs', 'source', 'uvh5', 'freq_unit']
+    usepols = set()
+    useants = set()
+    for fn in glob(f'{obsid}*.npz'):
+        print(f"Redumping {fn}")
+        shutil.copy(fn, f"{fn}.arc")
+        outdata = {}
+        data = np.load(fn)
+        for key in keys2use:
+            outdata[key] = data[key]
+        for ant in ants.split(','):
+            for pol in pols.split(','):
+                if f"{ant}{pol}" in data:
+                    usepols.add(pol)
+                    useants.add(ant)
+                    outdata[f"{ant}{pol}"] = data[f"{ant}{pol}"]
+        outdata['pols'] = list(usepols)
+        outdata['ants'] = list(useants)
+        np.savez(f"{fn}", **outdata)
+
+
 def cull_tracking_file(filename='download_files.sh'):
     from glob import glob
     npz = glob('*.npz')
@@ -58,7 +82,7 @@ class Dump:
         Parameters
         ----------
         obsinput : str
-            File to use
+            File to use generally an obsid
         lo : str, list, 'all'
         cnodes : str, list, 'all'
 
