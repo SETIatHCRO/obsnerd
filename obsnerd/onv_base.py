@@ -8,24 +8,7 @@ from copy import copy
 from . import on_sys
 
 
-class Observatory:
-    def __init__(self, name, location, **kwargs):
-        self.name = name
-        self.location = location
-        for key, val in kwargs.items():
-            setattr(self, key, val)
 
-# From Wael
-latitude = "40:49:02.75"
-longitude = "-121:28:14.65"
-altitude = 1019.222
-ATA = Observatory('ATA',
-                  # location = EarthLocation(lat = 40.814871 * u.deg, lon = -121.469001 * u.deg, height = 1019.0 * u.m),  # From SpaceX
-                  location = EarthLocation(lat = 40.81743055556 * u.deg, lon = -121.5292638889 * u.deg, height = 1019.222 * u.m),  # From Wael
-                  slew_speed = 1.5,  # deg/sec
-                  startup = 15.0,  # number of seconds to actually start taking dat after started, sec
-                  latency = 30.0  # time to acquire etc before/after slew, sec
-)
 
 class Base:
     def __init__(self, observatory=ATA):
@@ -38,36 +21,7 @@ class Base:
         """
         self.observatory = observatory
 
-    def read_obsinfo(self, obsid):
-        """
-        Makes an 'obsinfo' Namespace with the obsinfo for the obsid
 
-        Parameter
-        ---------
-        obsid : str
-            observation id (source_MJD.4)
-        
-        """
-        src, mjd = on_sys.split_obsid(obsid)
-        self.obsinfo = Namespace(obsid=obsid, src=src, mjd=mjd)
-        import json
-        file = f"obsinfo_{str(mjd).split('.')[0]}.json"
-        with open(file, 'r') as fp:
-            json_input = json.load(fp)
-            if 'dir_data' in json_input:
-                self.obsinfo.dir_data = json_input['dir_data']
-            else:
-                self.obsinfo.dir_data = '.'
-            if 'Filter' in json_input:
-                self.obsinfo.filters = json_input['Filter']
-            else:
-                self.obsinfo.filters = {}
-            if src in json_input['Sources']:
-                for key, val in json_input['Sources'][src].items():
-                    if key == 'tref':
-                        self.obsinfo.tref = Time(val)
-                    else:
-                        setattr(self.obsinfo, key.lower(), val)
 
     def write_sorted_obs_file(self, obslen=6.0, tz=0.0, fn='observe.dat', fmt=2):
         """

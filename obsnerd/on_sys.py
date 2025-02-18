@@ -6,6 +6,9 @@ AXIS_OPTIONS = {'b': 'boresight', 'd': 'datetime', 's': 'seconds'}
 FILTER_AXIS = {'time': 0, 'freq': 1}
 OBS_START_DELAY = 10  # sec
 FEED_FOCUS_SLEEP = 20
+STARTUP_LATENCY = 15
+LATENCY = 30
+SLEW_SPEED = 1.5  # deg/sec
 
 ANT_LISTS = {'old_feeds': ['']}
 
