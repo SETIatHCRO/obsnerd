@@ -34,41 +34,6 @@ def generate_colors(n):
     
     return colors
 
-class Track:
-    def __init__(self, satname, srcname=None):
-        self.satname = satname
-        self.srcname = satname if srcname is None else srcname
-        self.iobs = None
-        self.ods = None
-
-    def set_par(self, **kwargs):
-        for par, val in kwargs.items():
-            if par not in ['iobs', 'istart', 'istop', 'tobs', 'tstart', 'tstop', 'ods']:
-                logger.warning(f"Invalid parameter: {par}")
-                continue
-            setattr(self, par, val)
-
-    def set_track(self, **kwargs):
-        for par, val in kwargs.items():
-            if par not in ['utc', 'ra', 'dec', 'az', 'el', 'dist']:
-                logger.warning(f"Invalid parameter: {par}")
-                continue
-            setattr(self, par, val)
-
-    def calc_properties(self):
-        self.duration = self.utc[-1] - self.utc[0]
-        self.imax = np.argmax(self.el)
-        dt = np.diff(self.utc.mjd) * 24 * 3600
-        self.daz = self.az.diff().to_value('deg')
-        wrap = np.where(abs(self.daz) > 180.0)
-        dwrap = wrap[0] - 1
-        self.daz[wrap] = self.daz[dwrap]
-        self.azdot = self.daz / dt
-        self.azdot = np.insert(self.azdot, 0, self.azdot[0])
-        self.azdot = abs(self.azdot)
-        self.eldot = self.el.diff().to_value('deg') / dt
-        self.eldot = np.insert(self.eldot, 0, self.eldot[0])
-
 
 class Plan:
     def __init__(self, conlog='INFO', filelog=False, path='', loc='ata'):
@@ -297,7 +262,7 @@ class Plan:
                 obsinfo[satname] = {}
                 obsinfo[satname]['ra'] = track.ra[track.iobs].to_value('deg')
                 obsinfo[satname]['dec'] = track.dec[track.iobs].to_value('deg')
-                obsinfo[satname]['tref'] = track.tobs.datetime.isoformat(timespec='seconds')
+                obsinfo[satname]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
                 obsinfo[satname]['az'] = track.az[track.iobs].to_value('deg')
                 obsinfo[satname]['el'] = track.el[track.iobs].to_value('deg')
                 obsinfo[satname]['off_time'] = []

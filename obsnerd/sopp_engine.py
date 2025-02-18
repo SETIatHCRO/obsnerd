@@ -8,7 +8,7 @@ import datetime
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 from odsutils import ods_timetools as timetools
-from obsnerd.onp_plan import Track
+from obsnerd.on_track import Track
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation
 import astropy.units as u
@@ -130,7 +130,6 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
         if DTC_only and 'DTC' not in window.satellite.name:
             continue
 
-        this_track = Track(window.satellite.name)
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
         az, el, tae, dist = [], [], [], []
         table_data = []
@@ -145,13 +144,13 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
                 table_row = [pos.time.strftime('%Y-%m-%dT%H:%M:%S.%f'), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
         srcname = f"{window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')}{i}"
-        this_track = Track(window.satellite.name, srcname=srcname)
+        this_track = Track(source=srcname)
         this_track.set_track(az=array(az)*u.deg, el=array(el)*u.deg, utc=Time(tae), dist=array(dist)*u.m)
         sky = SkyCoord(alt=this_track.el, az=this_track.az, obstime=this_track.utc, frame='altaz', location=location)
         this_track.set_track(ra=sky.gcrs.ra, dec=sky.gcrs.dec)
         this_track.calc_properties()
-        tracks.setdefault(window.satellite.name, [])
-        tracks[window.satellite.name].append(this_track)
+        tracks.setdefault(srcname, [])
+        tracks[srcname].append(this_track)
         if verbose:
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
             fnout = f"{this_track.srcname.strip()}.txt"
