@@ -31,4 +31,5 @@ Now put that ods file into '/opt/mnt/share/ods_rados/ods_rados.json'
     then hit the Observe button
 
 - 3 Copy the data into local npz files along with the obsinfo file
-    
+    $ on_gen_dump.py ?
+    $ on_gen_dump.py <date-from-above-look>

@@ -87,7 +87,14 @@ class Look:
         ----------
         obsid : str
             Obsid (source_MJD.4) or a UVH5 file or NPZ filename
-        
+        lo : str
+            LO designation
+        cnode : str
+            Cnode designation
+        freq_unit : str
+            Frequency unit
+        dir_data : str
+            Directory where data is stored (default used if none in obsinfo file)
 
         """
         self.obsid = obsid
@@ -99,7 +106,9 @@ class Look:
         self.freqs = []
         self.filters = {}
 
-        if obsid.endswith('.uvh5'):
+        if obsid is None:
+            pass
+        elif obsid.endswith('.uvh5'):
             self.read_a_uvh5(self.obsid)
         elif obsid.endswith('.npz'):
             self.read_an_npz(self.obsid)
@@ -163,7 +172,7 @@ class Look:
         try:
             self.fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
         except AttributeError:
-            self.fn = obsrec_file
+            self.fn = path.join(self.dir_data, obsrec_file)
         try:
             self.npzfile[obsrec_file] = np.load(self.fn)
         except FileNotFoundError:
@@ -303,12 +312,12 @@ class Look:
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
-    def dashboard_gen(self, obsinfo, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b', show_diff=False):
+    def dashboard_gen(self, obsid, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b', show_diff=False):
         """
         Parameters
         ----------
         obsinfo : str
-            Name of obsinfo file to use
+            Name of obsid file to use
         script_fn : str
             Name of bash script file to write
         ant : str
@@ -320,7 +329,7 @@ class Look:
     
         """
         self.obs = onv_base.Base()
-        self.obs.read_obsinfo(obs=obsinfo)
+        self.obs.read_obsinfo(obsid=obsid)
         cnode = ','.join(self.cnode)
         ants = tools.listify(ants)
         pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})

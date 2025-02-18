@@ -25,8 +25,11 @@ if __name__ == '__main__':
     args = ap.parse_args()
     args.time_axis = AXIS_OPTIONS[args.time_axis[0].lower()]
 
-    look = onv_look.Look(obsinput=args.obsid, lo=args.lo, cnode=args.cnode, freq_unit=args.freq_unit, dir_data=args.dir_data)
+    look = onv_look.Look(obsid=args.obsid, lo=args.lo, cnode=args.cnode, freq_unit=args.freq_unit, dir_data=args.dir_data)
     if args.dash:
-        look.dashboard(ant=args.ant, pol=args.pol, save=args.save, time_axis=args.time_axis, show_diff=args.show_diff)
+        for ant in args.ant.split(','):
+            for pol in args.pol.split(','):
+                look.dashboard(ant=ant, pol=pol, save=args.save, time_axis=args.time_axis, show_diff=args.show_diff)
+        look.dashboard(ant=ant, pol=pol, save=args.save, time_axis=args.time_axis, show_diff=args.show_diff)
     if not args.save:
         plt.show()
