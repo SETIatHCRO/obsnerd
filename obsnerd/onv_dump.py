@@ -1,7 +1,7 @@
 import numpy as np
 from copy import copy
 from . import on_sys
-from . import onv_look, onv_base
+from . import onv_look, on_track
 from odsutils import ods_tools as tools
 
 
@@ -115,8 +115,6 @@ class Dump:
         self.obsinput should be an obsinfo file
 
         """
-        base = onv_base.Base()
-        base.read_obsinfo(self.obsinput)
         filters = {}
         filters['on'] = onv_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='r')
         filters['off'] = onv_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='k', invert=True)
