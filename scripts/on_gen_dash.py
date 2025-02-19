@@ -5,7 +5,7 @@ from obsnerd.on_sys import AXIS_OPTIONS
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument('obsid', help="obsid to use")
+ap.add_argument('oinput', help="oinput to use")
 ap.add_argument('--script', help="Name of script file", default='dash.sh')
 ap.add_argument('--lo', help="LO to use", choices=['A', 'B'], default='A')
 ap.add_argument('--cnode', help="Correlator nodes to use", default='all')
@@ -19,5 +19,5 @@ args = ap.parse_args()
 
 args.time_axis = AXIS_OPTIONS[args.time_axis[0].lower()]
 
-obs = onv_look.Look(obsid=None, lo=args.lo, cnode=args.cnode)
-obs.dashboard_gen(obsid=args.obsid, script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.time_axis, show_diff=args.show_diff)
+obs = onv_look.Look(oinput=args.oinput, lo=args.lo, cnode=args.cnode)
+obs.dashboard_gen(script_fn=args.script, ants=args.ants, pols=args.pols, taxis=args.time_axis, show_diff=args.show_diff)

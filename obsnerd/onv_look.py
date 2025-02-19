@@ -10,11 +10,13 @@ import astropy.units as u
 
 
 def toMag(x, use_dB=True):
+    absx = np.abs(x)
     if use_dB:
-        return 10.0 * np.log10(np.abs(x))
+        bad = np.where(absx < 1E-12)
+        absx[bad] = 1E-6
+        return 10.0 * np.log10(absx)
     else:
-        return np.abs(x)
-
+        return absx
 
 class Filter:
     def __init__(self, ftype=None, unit=None, lo=None, hi=None, norm=False, color='k', shape='rect', invert=False):
@@ -59,16 +61,22 @@ class Filter:
         filterarr = np.zeros(data.shape)
         self.indicator = [[self.lo, self.hi]]
         if self.invert:
-            self._invert(len(x), xmm=[min(x), max(x)])
+            self.do_invert(len(x), xmm=[min(x), max(x)])
         if self.axis == 0:
-            filterarr[self.inds, :] = 1
+            try:
+                filterarr[self.inds, :] = 1
+            except IndexError:
+                pass
         elif self.axis == 1:
-            filterarr[:, self.inds] = 1
+            try:
+                filterarr[:, self.inds] = 1
+            except IndexError:
+                pass
         power = np.sum(data * filterarr, axis=self.axis)
         self.power = power if not self.norm else power / len(self.inds)
         return self.use
 
-    def _invert(self, N, xmm):
+    def do_invert(self, N, xmm):
         new_ind = []
         for i in range(N):
             if i not in self.inds:
@@ -95,19 +103,16 @@ class Look:
 
         """
         self.input = oinput
-        self.lo = lo
+        self.lo = on_sys.make_lo(lo)
         self.cnode = on_sys.make_cnode(cnode)
         self.freq_unit = freq_unit
         self.npzfile = {}
         self.freqs = []
         self.filters = {}
-        self.source, self.mjd = on_sys.split_obsid(oinput)
-        if self.mjd is None:
-            self.obsid = None
-            self.obsrec_files = []
-        else:
-            self.obsid = oinput
-            self.obsrec_files = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
+        self.source, self.mjd = on_sys.split_obsid(self.input)
+        self.source = self.input if self.mjd is None else self.source
+        self.obsid = None if self.mjd is None else self.input
+        self.obsrec_files = [] if self.obsid is None else [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
 
         if self.input is None:
             pass
@@ -122,7 +127,18 @@ class Look:
             except KeyError:
                 self.this_source = None
 
+    def get_obsid_and_files_from_source(self):
+        self.obsid = on_track.get_obsid_from_source(self.source, self.obs.dir_data)
+        if self.obsid is None:
+            print(f"Couldn't find obsid from {self.source} in {self.obs.dir_data}")
+        else:
+            print(f"Found {self.obsid} in {self.obs.dir_data}")
+            self.obsrec_files = [] if self.obsid is None else [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
+
     def read_in_files(self):
+        if self.mjd is None and not len(self.obsrec_files):
+            self.get_obsid_and_files_from_source()
+        self.freqs = []
         for obsrec in self.obsrec_files:
             if obsrec.endswith('.uvh5'):
                 self.read_a_uvh5(obsrec)
@@ -133,6 +149,13 @@ class Look:
                 self.read_an_npz(obsrec)
             else:
                 print(f"Invalid file {obsrec}")
+        if self.file_type == 'npz':
+            # self.freqs = np.array(self.freqs) * u.Unit(self.freq_unit)
+            self.freqs = np.array(self.freqs)
+            if max(self.freqs) > 1E8:
+                print("Bad freqs -- trying to fix  -- AD HOC for bad conversion in dump")
+                badf = np.where(self.freqs > 1E6)
+                self.freqs[badf] /= 1E6
 
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
@@ -252,9 +275,13 @@ class Look:
             if len(dataf):
                 self.data = np.concatenate(dataf, axis=1)
 
-        self.datamin = np.min(np.abs(self.data))
-        self.datamax = np.max(np.abs(self.data))
-        print(f"\tmin={self.datamin}, max={self.datamax}")
+        try:
+            self.datamin = np.min(np.abs(self.data))
+            self.datamax = np.max(np.abs(self.data))
+            print(f"\tmin={self.datamin}, max={self.datamax}")
+        except AttributeError:
+            print("No data found")
+            self.data = None
 
     def get_time_axes(self):
         """
@@ -298,14 +325,15 @@ class Look:
             'label': 'Degrees',
         }
         
-    def _get_wf_ticks(self, dat, ticks=8, precision=-1):
+    def get_wf_ticks(self, dat, ticks=8, precision=-1, include_0=False):
         if isinstance(dat[0], datetime):
             dat = (self.times.jd - self.times[0].jd) * 24.0 * 3600.0
         idat = list(np.arange(len(dat)))
         if isinstance(ticks, (float, int)):
             xstart = np.round(np.floor(dat[0]), precision)
+            xstop = np.round(np.ceil(dat[-1]), precision)
             xstep = np.round((dat[-1] - dat[0]) / ticks, precision)
-            x = [int(xx) for xx in np.arange(xstart, dat[-1], xstep)]
+            x = [int(xx) for xx in np.arange(xstart, xstop, xstep)]
         elif isinstance(ticks, list):
             if len(ticks) == 3:
                 x = [int(xx) for xx in np.arange(ticks[0], ticks[1]+1, ticks[2])]
@@ -313,15 +341,18 @@ class Look:
                 x = ticks
         else:
             raise ValueError("Invalid ticks parameters")
+        if include_0 and 0 not in x:
+            x.append(0)
+            x = sorted(x)
         m = np.round(np.interp(x, dat, idat), 0)
         return m, x
 
-    def dashboard_gen(self, obsid, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b', show_diff=False):
+    def dashboard_gen(self, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b', show_diff=False):
         """
         Parameters
         ----------
-        obsinfo : str
-            Name of obsid file to use
+        oinput : str
+            oinput to use to find obsid etc...
         script_fn : str
             Name of bash script file to write
         ant : str
@@ -332,16 +363,15 @@ class Look:
             t/x axis to use in plot [a/b/d]
     
         """
-        self.obs = on_track.read_obsinfo(obsid)
         cnode = ','.join(self.cnode)
         ants = tools.listify(ants)
         pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
         show_diff = ' --show_diff ' if show_diff else ''
         with open(script_fn, 'w') as fp:
-            for obsid in self.obs.obsinfo.obsid:
+            for src in self.obs.sources:
                 for ant in ants:
                     for pol in pols:
-                        print(f"on_look.py {obsid} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} {show_diff} --dash -s", file=fp)
+                        print(f"on_look.py {src} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} {show_diff} --dash -s", file=fp)
 
     def dashboard(self, ant='2b', pol='xx', time_axis='seconds', transit_time=4.0, **kwargs):
         """
@@ -358,26 +388,28 @@ class Look:
         kwargs : use_dB, save, t_wfticks, f_wfticks, zoom_time, zoom_freq, filter_time
     
         """
-        use_dB = kwargs['use_dB'] if 'use_dB' in kwargs else True
-        save = kwargs['save'] if 'save' in kwargs else False
-        t_wfticks = kwargs['t_wfticks'] if 't_wfticks' in kwargs else 8
-        f_wfticks = kwargs['f_wfticks'] if 'f_wfticks' in kwargs else 8
-        zoom_time = kwargs['zoom_time'] if 'zoom_time' in kwargs else False
-        zoom_freq = kwargs['zoom_freq'] if 'zoom_freq' in kwargs else False
-        filter_time = kwargs['filt_time'] if 'filt_time' in kwargs else {}
-        show_diff = kwargs['show_diff'] if 'show_diff' in kwargs else False
+        self.read_in_files()
+        print(f"Dashboard for {self.obsid} - ({ant},{pol})")
+        D = {'use_dB': True, 'save': False, 't_wfticks': 8, 'f_wfticks': 8,
+             'zoom_time': False, 'zoom_freq': False, 'filter_time': {}, 'show_diff': False}
+        D.update(kwargs)
+
+        if D['use_dB'] == 'auto':
+            D['use_dB'] = True if pol in ['xx', 'yy'] else False
 
         self.time_axis = on_sys.AXIS_OPTIONS[time_axis[0].lower()]
         self.get_time_axes()
         if ant:  # Otherwise use existing
             self.get_bl(ant, pol=pol)
+        if self.data is None:
+            return
 
         # Set up filters
         self.filters = {}
         tt = transit_time / 2.0
         self.filters['on:boresight'] = Filter(ftype='time', unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='r')
         self.filters['off:boresight'] = Filter(ftype='time', unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True)
-        for clr, filt in filter_time:
+        for clr, filt in D['filter_time'].items():
             self.filters[f"time:{filt[0]}-{filt[1]}:{clr}"] = Filter(ftype='time', unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr)
         for clr, filt in self.obs.filters[self.lo].items():
             self.filters[f"freq:{filt[0]}-{filt[1]}:{clr}"] = Filter(color=clr, ftype='freq', unit='MHz', lo=filt[0], hi=filt[1])
@@ -392,9 +424,10 @@ class Look:
         axf = plt.subplot2grid((2, 2), (1, 1), rowspan=1, colspan=1)
 
         # Water fall plot
-        f_wfticks, f_wftick_labels = self._get_wf_ticks(self.freqs, ticks=f_wfticks)
-        t_wfticks, t_wftick_labels = self._get_wf_ticks(self.taxes[self.time_axis]['values'], ticks=t_wfticks)
-        axwf.imshow(toMag(self.data, use_dB))
+        f_wfticks, f_wftick_labels = self.get_wf_ticks(self.freqs, ticks=D['f_wfticks'], include_0=False)
+        include_0 = True if self.time_axis in ['seconds', 'boresight'] else False
+        t_wfticks, t_wftick_labels = self.get_wf_ticks(self.taxes[self.time_axis]['values'], ticks=D['t_wfticks'], include_0=include_0)
+        axwf.imshow(toMag(self.data, D['use_dB']))
         axwf.set_aspect('auto')
         axwf.set_xlabel('Freq')
         axwf.set_ylabel(self.taxes[self.time_axis]['label'])
@@ -404,19 +437,19 @@ class Look:
         # Time plot
         for key in [k for k in self.filters if self.filters[k].ftype=='freq']:
             if self.filters[key].apply(self.freqs, self.data):
-                axt.plot(self.taxes[self.time_axis]['values'], toMag(self.filters[key].power, use_dB), color=self.filters[key].color)
+                axt.plot(self.taxes[self.time_axis]['values'], toMag(self.filters[key].power, D['use_dB']), color=self.filters[key].color)
         axt.set_xlabel(self.taxes[self.time_axis]['label'])
-        ylabel = 'dB' if use_dB else 'linear'
+        ylabel = 'dB' if D['use_dB'] else 'linear'
         axt.set_ylabel(ylabel)
         axtlim = axt.axis()
 
         # Frequency plot
         for i in range(len(self.times)):
-            axf.plot(self.freqs, toMag(self.data[i], use_dB), '0.8')
+            axf.plot(self.freqs, toMag(self.data[i], D['use_dB']), '0.8')
         axf.set_xlabel(self.freq_unit)
         for key in [k for k in self.filters if self.filters[k].ftype=='time']:
             if self.filters[key].apply(self.taxes[self.time_axis]['values'], self.data):
-                axf.plot(self.freqs, toMag(self.filters[key].power, use_dB), color=self.filters[key].color)
+                axf.plot(self.freqs, toMag(self.filters[key].power, D['use_dB']), color=self.filters[key].color)
         axf.set_ylabel(ylabel)
         axflim = axf.axis()
 
@@ -427,8 +460,8 @@ class Look:
             for xlim in self.filters[key].indicator:
                 axt.fill_between(xlim, [axtshade, axtshade], color=self.filters[key].color)
         axt.set_ylim(bottom=axtlim[2], top=axtlim[3])
-        if zoom_time:
-            axt.set_xlim(left=zoom_time[0], right=zoom_time[1])
+        if D['zoom_time']:
+            axt.set_xlim(left=D['zoom_time'][0], right=D['zoom_time'][1])
         else:
             axt.set_xlim(left=self.taxes[self.time_axis]['values'][0], right=self.taxes[self.time_axis]['values'][-1])
         # ... freq
@@ -437,17 +470,17 @@ class Look:
             for xlim in self.filters[key].indicator:
                 axf.fill_between(xlim, [axfshade, axfshade], color=self.filters[key].color)
         axf.set_ylim(bottom=axflim[2], top=axflim[3])
-        if zoom_freq:
-            axf.set_xlim(left=zoom_freq[0], right=zoom_freq[1])
+        if D['zoom_freq']:
+            axf.set_xlim(left=D['zoom_freq'][0], right=D['zoom_freq'][1])
         else:
             axf.set_xlim(left=self.freqs[0], right=self.freqs[-1])
 
-        fn = f"{self.obsid}_{ant}_{pol}.png"
-        if save:
+        fn = f"{self.obsid}_{self.lo}_{ant}_{pol}.png"
+        if D['save']:
             plt.savefig(fn)
 
-        if show_diff:
-            self.plot_diff(use_dB=use_dB, save=save, fn=f'Diff_{fn}')
+        if D['show_diff']:
+            self.plot_diff(use_dB=D['use_dB'], save=D['save'], fn=f'Diff_{fn}')
 
     def plot_diff(self, use_dB=True, save=False, fn=None, num='on:boresight', den='off:boresight'):
         plt.figure("On / Off: "+self.suptitle, figsize=(12,6))

@@ -12,6 +12,11 @@ SLEW_SPEED = 1.5  # deg/sec
 
 ANT_LISTS = {'old_feeds': ['']}
 
+def make_lo(lo):
+    if lo.upper() not in ALL_LOS:
+        raise ValueError(f"LO must be one of {ALL_LOS}")
+    return lo.upper()
+
 def make_cnode(cns):
     """
     Takes a list and makes a list of valid cnodes -> C####

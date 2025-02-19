@@ -1,5 +1,6 @@
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
+from os import path as op
 import numpy as np
 from . import on_sys
 from argparse import Namespace
@@ -28,6 +29,25 @@ def getobsinfo_from_oinput(oinput):
             data = json.load(fp)
             if oinput in data['Sources']:
                 return obsinfo
+    return None
+
+
+def get_obsid_from_source(source, data_dir='.'):
+    """
+    Get the obsid from a source.
+
+    Parameters
+    ----------
+    source : str
+        Source name.
+    data_dir : str
+        Directory where the data is stored.
+
+    """
+    for npzfnfp in glob(f'{data_dir}/*.npz'):
+        npzfn = op.basename(npzfnfp)
+        if source in npzfn:
+            return on_sys.split_obsrec(npzfn)['obsid'] 
     return None
 
 

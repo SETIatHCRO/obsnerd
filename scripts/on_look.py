@@ -19,13 +19,12 @@ if __name__ == '__main__':
     ap.add_argument('--show_diff', help="Show the difference from the dashboard", action='store_true')
     ap.add_argument('--cnode', help="If 'source' is an obsid, need cnodes to use.", default='352,544,736,928,1120,1312,1504')
     ap.add_argument('--lo', help="If 'source' is an obsid, need LO to use", default='A')
-    ap.add_argument('--freq_unit', help='Frequency unit', choices=['MHz', 'GHz'], default='MHz')
+    ap.add_argument('--freq_unit', help='Frequency unit', choices=['MHz'], default='MHz')
 
     args = ap.parse_args()
     args.time_axis = AXIS_OPTIONS[args.time_axis[0].lower()]
 
     look = onv_look.Look(oinput=args.obsid, lo=args.lo, cnode=args.cnode, freq_unit=args.freq_unit)
-    look.read_in_files()
     if args.dash:
         for ant in args.ant.split(','):
             for pol in args.pol.split(','):
