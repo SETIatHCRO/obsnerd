@@ -1,21 +1,50 @@
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 import numpy as np
+from . import on_sys
 from argparse import Namespace
 import json
+from glob import glob
 
 
-def read_obsinfo(filename):
+def getobsinfo_from_oinput(oinput):
+    """
+    Get the obsinfo from an obsid.
+
+    Parameters
+    ----------
+    oinput : str
+        Either a source, obsid or an obsinfo file.
+
+    """
+    if oinput.endswith('.json'):
+        return oinput
+    source, mjd = on_sys.split_obsid(oinput)
+    if mjd is not None:
+        mjd = str(mjd).split('.')[0]
+        return f"obsinfo_{mjd}.json"
+    for obsinfo in glob('obsinfo_*.json'):
+        with open(obsinfo, 'r') as fp:
+            data = json.load(fp)
+            if oinput in data['Sources']:
+                return obsinfo
+    return None
+
+
+def read_obsinfo(oinput):
     """
     Read an obsinfo file.
 
     Parameters
     ----------
-    filename : str
-        Name of the file to read.
+    oinput : str
+        Input to be read -- see getobsinfo_from_oinput
 
     """
+    filename = getobsinfo_from_oinput(oinput)
     obsinfo = Namespace(filename=filename)
+    if filename is None:
+        return obsinfo
     with open(filename, 'r') as fp:
         data = json.load(fp)
     for key, value in data.items():
@@ -108,9 +137,14 @@ class Track:
 
     def set_track(self, **kwargs):
         for par, val in kwargs.items():
-            if par not in ['utc', 'ra', 'dec', 'az', 'el', 'dist']:
-                continue
-            setattr(self, par, val)
+            if par in ['ra', 'dec', 'az', 'el', 'dist']:
+                this_val = float(val)
+            elif par == 'utc':
+                this_val = ttools.interpret_date(val)
+            else:
+                this_val = None
+            if this_val is not None:
+                setattr(self, par, this_val)
 
     def calc_properties(self):
         self.duration = self.utc[-1] - self.utc[0]

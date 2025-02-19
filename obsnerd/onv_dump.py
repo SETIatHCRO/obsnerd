@@ -122,6 +122,8 @@ class Dump:
         filters['dtz'] = onv_look.Filter(color='r', ftype='freq', unit='MHz', lo=1990.0, hi=1995.0, norm=True)
         filters['low'] = onv_look.Filter(color='r', ftype='freq', unit='MHz', lo=1910.0, hi=1915.0, norm=True)
 
+        print("BASE NOT DEFINED")
+        base = None
         for i, obsid in enumerate(base.obsinfo.array.name):
             print(f"Reading {obsid}")
             look = onv_look.Look(obsid, self.lo, cnode=self.cnodes)

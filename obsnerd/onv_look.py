@@ -2,10 +2,9 @@ from pyuvdata import UVData
 from astropy.time import Time
 import numpy as np
 import matplotlib.pyplot as plt
-from . import onv_base
 from datetime import datetime
 import os.path as path
-from . import on_sys
+from . import on_sys, on_track
 from odsutils import ods_tools as tools
 import astropy.units as u
 
@@ -79,13 +78,13 @@ class Filter:
 
 
 class Look:
-    def __init__(self, obsid=None, lo='A', cnode='all', freq_unit='MHz', dir_data='.'):
+    def __init__(self, oinput=None, lo='A', cnode='all', freq_unit='MHz'):
         """
         This initializes, but also reads in all of the data.
 
         Parameters
         ----------
-        obsid : str
+        oinput : str
             Obsid (source_MJD.4) or a UVH5 file or NPZ filename
         lo : str
             LO designation
@@ -93,30 +92,35 @@ class Look:
             Cnode designation
         freq_unit : str
             Frequency unit
-        dir_data : str
-            Directory where data is stored (default used if none in obsinfo file)
 
         """
-        self.obsid = obsid
+        self.input = oinput
         self.lo = lo
         self.cnode = on_sys.make_cnode(cnode)
         self.freq_unit = freq_unit
-        self.dir_data = dir_data
         self.npzfile = {}
         self.freqs = []
         self.filters = {}
-
-        if obsid is None:
-            pass
-        elif obsid.endswith('.uvh5'):
-            self.read_a_uvh5(self.obsid)
-        elif obsid.endswith('.npz'):
-            self.read_an_npz(self.obsid)
+        self.source, self.mjd = on_sys.split_obsid(oinput)
+        if self.mjd is None:
+            self.obsid = None
+            self.obsrec_files = []
         else:
-            self.get_obsinfo()
-            self.source, self.mjd = on_sys.split_obsid(self.obsid)
+            self.obsid = oinput
             self.obsrec_files = [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
-            self.read_in_files()
+
+        if self.input is None:
+            pass
+        elif self.input.endswith('.uvh5'):
+            self.read_a_uvh5(self.input)
+        elif self.input.endswith('.npz'):
+            self.read_an_npz(self.input)
+        else:
+            self.obs = on_track.read_obsinfo(self.input)
+            try:
+                self.this_source = self.obs.sources[self.source]
+            except KeyError:
+                self.this_source = None
 
     def read_in_files(self):
         for obsrec in self.obsrec_files:
@@ -170,9 +174,9 @@ class Look:
         """
         self.file_type = 'npz'
         try:
-            self.fn = path.join(self.obs.obsinfo.dir_data, obsrec_file)
+            self.fn = path.join(self.obs.dir_data, obsrec_file)
         except AttributeError:
-            self.fn = path.join(self.dir_data, obsrec_file)
+            self.fn = obsrec_file
         try:
             self.npzfile[obsrec_file] = np.load(self.fn)
         except FileNotFoundError:
@@ -268,13 +272,13 @@ class Look:
                 'values': self.times.datetime,
                 'label': 'Time'},
             'seconds': {
-                'values': (self.times - self.obs.obsinfo.tref).to_value('sec'),
+                'values': (self.times - self.this_source.utc).to_value('sec'),
                 'label': 'Seconds',
-                'reference': self.obs.obsinfo.tref}
+                'reference': self.this_source.utc}
         }
         try:
-            self.xp = self.obs.obsinfo.off_time
-            self.yp = self.obs.obsinfo.off_angle
+            self.xp = self.this_source.off_time
+            self.yp = self.this_source.off_angle
         except AttributeError:
             self.taxes['boresight'] = None
             return
@@ -328,8 +332,7 @@ class Look:
             t/x axis to use in plot [a/b/d]
     
         """
-        self.obs = onv_base.Base()
-        self.obs.read_obsinfo(obsid=obsid)
+        self.obs = on_track.read_obsinfo(obsid)
         cnode = ','.join(self.cnode)
         ants = tools.listify(ants)
         pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
@@ -376,12 +379,12 @@ class Look:
         self.filters['off:boresight'] = Filter(ftype='time', unit=self.time_axis, lo=-tt, hi=tt, norm=True, color='k', invert=True)
         for clr, filt in filter_time:
             self.filters[f"time:{filt[0]}-{filt[1]}:{clr}"] = Filter(ftype='time', unit=self.time_axis, lo=filt[0], hi=filt[1], norm=True, color=clr)
-        for clr, filt in self.obs.obsinfo.filters[self.lo].items():
+        for clr, filt in self.obs.filters[self.lo].items():
             self.filters[f"freq:{filt[0]}-{filt[1]}:{clr}"] = Filter(color=clr, ftype='freq', unit='MHz', lo=filt[0], hi=filt[1])
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
-        self.suptitle = f"{self.obsid}: {self.obs.obsinfo.tref.datetime.isoformat(timespec='seconds')}"
+        self.suptitle = f"{self.obsid}: {self.this_source.utc.datetime.isoformat(timespec='seconds')}"
         self.suptitle += f'  --  ({self.a},{self.b}) {self.pol}'
         plt.suptitle(self.suptitle)
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
@@ -496,7 +499,3 @@ class Look:
         plt.figure(f'Times: {self.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.freqs)):
             plt.plot(self.times.datetime, toMag(self.data[:, i], use_dB))
-
-    def get_obsinfo(self):
-        self.obs = onv_base.Base()
-        self.obs.read_obsinfo(obsid=self.obsid)

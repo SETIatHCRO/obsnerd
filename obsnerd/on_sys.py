@@ -29,12 +29,16 @@ def make_obsid(source, mjd):
 
 
 def split_obsid(obsid):
+    if obsid is None:
+        return None, None
     mjd = obsid.split('_')[-1]
     source = obsid[:(len(obsid) - len(mjd) - 1)]
     try:
         mjd = float(mjd)
+        if mjd < 60000:
+            mjd = None
     except ValueError:
-        pass
+        mjd = None
     return source, mjd
 
 
