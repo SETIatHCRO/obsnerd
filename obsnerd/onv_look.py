@@ -150,12 +150,7 @@ class Look:
             else:
                 print(f"Invalid file {obsrec}")
         if self.file_type == 'npz':
-            # self.freqs = np.array(self.freqs) * u.Unit(self.freq_unit)
-            self.freqs = np.array(self.freqs)
-            if max(self.freqs) > 1E8:
-                print("Bad freqs -- trying to fix  -- AD HOC for bad conversion in dump")
-                badf = np.where(self.freqs > 1E6)
-                self.freqs[badf] /= 1E6
+            self.freqs = [f.to_value(self.freq_unit) for f in self.freqs]
 
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
@@ -170,7 +165,7 @@ class Look:
         self.ant_map = {}
         for antno, antna in zip(self.ant_numbers, self.ant_names):
             self.ant_map[antna] = antno
-        self.freqs = (self.uv.freq_array[0] * u.Unit(self.freq_unit)).to_value(self.freq_unit)
+        self.freqs = (self.uv.freq_array[0] * u.Unit('Hz')).to_value(self.freq_unit)
         return True
 
     def read_an_npz(self, obsrec_file):
@@ -206,8 +201,8 @@ class Look:
             print(f"Couldn't find {self.fn}")
             return False
         self.ant_names = list(self.npzfile[obsrec_file]['ants'])
-        self.freqs += list(self.npzfile[obsrec_file]['freqs'])
         self.freq_unit = str(self.npzfile[obsrec_file]['freq_unit'])
+        self.freqs += list(self.npzfile[obsrec_file]['freqs'] * u.Unit(self.freq_unit))
         self.times = Time(self.npzfile[obsrec_file]['times'], format='jd')
         self.pols = list(self.npzfile[obsrec_file]['pols'])
         return True
