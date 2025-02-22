@@ -2,7 +2,7 @@ Notes for Starlink testing
 
 Terminology:
   source - a unique source name.  For starlink that is S#####
-  obsid - a unique observation identifier:  source_MJD{.4f}
+  obsid - a unique observation identifier:  source_MJD{.5f}
   obsrec - a unique observation/hardware identifier:  <obsid>_LO_CNODE
   Obsrec file - the filename holding the obsrec information (generally <obsrec>.npz)
   experiment - a session looking at sources (typically within an MJD day or two)

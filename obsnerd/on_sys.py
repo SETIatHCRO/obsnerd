@@ -30,7 +30,7 @@ def make_cnode(cns):
 
 
 def make_obsid(source, mjd):
-    return f"{source}_{float(mjd):.4f}"
+    return f"{source}_{float(mjd):.5f}"
 
 
 def split_obsid(obsid):

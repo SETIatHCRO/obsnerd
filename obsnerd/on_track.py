@@ -6,6 +6,7 @@ from . import on_sys
 from argparse import Namespace
 import json
 from glob import glob
+import astropy.units as u
 
 
 def getobsinfo_from_oinput(oinput):
@@ -158,7 +159,12 @@ class Track:
     def set_track(self, **kwargs):
         for par, val in kwargs.items():
             if par in ['ra', 'dec', 'az', 'el', 'dist']:
-                this_val = float(val)
+                if isinstance(val, str):
+                    this_val = float(val)
+                elif isinstance(val, u.quantity.Quantity):
+                    this_val = val
+                else:
+                    this_val = val
             elif par == 'utc':
                 this_val = ttools.interpret_date(val)
             else:
