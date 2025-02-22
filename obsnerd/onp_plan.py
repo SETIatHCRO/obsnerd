@@ -42,6 +42,10 @@ class Plan:
                                                 conlog_format=LOG_FORMATS['conlog_format'], filelog_format=LOG_FORMATS['filelog_format'])
         logger.info(f"{__name__} ver. {__version__}")
         self.minimum_duration = TimeDelta(0.0, format='sec')
+        self.freqs = None
+        self.tracks = {}
+        self.bandwidth = None
+        self.el_limit = None
 
     def setupcal(self):
         self.this_cal = aocalendar.Calendar(calfile='now', path=self.log_settings.path, conlog=self.log_settings.conlog,
@@ -113,19 +117,29 @@ class Plan:
             Source of satellite data, by default 'sopp'
 
         """
-        self.freqs = [f * u.Unit(freq_unit) for f in freqs]
-        self.bandwidth = bandwidth * u.Unit(freq_unit)
-        self.el_limit = el_limit * u.deg
+        if self.freqs is None:
+            self.freqs = [f * u.Unit(freq_unit) for f in freqs]
+        else:
+            logger.warning(f"Using freqs: {self.freqs}")
+        if self.bandwidth is None:
+            self.bandwidth = bandwidth * u.Unit(freq_unit)
+        else:
+            logger.warning(f"Using bandwidth: {self.bandwidth}")
+        if self.el_limit is None:
+            self.el_limit = el_limit * u.deg
+        else:
+            logger.warning(f"Using el_limit: {self.el_limit}")
         if source == 'sopp':
             logger.info(f"SOPP not using frequency.")
             freqs = False
             from . import sopp_engine
-            self.tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, el_limit=el_limit,
-                                           DTC_only=DTC_only, time_resolution=time_resolution, verbose=False, show_plots=False)
-            logger.info(f"Found the following {len(self.tracks)} satellites above {el_limit}: {', '.join(self.tracks.keys())}")
-            if not(len(self.tracks)):
-                logger.warning(f"No satellites found above {el_limit}")
+            these_tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, el_limit=el_limit,
+                                            DTC_only=DTC_only, time_resolution=time_resolution, verbose=False, show_plots=False)
+            logger.info(f"Found the following {len(these_tracks)} satellites above {self.el_limit}: {', '.join(these_tracks.keys())}")
+            if not(len(these_tracks)):
+                logger.warning(f"No satellites found above {self.el_limit}")
                 return
+            self.tracks.update(these_tracks)
             self.plot_track_summary(satname='all')
         elif source == 'spacex':
             from . import spacex_api
