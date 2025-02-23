@@ -192,23 +192,17 @@ class Plan:
         self.minimum_duration = TimeDelta(minimum_duration_min * 60.0, format='sec')
         self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
         for sat in self.tracks:
-            ctrks = input(f"Choose tracks for {sat}, or '[s]kip' or '[e]nd' (e.g. 0m,1p,2l,3r): ")
+            ctrks = input(f"Choose track/ODS(+/-) for {sat}, or '[s]kip' or '[e]nd' (e.g. 0+,1+,2-,3+): ")
             if ctrks[0].lower() == 'e':
                 return
             elif ctrks[0].lower() == 's':
                 continue
             this_sat = self.tracks[sat]
             for ch in [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]:
-                trk, pos = ch
-                this_duration = min(self.obslen, this_sat[trk].duration)
-                Ni = int((this_duration / 2.0) / (this_sat[0].utc[1] - this_sat[0].utc[0]))
-                if pos == 'm' or pos == 'p':
-                    ind = this_sat[trk].imax
-                elif pos == 'l':
-                    ind = Ni
-                elif pos == 'r':
-                    ind = len(this_sat[trk].utc)
-                this_sat[trk].set_par(iobs=ind, ods=[])
+                trk, do_ods = ch
+                ooddss = [] if do_ods == '+' else None
+                ind = this_sat[trk].imax
+                this_sat[trk].set_par(iobs=ind, ods=ooddss)
                 plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].el[ind].value, 'r.')
                 plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].az[ind].value, 'r.')
 
@@ -241,8 +235,10 @@ class Plan:
                 else:
                     istop = np.where(track.utc < tstop)[0][-1] + 1
                 track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
+                if track.ods is None:
+                    continue
                 for ff in self.freqs:
-                    odict = {'src_id':f"{track.srcname}",
+                    odict = {'src_id':f"{track.source}",
                             'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
                             'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
                             'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
@@ -272,7 +268,7 @@ class Plan:
                 mjd = track.utc[track.istart].mjd
                 if start_mjd is None or mjd < start_mjd:
                     start_mjd = copy(mjd)
-                satname = f"{track.srcname}"
+                satname = f"{track.source}"
                 obsinfo[satname] = {}
                 obsinfo[satname]['ra'] = track.ra[track.iobs].to_value('deg')
                 obsinfo[satname]['dec'] = track.dec[track.iobs].to_value('deg')

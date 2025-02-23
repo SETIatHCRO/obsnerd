@@ -93,6 +93,7 @@ class Track:
 
     def __init__(self, **kwargs):
         self.update(**kwargs)
+        self.iobs = None
 
     def __repr__(self, use='fields'):
         return self.view(fields_to_show=getattr(self, use), bracket=['<', '>'], sep='  -- ')
@@ -171,6 +172,10 @@ class Track:
                 this_val = None
             if this_val is not None:
                 setattr(self, par, this_val)
+
+    def set_par(self, **kwargs):
+        for par, val in kwargs.items():
+            setattr(self, par, val)
 
     def calc_properties(self):
         self.duration = self.utc[-1] - self.utc[0]
