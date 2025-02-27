@@ -3,7 +3,7 @@ import argparse
 from obsnerd import ono_observer
 
 """
-This (WILL) read in a source file and step through observations
+This reads in a source file and step through observations
 """
 
 ap = argparse.ArgumentParser()

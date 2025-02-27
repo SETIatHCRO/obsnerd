@@ -162,10 +162,10 @@ class Plan:
                 if track.duration < self.minimum_duration:
                     continue
                 if not labelled:
-                    plt.plot(track.utc.datetime, track.az, color=this_color, label=sat)
+                    plt.plot(track.utc.datetime, track.az, color=this_color, ls='--' label=sat)
                     labelled = True
                 else:
-                    plt.plot(track.utc.datetime, track.az, color=this_color)
+                    plt.plot(track.utc.datetime, track.az, ls='--', color=this_color)
                 plt.plot(track.utc.datetime, track.el, color=this_color)
                 plt.plot(track.utc[track.imax].datetime, track.el[track.imax].value, 'c.')
                 plt.text(track.utc[track.imax].datetime, track.el[track.imax].value, f"{i}")
