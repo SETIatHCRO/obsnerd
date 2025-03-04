@@ -35,8 +35,8 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
     with open(cp_script_filename, 'w') as fp:
         for obsrec, data in files.items():
             dsplit = data['filename'].split('/')
-            print(dsplit[8], dsplit[9])
             nfn = op.join(dsplit[8], dsplit[9])
+            print(nfn)
             print(f"cp {data['filename']} {nfn}", file=fp)
  
     with open(script_filename, 'w') as fp:
