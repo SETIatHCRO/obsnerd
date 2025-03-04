@@ -48,7 +48,7 @@ Check that they both look reasonable (primarily the ods file)
 ##Process the data for analysis##
 The data now sits in that deeply nested directory structure in the ***note*** above.  You now want to dump the autocorrelations for the antennas you want to much smalller 'npz' files, which means you need to find them, generate a bash script, and run the bash script.
 
-Do this will logged into obs-node1 and in the **~/rfsoc\_obs\_scripts/p054** directory
+Do this will logged into **obs-node1** and in the **~/rfsoc\_obs\_scripts/p054** directory
 
 1. Find them by typing `on_gen_dump.py ?` at the terminal
 2. Generate the scripts by typing `on_gen_dump.py <date-from-above>` (use `on_gen_dump.py -h` for options).  This generates three scripts:  *copy\_files.sh*, *dump\_autos.sh*, *download\_files.sh*.

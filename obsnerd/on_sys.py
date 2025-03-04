@@ -50,7 +50,7 @@ def split_obsid(obsid):
 def make_obsrec(source, mjd, lo, cnode):
     cnode = make_cnode(cnode)
     obsid = make_obsid(source, mjd)
-    return f"{obsid}_{lo}_{cnode[0]}"
+    return f"{obsid}_{lo.upper()}_{cnode[0]}"
 
 
 def split_obsrec(obsrec):
