@@ -12,23 +12,23 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
                          download_script_filename='download_files.sh',
                          copy_script_filename='copy_files.sh',
                          dump_script_filename='dump_autos.sh'):
-    from os import walk, listdir, path
+    from os import walk, listdir
     if date_path == '?':
         print(f"Available observation dates in {base_path}:")
-        for x in listdir(base_path):
+        for x in sorted(listdir(base_path)):
             print(f"\t{x}")
         return
     LOs = tools.listify(LOs, {'all': on_sys.ALL_LOS})
     CNODEs = on_sys.make_cnode(CNODEs)
 
-    dbase_path = path.join(base_path, date_path)
+    dbase_path = op.join(base_path, date_path)
     print(f"Retrieving from {dbase_path}")
     files = {}
     with open(download_script_filename, 'w') as fp:
         for basedir, _, filelist in walk(dbase_path):
             if base_path in basedir and '/Lo' in basedir:
                 for fn in filelist:
-                    dfn = path.join(basedir, fn)
+                    dfn = op.join(basedir, fn)
                     X = on_sys.parse_uvh5_filename(dfn)
                     if X['lo'] in LOs and X['cnode'] in CNODEs:
                         files[X['obsrec']] = copy(X)
