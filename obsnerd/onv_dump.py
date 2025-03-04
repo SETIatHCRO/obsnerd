@@ -30,6 +30,14 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
                     files[X['obsrec']] = copy(X)
                     fp.write(f'scp "sonata@obs-node1.hcro.org:./rfsoc_obs_scripts/p054/{X["obsrec"]}.npz" .\n')
     fp.close()
+    cp_script_filename = "copy_files.sh"
+    with open(cp_script_filename, 'w') as fp:
+        for obsrec, data in files.items():
+            dsplit = data['filename'].split('/')
+            dir2go = dsplit[8]
+            nfn = path.join(dir2go, dsplit([-1]))
+            print(f"cp {data['filename']} {nfn}", file=fp)
+ 
     with open(script_filename, 'w') as fp:
         for obsrec, data in files.items():
             print(f"on_dump_autos.py {data['filename']} --ants {ants} --pols {pols}", file=fp)

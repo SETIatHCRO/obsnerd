@@ -7,6 +7,7 @@
 - obsinfo - a file containing information on obsids for a given experiment:  `obsinfo_MJD.json`
 
 ***note:*** uvh5 files are put into directories that map to an obsrec:
+
 `/mnt/primary/ata/projects/pID#/YYYY-MM-DD-HH:MM:SS/uvh5...../LoA.C0352/uvh5......uvh5`
 
 #Observing Recipe
