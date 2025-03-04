@@ -3,6 +3,7 @@ from copy import copy
 from . import on_sys
 from . import onv_look
 from odsutils import ods_tools as tools
+import os.path as op
 
 
 def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
@@ -35,7 +36,7 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
         for obsrec, data in files.items():
             dsplit = data['filename'].split('/')
             dir2go = dsplit[8]
-            nfn = path.join(dir2go, dsplit([-1]))
+            nfn = op.join(dir2go, dsplit([-1]))
             print(f"cp {data['filename']} {nfn}", file=fp)
  
     with open(script_filename, 'w') as fp:
