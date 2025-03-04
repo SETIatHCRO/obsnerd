@@ -51,5 +51,7 @@ The data now sits in that deeply nested directory structure in the ***note*** ab
 Do this will logged into obs-node1 and in the **~/rfsoc\_obs\_scripts/p054** directory
 
 1. Find them by typing `on_gen_dump.py ?` at the terminal
-2. Generate the script by typing `on_gen_dump.py <date-from-above>` (use `on_gen_dump.py -h` for options)
-3. Run the generated script `bash dump_autos.sh`
+2. Generate the scripts by typing `on_gen_dump.py <date-from-above>` (use `on_gen_dump.py -h` for options).  This generates three scripts:  *copy\_files.sh*, *dump\_autos.sh*, *download\_files.sh*.
+3. Run the script `bash copy_files.sh` to copy the files over to the local drive (currently seems faster to copy, but will still take a very long time)
+4. Run the generated script `bash dump_autos.sh`
+5. Move the *download\_files.sh* to your local machine and run to download the files.
