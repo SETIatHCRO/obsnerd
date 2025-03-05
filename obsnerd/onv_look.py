@@ -121,11 +121,19 @@ class Look:
         elif self.input.endswith('.npz'):
             self.read_an_npz(self.input)
         else:
-            self.obs = on_track.read_obsinfo(self.input)
+            self.this_source = None
             try:
-                self.this_source = self.obs.sources[self.source]
-            except KeyError:
-                self.this_source = None
+                _ = float(self.input)
+                self.input = f"obsinfo_{self.input}.json"
+            except ValueError:
+                pass
+            if self.input.endswith('.json'):
+                print(f"Loading {self.input}")
+                self.obs = on_track.read_obsinfo(self.input)
+                try:
+                    self.this_source = self.obs.sources[self.source]
+                except KeyError:
+                    pass
 
     def get_obsid_and_files_from_source(self):
         self.obsid = on_track.get_obsid_from_source(self.source, self.obs.dir_data)
@@ -200,6 +208,7 @@ class Look:
         except FileNotFoundError:
             print(f"Couldn't find {self.fn}")
             return False
+        print(f"Reading {self.fn}")
         self.ant_names = list(self.npzfile[obsrec_file]['ants'])
         self.freq_unit = str(self.npzfile[obsrec_file]['freq_unit'])
         self.freqs += list(self.npzfile[obsrec_file]['freqs'] * u.Unit(self.freq_unit))

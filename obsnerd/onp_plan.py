@@ -259,7 +259,7 @@ class Plan:
                 filter = json.load(fp)['Filters']
         except FileNotFoundError:
             filter = {}
-        obsinfo = {'dir_data': 'data', 'Filter': filter, "Sources": []}
+        obsinfo = {'dir_data': 'data', 'Filter': filter, "Sources": {}}
         start_mjd = None
         for satname in self.tracks:
             for track in self.tracks[satname]:
@@ -269,19 +269,19 @@ class Plan:
                 if start_mjd is None or mjd < start_mjd:
                     start_mjd = copy(mjd)
                 satname = f"{track.source}"
-                obsinfo[satname] = {}
-                obsinfo[satname]['ra'] = track.ra[track.iobs].to_value('deg')
-                obsinfo[satname]['dec'] = track.dec[track.iobs].to_value('deg')
-                obsinfo[satname]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
-                obsinfo[satname]['az'] = track.az[track.iobs].to_value('deg')
-                obsinfo[satname]['el'] = track.el[track.iobs].to_value('deg')
-                obsinfo[satname]['off_time'] = []
-                obsinfo[satname]['off_angle'] = []
+                obsinfo['Sources'][satname] = {}
+                obsinfo['Sources'][satname]['ra'] = track.ra[track.iobs].to_value('deg')
+                obsinfo['Sources'][satname]['dec'] = track.dec[track.iobs].to_value('deg')
+                obsinfo['Sources'][satname]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
+                obsinfo['Sources'][satname]['az'] = track.az[track.iobs].to_value('deg')
+                obsinfo['Sources'][satname]['el'] = track.el[track.iobs].to_value('deg')
+                obsinfo['Sources'][satname]['off_time'] = []
+                obsinfo['Sources'][satname]['off_angle'] = []
                 for i in range(track.istart, track.istop+1):
                     toff = track.utc[i] - track.tobs
                     aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
-                    obsinfo[satname]['off_time'].append(np.round(toff.to_value('sec'), 1))
-                    obsinfo[satname]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
+                    obsinfo['Sources'][satname]['off_time'].append(np.round(toff.to_value('sec'), 1))
+                    obsinfo['Sources'][satname]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
         fnout = f"obsinfo_{start_mjd:.0f}.json"
         try:
             with open(fnout, 'r') as fp:
