@@ -11,7 +11,7 @@ import astropy.units as u
 
 def get_obsinfo_from_oinput(oinput):
     """
-    Get the obsinfo from an obsid.
+    Get the obsinfo filename from an obsid.
 
     Parameters
     ----------
