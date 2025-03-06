@@ -57,4 +57,12 @@ Do this while logged into **obs-node1** and in the **~/rfsoc\_obs\_scripts/p054*
 6. When you are done, remove the duplicated files on obs-node1.
 
 ##Generate the dashboard##
-In the directory with the obsinfo file and the npz files in the appropriate directory specified therein, you can view the data and generate the dashboard.
+In the directory with the obsinfo file and the npz files in the appropriate directory specified therein (if not the default **data** directory), you can view the data and generate the dashboard.
+
+To view a dashboard of a source from the command line: `on_look.py SOURCENAME`
+
+For options, type `on_look.py -h`
+
+If you want to generate and save all of the data in the obsinfo file, type `on_gen_dash.py MJD`, which will write a bash script file (default *dash.sh*).
+
+Running the bash script won't display any data, but rather save them to *png* files.
