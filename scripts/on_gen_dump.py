@@ -23,4 +23,7 @@ else:
     onv_dump.gen_uvh5_dump_script(args.date, base_path=args.base_dir,
                                   ants=args.ants, pols=args.pols,
                                   LOs=args.los, CNODEs=args.cnodes,
-                                  dump_script_filename=args.script)
+                                  copy_first=True,
+                                  dump_script_filename=args.script,
+                                  download_script_filename='download_files.sh',
+                                  copy_script_filename='copy_files.sh')

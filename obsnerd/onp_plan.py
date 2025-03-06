@@ -8,6 +8,7 @@ import astropy.units as u
 from astropy.time import TimeDelta
 import matplotlib.pyplot as plt
 import json
+from copy import copy
 import numpy as np
 
 
@@ -219,6 +220,7 @@ class Plan:
         from odsutils import ods_engine
         obslen_TD2 = self.obslen / 2.0
         new_tracks = []
+        self.start_mjd = None
         for satname in self.tracks:
             for track in self.tracks[satname]:
                 if track.iobs is None:
@@ -247,28 +249,29 @@ class Plan:
                             'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz')}
                     track.ods.append(odict)
                     new_tracks.append(odict)
+                mjd = track.utc[track.istart].mjd
+                if self.start_mjd is None or mjd < self.start_mjd:
+                    self.start_mjd = copy(mjd)
+        smjd = f"{np.floor(self.start_mjd):.0f}"
+        odsfn = f"ods_{smjd}.json"
+        obsinfofn = f"obsinfo_{smjd}.json"
         with ods_engine.ODS() as ods:
-            ods.pipe(new_tracks, intake='ods.json', defaults='defaults.json')
-        self.write_obsinfo(filter_file=filter_file)
+            ods.pipe(new_tracks, intake=odsfn, defaults='defaults.json')
+        self.write_obsinfo(obsinfofn, filter_file=filter_file)
 
-    def write_obsinfo(self, filter_file='filters.json'):
+    def write_obsinfo(self, obsinfofn, filter_file='filters.json'):
         from astropy.coordinates import angular_separation
-        from copy import copy
         try:
             with open(filter_file, 'r') as fp:
                 filter = json.load(fp)['Filters']
         except FileNotFoundError:
             filter = {}
         obsinfo = {'dir_data': 'data', 'Filters': filter, "Sources": {}}
-        start_mjd = None
         for satname in self.tracks:
             for track in self.tracks[satname]:
                 if track.iobs is None:
                     continue
-                mjd = track.utc[track.istart].mjd
-                if start_mjd is None or mjd < start_mjd:
-                    start_mjd = copy(mjd)
-                obsinfo['Sources'][track.source] = {'obsid': on_sys.make_obsid(track.source, mjd)}
+                obsinfo['Sources'][track.source] = {'obsid': on_sys.make_obsid(track.source, track.utc[track.istart].mjd)}
                 obsinfo['Sources'][track.source]['ra'] = track.ra[track.iobs].to_value('deg')
                 obsinfo['Sources'][track.source]['dec'] = track.dec[track.iobs].to_value('deg')
                 obsinfo['Sources'][track.source]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
@@ -281,14 +284,13 @@ class Plan:
                     aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
                     obsinfo['Sources'][track.source]['off_time'].append(np.round(toff.to_value('sec'), 1))
                     obsinfo['Sources'][track.source]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
-        fnout = f"obsinfo_{np.floor(start_mjd):.0f}.json"
         try:
-            with open(fnout, 'r') as fp:
+            with open(obsinfofn, 'r') as fp:
                 self.obsinfo = json.load(fp)
-            print(f"Updating {fnout}")
+            print(f"Updating {obsinfofn}")
         except FileNotFoundError:
             self.obsinfo = {}
-            print(f"Writing {fnout}")
+            print(f"Writing {obsinfofn}")
         self.obsinfo.update(obsinfo)
-        with open(fnout, 'w') as fp:
+        with open(obsinfofn, 'w') as fp:
             json.dump(self.obsinfo, fp, indent=4)

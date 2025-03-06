@@ -1,10 +1,11 @@
 #Terminology
 - **source** - a unique source name.
-- **obsid** - a unique observation identifier:  `source_MJD{.5f}`
-- **obsrec** - a unique observation/hardware identifier:  `obsid_LO_CNODE`
-- **obsrec file** - the filename holding the obsrec information (generally `obsrec.npz` ***note***)
+- **obsid** - a unique observation identifier:  `<SOURCE>_<MJD{.5f}>`
+- **obsrec** - a unique observation/hardware identifier:  `<OBSID>_<LO>_<CNODE>`
+- **obsrec file** - the filename holding the obsrec information (generally `<OBSREC>.npz` ***note***)
 - **experiment** - a session looking at sources (typically within an MJD day or two)
-- **obsinfo** - a file containing information on obsids for a given experiment:  `obsinfo_MJD.json`
+- **obsinfo** - a file containing information on obsids for a given experiment:  `obsinfo_<MJD>.json`
+- **ods** - operational data sharing
 
 ***note:*** uvh5 files are put into directories that map to an obsrec:<br>
 `/mnt/primary/ata/projects/pID#/YYYY-MM-DD-HH:MM:SS/uvh5...../LoA.C0352/uvh5......uvh5`
@@ -13,7 +14,7 @@
 The focus right now is to observe the Starlink Direct-to-Cell (DTC) satellites.
 
 ##Find satellites##
-Need to find and set up the satellites.  This is currently interactive.  The main problem is that THERE ARE SO MANY!
+Need to find and set up the satellites.  This is currently clumsily interactive.  The main problem is that THERE ARE SO MANY!
 
 Set up the planning tool from with ipython and get 'tracks'
 
@@ -25,20 +26,20 @@ For example `plan.get_tracks(satname='1112', start='now', duration=8*60)`
 
 You can get more tracks using `get_tracks` again
 
-If this looks like a good set, choose the ones you want (choose track number and +/- if you want an active ODS):
+If this looks like a good set, choose the ones you want (track number and +/- if you want to activate ODS for that track):
 
     plan.choose_tracks()
 
-If you want to continue,
+If you want to continue with that set,
 
     plan.proc_tracks()
 
-This will write two files **ods.json** and **obsinfo_MJD.json**
+This will write two files **ods_\<MJD>.json** and **obsinfo_\<MJD>.json**
 
 Check that they both look reasonable (primarily the ods file)
 
 ##Observe##
-1. put that ods file into '/opt/mnt/share/ods_rados/ods_rados.json'
+1. put that ods file into '/opt/mnt/share/ods\_rados/ods\_rados.json'
 2. on the VNC, open a terminal and type `aoctkuser.py --enable-rados`
 3. enable the google calendar and make a calendar entry (could have done this earlier too)
 4. hit the *Observe* button and if you are confident select **yes**
@@ -59,10 +60,10 @@ Do this while logged into **obs-node1** and in the **~/rfsoc\_obs\_scripts/p054*
 ##Generate the dashboard##
 In the directory with the obsinfo file and the npz files in the appropriate directory specified therein (if not the default **data** directory), you can view the data and generate the dashboard.
 
-To view a dashboard of a source from the command line: `on_look.py SOURCENAME`
+To view a dashboard of a source from the command line: `on_look.py <SOURCE>`
 
 For options, type `on_look.py -h`
 
-If you want to generate and save all of the data in the obsinfo file, type `on_gen_dash.py MJD`, which will write a bash script file (default *dash.sh*).
+If you want to generate and save all of the data in the obsinfo file, type `on_gen_dash.py <MJD>`, which will write a bash script file (default *dash.sh*).
 
-Running the bash script won't display any data, but rather save them to *png* files.  You can concatenate them and write them to a pdf file by using a image tool like magick:  `magick *.png out.pdf`
+Running the 'dash.sh' script won't display any data, but rather save them to *png* files.  You can concatenate them and write them to a pdf file by using a image tool like magick:  `magick *.png out.pdf`
