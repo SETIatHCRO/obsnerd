@@ -9,8 +9,8 @@ from obsnerd.on_sys import AXIS_OPTIONS
 
 
 if __name__ == '__main__':
-    ap.add_argument('obsid', help="Name of data file (.npz or .uvh5) for single band or <obsid> for obs (then lo/cnode).")
-    ap.add_argument('-a', '--ant', help='antenna to use', default='2b')
+    ap.add_argument('source', help="Name of data file (.npz or .uvh5) for single band or source/obsid.")
+    ap.add_argument('-a', '--ant', help='antenna to use', default='2a')
     ap.add_argument('-p', '--pol', help="polarization to use", default='xx')
     ap.add_argument('-w', '--waterfall', help="Flag to generate all of the waterfalls.", action='store_true')
     ap.add_argument('-s', '--save', help="Save the generated plots", action='store_true')
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     args = ap.parse_args()
     args.time_axis = AXIS_OPTIONS[args.time_axis[0].lower()]
 
-    look = onv_look.Look(oinput=args.obsid, lo=args.lo, cnode=args.cnode, freq_unit=args.freq_unit)
+    look = onv_look.Look(oinput=args.source, lo=args.lo, cnode=args.cnode, freq_unit=args.freq_unit)
     if args.dash:
         for ant in args.ant.split(','):
             for pol in args.pol.split(','):

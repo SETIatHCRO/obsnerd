@@ -9,6 +9,8 @@ from odsutils import ods_tools as tools
 import astropy.units as u
 
 
+DEFAULT_DATA_DIR = 'data'
+
 def toMag(x, use_dB=True):
     absx = np.abs(x)
     if use_dB:
@@ -88,12 +90,10 @@ class Filter:
 class Look:
     def __init__(self, oinput=None, lo='A', cnode='all', freq_unit='MHz'):
         """
-        This initializes, but also reads in all of the data.
+        This initializes the Look class.  Generally will then use "get" to read in or prep data.
 
         Parameters
         ----------
-        oinput : str
-            Obsid (source_MJD.4) or a UVH5 file or NPZ filename
         lo : str
             LO designation
         cnode : str
@@ -102,50 +102,62 @@ class Look:
             Frequency unit
 
         """
-        self.input = oinput
         self.lo = on_sys.make_lo(lo)
         self.cnode = on_sys.make_cnode(cnode)
         self.freq_unit = freq_unit
         self.npzfile = {}
         self.freqs = []
         self.filters = {}
-        self.source, self.mjd = on_sys.split_obsid(self.input)
-        self.source = self.input if self.mjd is None else self.source
-        self.obsid = None if self.mjd is None else self.input
-        self.obsrec_files = [] if self.obsid is None else [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
+        self.obs = None
+        self.get(oinput)
 
-        if self.input is None:
+    def get(self, oinput):
+        """
+        This reads in the input and sets up the class for further processing.
+
+        Input may be one of the following:
+         - uvh5 file (.uvh5)
+         - npz file (.npz)
+         - obsinfo filename (.json or mjd)
+         - obsid (str parseable into source/mjd)
+         - source name (str with files in obs.dir_data)
+
+        """
+        # Some pre-processing
+        if oinput is None:
+            return
+        try:
+            oinput = f"obsinfo_{np.floor(float(oinput)):.0f}.json"
+        except (ValueError, TypeError):
             pass
-        elif self.input.endswith('.uvh5'):
-            self.read_a_uvh5(self.input)
-        elif self.input.endswith('.npz'):
-            self.read_an_npz(self.input)
-        else:
-            self.this_source = None
-            try:
-                _ = float(self.input)
-                self.input = f"obsinfo_{self.input}.json"
-            except ValueError:
-                pass
-            if self.input.endswith('.json'):
-                print(f"Loading {self.input}")
-                self.obs = on_track.read_obsinfo(self.input)
-                try:
-                    self.this_source = self.obs.sources[self.source]
-                except KeyError:
-                    pass
-
-    def get_obsid_and_files_from_source(self):
-        self.obsid = on_track.get_obsid_from_source(self.source, self.obs.dir_data)
-        if self.obsid is None:
-            print(f"Couldn't find obsid from {self.source} in {self.obs.dir_data}")
-        else:
-            print(f"Found {self.obsid} in {self.obs.dir_data}")
+        # Now get info
+        if oinput.endswith('.uvh5'):
+            self.read_a_uvh5(oinput)
+        elif oinput.endswith('.npz'):
+            self.read_an_npz(oinput)
+        elif oinput.endswith('.json'):
+            self.obs = on_track.read_obsinfo(oinput)
+            print(f"Reading {oinput} into self.obs")
+            self.found_obsids = []
+            for source in self.obs.sources:
+                self.found_obsids.append(self.obs.sources[source].obsid)
+            print("Found obsids:  ", ', '.join(self.found_obsids))
+        else:  # This is an obsid or source, and want to end up with obsid, source, mjd
+            dir_data = DEFAULT_DATA_DIR if self.obs is None else self.obs.dir_data
+            _source, self.mjd = on_sys.split_obsid(oinput)
+            self.source = oinput if self.mjd is None else _source
+            self.obsid = on_track.get_obsid_from_source(self.source, dir_data) if self.mjd is None else oinput
+            if self.obsid is None:
+                print(f"Couldn't find obsid from {self.source} in {dir_data}")
+                return
+            else:
+                self.source, self.mjd = on_sys.split_obsid(self.obsid)
+            print(f"Setting obsrec_files for {self.obsid}")
             self.obsrec_files = [] if self.obsid is None else [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
+            if self.obs is None:
+                self.get(self.mjd)
 
     def read_in_files(self):
-        if self.mjd is None and not len(self.obsrec_files):
-            self.get_obsid_and_files_from_source()
         self.freqs = []
         for obsrec in self.obsrec_files:
             if obsrec.endswith('.uvh5'):
@@ -284,7 +296,7 @@ class Look:
             self.datamax = np.max(np.abs(self.data))
             print(f"\tmin={self.datamin}, max={self.datamax}")
         except AttributeError:
-            print("No data found")
+            print("\nNo data found")
             self.data = None
 
     def get_time_axes(self):
@@ -377,7 +389,7 @@ class Look:
                     for pol in pols:
                         print(f"on_look.py {src} -a {ant}  -p {pol} -t {taxis} --lo {self.lo} --cnode {cnode} {show_diff} --dash -s", file=fp)
 
-    def dashboard(self, ant='2b', pol='xx', time_axis='seconds', transit_time=4.0, **kwargs):
+    def dashboard(self, ant='2a', pol='xx', time_axis='seconds', transit_time=4.0, **kwargs):
         """
         Parameters
         ----------
@@ -393,6 +405,10 @@ class Look:
     
         """
         self.read_in_files()
+        if self.obs is None:
+            print("No obsinfo found -- limited options.")
+        else:
+            self.this_source = self.obs.sources[self.source]
         print(f"Dashboard for {self.obsid} - ({ant},{pol})")
         D = {'use_dB': True, 'save': False, 't_wfticks': 8, 'f_wfticks': 8,
              'zoom_time': False, 'zoom_freq': False, 'filter_time': {}, 'show_diff': False}

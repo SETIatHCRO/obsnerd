@@ -9,19 +9,23 @@ from glob import glob
 import astropy.units as u
 
 
-def getobsinfo_from_oinput(oinput):
+def get_obsinfo_from_oinput(oinput):
     """
     Get the obsinfo from an obsid.
 
     Parameters
     ----------
     oinput : str
-        Either a source, obsid or an obsinfo file.
+        Either a source, obsid, mjd or an obsinfo filename.
 
     """
+    try:
+        return f"obsinfo_{np.floor(float(oinput)):.0f}.json"
+    except (ValueError, TypeError):
+        pass
     if oinput.endswith('.json'):
         return oinput
-    source, mjd = on_sys.split_obsid(oinput)
+    _, mjd = on_sys.split_obsid(oinput)
     if mjd is not None:
         mjd = str(mjd).split('.')[0]
         return f"obsinfo_{mjd}.json"
@@ -62,7 +66,7 @@ def read_obsinfo(oinput):
         Input to be read -- see getobsinfo_from_oinput
 
     """
-    filename = getobsinfo_from_oinput(oinput)
+    filename = get_obsinfo_from_oinput(oinput)
     obsinfo = Namespace(filename=filename)
     if filename is None:
         return obsinfo
@@ -162,15 +166,13 @@ class Track:
             if par in ['ra', 'dec', 'az', 'el', 'dist']:
                 if isinstance(val, str):
                     this_val = float(val)
-                elif isinstance(val, u.quantity.Quantity):
-                    this_val = val
                 else:
                     this_val = val
             elif par == 'utc':
                 this_val = ttools.interpret_date(val)
             else:
-                this_val = None
-            if this_val is not None:
+                this_val = val
+            if this_val is not None:  # Probably not necessary anymore
                 setattr(self, par, this_val)
 
     def set_par(self, **kwargs):

@@ -6,8 +6,7 @@
 - **experiment** - a session looking at sources (typically within an MJD day or two)
 - **obsinfo** - a file containing information on obsids for a given experiment:  `obsinfo_MJD.json`
 
-***note:*** uvh5 files are put into directories that map to an obsrec:
-
+***note:*** uvh5 files are put into directories that map to an obsrec:<br>
 `/mnt/primary/ata/projects/pID#/YYYY-MM-DD-HH:MM:SS/uvh5...../LoA.C0352/uvh5......uvh5`
 
 #Observing Recipe
@@ -56,4 +55,6 @@ Do this while logged into **obs-node1** and in the **~/rfsoc\_obs\_scripts/p054*
 4. Run the generated script `bash dump_autos.sh` (also will take a very long time).  This generates npz files containing the specified autocorrelations per antenna/polarization/cnode.  The name of the file is the **obsrec** defined above
 5. Move the *download\_files.sh* to your local machine and run to download the files.
 6. When you are done, remove the duplicated files on obs-node1.
-7. With the npz and the obsinfo files in the same directory
+
+##Generate the dashboard##
+In the directory with the obsinfo file and the npz files in the appropriate directory specified therein, you can view the data and generate the dashboard.
