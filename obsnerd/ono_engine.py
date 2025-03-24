@@ -36,6 +36,12 @@ DEFAULTS = {'observer': None, 'project_id': None, 'project_name': None,
             'obs_start_delay': OBS_START_DELAY, 'obs_dawdle': OBS_DAWDLE}
 
 
+def get_LO_hpguppi(LOs=['A', 'B']):
+    # d = hpguppi_defaults.hashpipe_targets_LoA.copy()
+    # d.update(hpguppi_defaults.hashpipe_targets_LoB)
+    return {'seti-node%i'%i: [0,1] for i in range(1,8)}
+
+
 def update_source(src_id, ra_hr, dec_deg, owner='ddeboer', category='starlink'):
     """
     Update a source entry -- if exists will delete it and re-add.
@@ -229,9 +235,7 @@ class CommandHandler:
 
     def take_data(self, obs_time_sec, time_per_int_sec):
         self.rec.update(obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
-        d = {'seti-node%i'%i: [0,1] for i in range(1,8)}  # Set LO A and B
-        # d = hpguppi_defaults.hashpipe_targets_LoA.copy()
-        # d.update(hpguppi_defaults.hashpipe_targets_LoB)
+        d = get_LO_hpguppi(self.lo)
         keyval_dict = {'XTIMEINT': time_per_int_sec}
         hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=False)
         hpguppi_record_in.record_in(self.obs_start_delay, obs_time_sec, hashpipe_targets = d)
