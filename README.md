@@ -8,7 +8,7 @@
 - **ods** - operational data sharing
 
 ***note:*** uvh5 files are put into directories that map to an obsrec:<br>
-`/mnt/primary/ata/projects/pID#/YYYY-MM-DD-HH:MM:SS/uvh5...../LoA.C0352/uvh5......uvh5`
+`/mnt/primary/ata/projects/pID#/YYYY-MM-DD-HH:MM:SS/uvh5...../Lo[A/B/C/D].C[####]/uvh5......uvh5`
 
 #Observing Recipe
 The focus right now is to observe the Starlink Direct-to-Cell (DTC) satellites.

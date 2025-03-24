@@ -230,10 +230,9 @@ class CommandHandler:
     def take_data(self, obs_time_sec, time_per_int_sec):
         self.rec.update(obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
         d = hpguppi_defaults.hashpipe_targets_LoA.copy()
-        d.update(hpguppi_defaults.hashpipe_targets_LoB)
-        #d = {'seti-node3': [0], 'seti-node6': [1]}
+        #d.update(hpguppi_defaults.hashpipe_targets_LoB)
         keyval_dict = {'XTIMEINT': time_per_int_sec}
-        hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=True)
+        hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=False)
         hpguppi_record_in.record_in(self.obs_start_delay, obs_time_sec, hashpipe_targets = d)
         sleepy = float(self.obs_start_delay + obs_time_sec + self.obs_dawdle)
         if sleepy > 0.0:

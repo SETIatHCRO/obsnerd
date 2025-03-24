@@ -149,7 +149,7 @@ class Plan:
             logger.error(f"Unknown source: {source}")
             return
 
-    def plot_track_summary(self, satname='all'):
+    def plot_track_summary(self, satname='all', show_az_transit_track=False):
         if satname == 'all':
             satname = list(self.tracks.keys())
         elif not isinstance(satname, list):
@@ -163,15 +163,18 @@ class Plan:
                 if track.duration < self.minimum_duration:
                     continue
                 if not labelled:
-                    plt.plot(track.utc.datetime, track.az, color=this_color, ls='--', label=sat)
+                    plt.plot(track.utc.datetime, track.el, color=this_color, label=sat)
                     labelled = True
                 else:
-                    plt.plot(track.utc.datetime, track.az, ls='--', color=this_color)
-                plt.plot(track.utc.datetime, track.el, color=this_color)
+                    plt.plot(track.utc.datetime, track.el, color=this_color)
                 plt.plot(track.utc[track.imax].datetime, track.el[track.imax].value, 'c.')
                 plt.text(track.utc[track.imax].datetime, track.el[track.imax].value, f"{i}")
-                plt.plot(track.utc[track.imax].datetime, track.az[track.imax].value, 'c.')
-                plt.text(track.utc[track.imax].datetime, track.az[track.imax].value, f"{i}")
+                if show_az_transit_track:
+                    plt.plot(track.utc.datetime, track.az, color=this_color, ls='--')
+                    plt.plot(track.utc[track.imax].datetime, track.az[track.imax].value, 'c.')
+                    plt.text(track.utc[track.imax].datetime, track.az[track.imax].value, f"{i}")
+                else:
+                    plt.text(track.utc[track.imax].datetime, self.el_limit.value, f"{track.az[track.imax].value:.0f}")
             axlim = plt.axis()
             now = ttools.interpret_date('now')
         plt.plot([now.datetime, now.datetime], [axlim[2], axlim[3]], 'g--')
