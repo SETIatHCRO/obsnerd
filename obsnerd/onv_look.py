@@ -219,6 +219,7 @@ class Look:
             self.npzfile[obsrec_file] = np.load(self.fn)
         except FileNotFoundError:
             print(f"Couldn't find {self.fn}")
+            self.npzfile[obsrec_file] = None
             return False
         print(f"Reading {self.fn}")
         self.ant_names = list(self.npzfile[obsrec_file]['ants'])
@@ -282,6 +283,8 @@ class Look:
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
         elif self.file_type == 'npz':
             for obsrec_file in self.obsrec_files:
+                if self.npzfile[obsrec_file] is None:
+                    continue
                 if f"{self.a}{pol}" not in self.npzfile[obsrec_file].keys():
                     continue
                 if is_auto and auto_as_abs:

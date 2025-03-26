@@ -204,7 +204,7 @@ class Plan:
             this_sat = self.tracks[sat]
             for ch in [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]:
                 trk, do_ods = ch
-                ooddss = [] if do_ods == '+' else None
+                ooddss = True if do_ods == '+' else False
                 ind = this_sat[trk].imax
                 this_sat[trk].set_par(iobs=ind, ods=ooddss)
                 plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].el[ind].value, 'r.')
@@ -240,8 +240,6 @@ class Plan:
                 else:
                     istop = np.where(track.utc < tstop)[0][-1] + 1
                 track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
-                if track.ods is None:
-                    continue
                 for ff in self.freqs:
                     odict = {'src_id':f"{track.source}",
                             'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
@@ -250,7 +248,7 @@ class Plan:
                             'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
                             'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
                             'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz')}
-                    track.ods.append(odict)
+                    track.obsinfo.append(odict)
                     new_tracks.append(odict)
                 mjd = track.utc[track.istart].mjd
                 if self.start_mjd is None or mjd < self.start_mjd:
