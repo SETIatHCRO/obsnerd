@@ -501,8 +501,6 @@ class Look:
                     if t > self.taxes[self.time_axis]['values'][0] and t < self.taxes[self.time_axis]['values'][-1]:
                         axt.plot([t, t], [axtlim[2], axtlim[3]], lstyle[scope])
                         axt.text(t, text_offset + axtlim[3], logs.sats[scope][i], rotation='vertical', fontsize=8)
-            #axt.plot(logs.times['inner'], 0.0 * np.ones(len(logs.times['inner'])), 'r|', label='Inner')
-            #axt.plot(logs.times['outer'], 0.0 * np.ones(len(logs.times['outer'])), 'b|', label='Outer')
         axt.axes.set_xlim(axtlim[0], axtlim[1])
         axt.axes.set_ylim(axtlim[2], axtlim[3])
 
