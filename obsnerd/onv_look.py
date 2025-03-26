@@ -493,12 +493,14 @@ class Look:
         ylabel = 'dB' if D['use_dB'] else 'linear'
         axt.set_ylabel(ylabel)
         axtlim = copy(axt.axis())
+        text_offset = 0.025 * (axtlim[3] - axtlim[2])
         if D['log']:
             lstyle = {'inner': 'r--', 'outer': 'b:'}
             for scope in ['inner', 'outer']:
-                for t in self.taxes[scope][time_axis]['values']:
-                    if t >= self.taxes[self.time_axis]['values'][0] and t <= self.taxes[self.time_axis]['values'][-1]:
+                for i, t in enumerate(self.taxes[scope][time_axis]['values']):
+                    if t > self.taxes[self.time_axis]['values'][0] and t < self.taxes[self.time_axis]['values'][-1]:
                         axt.plot([t, t], [axtlim[2], axtlim[3]], lstyle[scope])
+                        axt.text(t, text_offset + axtlim[3], logs.sats[scope][i], rotation='vertical', fontsize=8)
             #axt.plot(logs.times['inner'], 0.0 * np.ones(len(logs.times['inner'])), 'r|', label='Inner')
             #axt.plot(logs.times['outer'], 0.0 * np.ones(len(logs.times['outer'])), 'b|', label='Outer')
         axt.axes.set_xlim(axtlim[0], axtlim[1])
