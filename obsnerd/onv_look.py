@@ -1,10 +1,11 @@
 from pyuvdata import UVData
 from astropy.time import Time
 import numpy as np
+from copy import copy
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os.path as path
-from . import on_sys, on_track
+from . import on_sys, on_track, onv_logs
 from odsutils import ods_tools as tools
 import astropy.units as u
 
@@ -302,9 +303,14 @@ class Look:
             print("\nNo data found")
             self.data = None
 
-    def get_time_axes(self):
+    def get_time_axes(self, log=None):
         """
         Get the values for the various "time" axis options (which is vertical in the waterplot)
+
+        Parameter
+        ---------
+        logtimes : TBALog
+            Log times for SpaceX
         
         Attribute
         ---------
@@ -343,6 +349,24 @@ class Look:
             'values': np.interp(x, self.xp, self.yp),
             'label': 'Degrees',
         }
+        if log:
+            for scope in ['inner', 'outer']:
+                self.taxes[scope] = {}
+                self.taxes[scope]['datetime'] = {
+                    'values': log.times[scope],
+                    'label': 'Time',
+                    'reference': self.this_source.utc
+                }
+                self.taxes[scope]['seconds'] = {
+                    'values': (log.times[scope] - self.this_source.utc).to_value('sec'),
+                    'label': 'Seconds',
+                    'reference': self.this_source.utc
+                }
+                self.taxes[scope]['boresight'] = {
+                    'values': np.interp(self.taxes[scope]['seconds']['values'], self.xp, self.yp),
+                    'label': 'Degrees',
+                    'reference': self.this_source.utc
+                }
         
     def get_wf_ticks(self, dat, ticks=8, precision=-1, include_0=False):
         if isinstance(dat[0], datetime):
@@ -368,6 +392,8 @@ class Look:
 
     def dashboard_gen(self, script_fn='dash.sh', ants='2b,4e', pols='xx,xy', taxis='b', show_diff=False):
         """
+        This generates a bash script to run to generate the dashboard plot for the obsid.
+    
         Parameters
         ----------
         oinput : str
@@ -413,15 +439,17 @@ class Look:
         else:
             self.this_source = self.obs.sources[self.source]
         print(f"Dashboard for {self.obsid} - ({ant},{pol})")
-        D = {'use_dB': True, 'save': False, 't_wfticks': 8, 'f_wfticks': 8,
+        D = {'use_dB': True, 'save': False, 't_wfticks': 8, 'f_wfticks': 8, 'log': False,
              'zoom_time': False, 'zoom_freq': False, 'filter_time': {}, 'show_diff': False}
         D.update(kwargs)
 
         if D['use_dB'] == 'auto':
             D['use_dB'] = True if pol in ['xx', 'yy'] else False
+        if D['log']:
+            logs = onv_logs.TBALog(D['log'])
 
         self.time_axis = on_sys.AXIS_OPTIONS[time_axis[0].lower()]
-        self.get_time_axes()
+        self.get_time_axes(log=logs)
         if ant:  # Otherwise use existing
             self.get_bl(ant, pol=pol)
         if self.data is None:
@@ -464,7 +492,17 @@ class Look:
         axt.set_xlabel(self.taxes[self.time_axis]['label'])
         ylabel = 'dB' if D['use_dB'] else 'linear'
         axt.set_ylabel(ylabel)
-        axtlim = axt.axis()
+        axtlim = copy(axt.axis())
+        if D['log']:
+            lstyle = {'inner': 'r--', 'outer': 'b:'}
+            for scope in ['inner', 'outer']:
+                for t in self.taxes[scope][time_axis]['values']:
+                    if t >= self.taxes[self.time_axis]['values'][0] and t <= self.taxes[self.time_axis]['values'][-1]:
+                        axt.plot([t, t], [axtlim[2], axtlim[3]], lstyle[scope])
+            #axt.plot(logs.times['inner'], 0.0 * np.ones(len(logs.times['inner'])), 'r|', label='Inner')
+            #axt.plot(logs.times['outer'], 0.0 * np.ones(len(logs.times['outer'])), 'b|', label='Outer')
+        axt.axes.set_xlim(axtlim[0], axtlim[1])
+        axt.axes.set_ylim(axtlim[2], axtlim[3])
 
         # Frequency plot
         for i in range(len(self.times)):
@@ -474,7 +512,7 @@ class Look:
             if self.filters[key].apply(self.taxes[self.time_axis]['values'], self.data):
                 axf.plot(self.freqs, toMag(self.filters[key].power, D['use_dB']), color=self.filters[key].color)
         axf.set_ylabel(ylabel)
-        axflim = axf.axis()
+        axflim = copy(axf.axis())
 
         # Indicate filters and set limits
         # ... time

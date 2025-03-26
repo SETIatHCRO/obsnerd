@@ -64,6 +64,8 @@ To view a dashboard of a source from the command line: `on_look.py <SOURCE>`
 
 For options, type `on_look.py -h`
 
+E.g. `on_look.py STARLINK11139DTC2_A_C0352 --lo A --dash`
+
 If you want to generate and save all of the data in the obsinfo file, type `on_gen_dash.py <MJD>`, which will write a bash script file (default *dash.sh*).
 
 Running the 'dash.sh' script won't display any data, but rather save them to *png* files.  You can concatenate them and write them to a pdf file by using a image tool like magick:  `magick *.png out.pdf`

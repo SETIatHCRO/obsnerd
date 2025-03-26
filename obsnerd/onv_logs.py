@@ -1,6 +1,7 @@
 from datetime import datetime
 from numpy import ones
 from glob import glob
+from astropy.time import Time
 
 
 class TBALog:
@@ -16,21 +17,23 @@ class TBALog:
                     data = line.split(',')
                     self.times[data[2]].append(datetime.strptime(data[0], '%Y-%m-%d %H:%M:%S'))
                     self.sats[data[2]].append(data[4])
+        for scope in ['inner', 'outer']:
+            self.times[scope] = Time(self.times[scope])
 
     def plot(self):
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots()
         ipts = 0.0 * ones(len(self.times['inner']))
         opts = 0.0 * ones(len(self.times['outer']))
-        ax.plot(self.times['inner'], ipts, 'r|', label='Inner')
-        ax.plot(self.times['outer'], opts, 'b|', label='Outer')
+        ax.plot(self.times['inner'].datetime, ipts, 'r|', label='Inner')
+        ax.plot(self.times['outer'].datetime, opts, 'b|', label='Outer')
         for i in range(len(self.times['inner'])):
-            ax.annotate(self.sats['inner'][i], (self.times['inner'][i], ipts[i]), rotation='vertical', fontsize=8)
+            ax.annotate(self.sats['inner'][i], (self.times['inner'].datetime[i], ipts[i]), rotation='vertical', fontsize=8)
         for i in range(len(self.times['outer'])):
-            ax.annotate(self.sats['outer'][i], (self.times['outer'][i], opts[i]), rotation='vertical', fontsize=8)
+            ax.annotate(self.sats['outer'][i], (self.times['outer'].datetime[i], opts[i]), rotation='vertical', fontsize=8)
         plt.show()
 
-    def ods_mon(self, fn='online_ods_mon.txt'):
+    def ods_mon(self, fn='online_ods_mon.csv'):
         from odsutils import ods_engine
         self.ods = ods_engine.ODS(version='latest', output='INFO')
         self.ods.add_from_file(fn)

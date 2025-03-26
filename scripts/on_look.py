@@ -16,6 +16,7 @@ if __name__ == '__main__':
     ap.add_argument('-s', '--save', help="Save the generated plots", action='store_true')
     ap.add_argument('-t', '--time_axis', help="Type of 'time' axis for dashboard ([d]atetime, [s]econds, [b]oresight)", default='boresight')
     ap.add_argument('--dash', help="Generate the dashboard", action='store_true')
+    ap.add_argument('--log', help="Show the SpaceX log info (provide filename)", default=False)
     ap.add_argument('--show_diff', help="Show the difference from the dashboard", action='store_true')
     ap.add_argument('--cnode', help="If 'source' is an obsid, need cnodes to use.", default='352,544,736,928,1120,1312,1504')
     ap.add_argument('--lo', help="If 'source' is an obsid, need LO to use", default='A')
@@ -28,6 +29,6 @@ if __name__ == '__main__':
     if args.dash:
         for ant in args.ant.split(','):
             for pol in args.pol.split(','):
-                look.dashboard(ant=ant, pol=pol, save=args.save, time_axis=args.time_axis, show_diff=args.show_diff)
+                look.dashboard(ant=ant, pol=pol, save=args.save, time_axis=args.time_axis, show_diff=args.show_diff, log=args.log)
     if not args.save:
         plt.show()
