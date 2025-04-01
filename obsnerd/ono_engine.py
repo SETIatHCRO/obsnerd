@@ -100,6 +100,9 @@ class CommandHandler:
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
         self.rec.update(ants=self.ant_list)
 
+    def release_ants(self, park_when_done=True):
+        ata_control.release_antennas(self.ant_list, park_when_done)
+
     def setrf(self, freq, lo=['A', 'B'], attenuation=[8, 8], focus=False, freq_unit='MHz'):
         """
         Parameters (kwargs)

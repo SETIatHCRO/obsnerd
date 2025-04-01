@@ -187,3 +187,4 @@ class Observer:
             if tlength is None:
                 continue
             self.obs.take_data(source.obs_time_sec, source.time_per_int_sec)
+        self.obs.release_ants()
