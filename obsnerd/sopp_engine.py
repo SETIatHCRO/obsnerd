@@ -153,7 +153,7 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
         tracks[srcname].append(this_track)
         if verbose:
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
-            fnout = f"{this_track.srcname.strip()}.txt"
+            fnout = f"{this_track.source.strip()}.txt"
             print(f"Writing {fnout}")
             with open(fnout, 'w') as fpof:
                 for _t, _a, _e, _d in zip(tae, az, el, dist):
