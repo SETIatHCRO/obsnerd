@@ -143,8 +143,11 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             if len(table_data) < number_of_rows_to_show and not (j % jcadence):
                 table_row = [pos.time.strftime('%Y-%m-%dT%H:%M:%S.%f'), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
-        srcname = f"{window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')}{i}"
-        this_track = Track(source=srcname)
+        if len(az) < 3:
+            continue
+        srcname = window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')
+        eventid = f"{srcname}{i}"
+        this_track = Track(source=eventid)
         this_track.set_track(az=array(az)*u.deg, el=array(el)*u.deg, utc=Time(tae), dist=array(dist)*u.m)
         sky = SkyCoord(alt=this_track.el, az=this_track.az, obstime=this_track.utc, frame='altaz', location=location)
         this_track.set_track(ra=sky.gcrs.ra, dec=sky.gcrs.dec)

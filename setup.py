@@ -14,7 +14,9 @@ setup_args = {
     'author_email': "david.r.deboer@gmail.edu",
     'version': '0.3.0',
     'scripts': glob.glob('scripts/*'),
-    'packages': ['obsnerd']
+    'packages': ['obsnerd'],
+    'include_package_data': True,
+    'package_data': {"obsnerd": ['data/*.json']}
 }
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 import logging
 from aocalendar import aocalendar
-from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys
+from . import LOG_FILENAME, LOG_FORMATS, DATA_PATH, __version__, on_sys
 from odsutils import logger_setup, locations
 from odsutils import ods_timetools as ttools
 from astropy.coordinates import SkyCoord
@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import json
 from copy import copy
 import numpy as np
+from os.path import join as opjoin
 
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,8 @@ class Plan:
         self.tracks = {}
         self.bandwidth = None
         self.el_limit = None
+        self.default_ods_default_file = opjoin(DATA_PATH, 'defaults.json')
+        self.default_filter_file = opjoin(DATA_PATH, 'filters.json')
 
     def setupcal(self):
         self.this_cal = aocalendar.Calendar(calfile='now', path=self.log_settings.path, conlog=self.log_settings.conlog,
@@ -79,7 +82,7 @@ class Plan:
         self.stop = ttools.t_delta(self.start, obs_len_sec, 's')
         obscoord = SkyCoord(alt = el*u.deg, az = az*u.deg, obstime = self.tref, frame = 'altaz', location = self.this_cal.location.loc)
         radec = obscoord.transform_to('gcrs')
-        self.this_cal.ods.get_defaults_dict('defaults.json')
+        self.this_cal.ods.get_defaults_dict(self.default_ods_default_file)
         self.this_cal.ods.add_new_record(src_id='Asource', src_ra_j2000_deg=radec.ra.deg, src_dec_j2000_deg=radec.dec.deg,
                                          src_start_utc=self.start, src_end_utc=self.stop,
                                          freq_lower_hz=freq[0] * 1E6, freq_upper_hz=freq[0] * 1E6)
@@ -150,6 +153,7 @@ class Plan:
             return
 
     def plot_track_summary(self, satname='all', show_az_transit_track=False):
+        line_styles = ['-', '--', '-.', ':']
         if satname == 'all':
             satname = list(self.tracks.keys())
         elif not isinstance(satname, list):
@@ -158,15 +162,16 @@ class Plan:
         clr_list = generate_colors(len(satname))
         for j, sat in enumerate(satname):
             this_color = clr_list[j]
+            this_ls = line_styles[j % len(line_styles)]
             labelled = False
             for i, track in enumerate(self.tracks[sat]):
                 if track.duration < self.minimum_duration:
                     continue
                 if not labelled:
-                    plt.plot(track.utc.datetime, track.el, color=this_color, label=sat)
+                    plt.plot(track.utc.datetime, track.el, color=this_color, ls=this_ls, label=sat)
                     labelled = True
                 else:
-                    plt.plot(track.utc.datetime, track.el, color=this_color)
+                    plt.plot(track.utc.datetime, track.el, color=this_color, ls=this_ls)
                 plt.plot(track.utc[track.imax].datetime, track.el[track.imax].value, 'c.')
                 plt.text(track.utc[track.imax].datetime, track.el[track.imax].value, f"{i}")
                 if show_az_transit_track:
@@ -210,7 +215,7 @@ class Plan:
                 plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].el[ind].value, 'r.')
                 plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].az[ind].value, 'r.')
 
-    def proc_tracks(self, filter_file='filters.json'):
+    def proc_tracks(self, defaults='__default__', filter='__default__'):
         """
         After choosing tracks, write the ODS file and the obsinfo.json file.
 
@@ -224,6 +229,7 @@ class Plan:
         obslen_TD2 = self.obslen / 2.0
         new_tracks = []
         self.start_mjd = None
+        default_file = self.default_ods_default_file if defaults == '__default__' else defaults
         for satname in self.tracks:
             for track in self.tracks[satname]:
                 if track.iobs is None:
@@ -242,13 +248,12 @@ class Plan:
                 track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
                 for ff in self.freqs:
                     odict = {'src_id':f"{track.source}",
-                            'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
-                            'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
-                            'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
-                            'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
-                            'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
-                            'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz')}
-                    track.obsinfo.append(odict)
+                             'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
+                             'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
+                             'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
+                             'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
+                             'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
+                             'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz')}
                     new_tracks.append(odict)
                 mjd = track.utc[track.istart].mjd
                 if self.start_mjd is None or mjd < self.start_mjd:
@@ -257,11 +262,13 @@ class Plan:
         odsfn = f"ods_{smjd}.json"
         obsinfofn = f"obsinfo_{smjd}.json"
         with ods_engine.ODS() as ods:
-            ods.pipe(new_tracks, intake=odsfn, defaults='defaults.json')
-        self.write_obsinfo(obsinfofn, filter_file=filter_file)
+            ods.write_ods(odsfn, new_tracks, intake=None, defaults=default_file)
+        print(f"Writing ODS file: {odsfn}")
+        self.write_obsinfo(obsinfofn, filter=filter)
 
-    def write_obsinfo(self, obsinfofn, filter_file='filters.json'):
+    def write_obsinfo(self, obsinfofn, filter='__default__'):
         from astropy.coordinates import angular_separation
+        filter_file = self.default_filter_file if filter == '__default__' else filter
         try:
             with open(filter_file, 'r') as fp:
                 filter = json.load(fp)['Filters']
