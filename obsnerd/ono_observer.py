@@ -163,6 +163,16 @@ class Observer:
         """
         self.ods.pipe('output', intake=ods_input, output=ods_output)
 
+    def observe_prep(self, ods2use='/opt/mnt/share/ods_rados/ods_rados.json'):
+        if self.hostname == 'DAVIDs-MacBook-M1Pro.local':
+            ods2use = 'test_ods.json'
+            logger.warning(f"Reset ods2use to {ods2use}.")
+        ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json"
+        ods_upload = "/opt/mnt/share/ods_upload/ods.json"
+
+        self.get_ods(ods2use, defaults='defaults.json')
+        self.get_obs_from_ods(add_to_calendar=True)
+
     def observe(self, is_actual=True):
         if not len(self.records):
             logger.error("Need to make observer records before you can observe.")
