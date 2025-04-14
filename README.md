@@ -39,11 +39,13 @@ This will write two files **ods_\<MJD>.json** and **obsinfo_\<MJD>.json**
 Check that they both look reasonable (primarily the ods file)
 
 ##Observe##
-1. put that ods file into '/opt/mnt/share/ods\_rados/ods\_rados.json'
-2. on the VNC, open a terminal and type `aoctkuser.py --enable-rados`
-3. enable the google calendar and make a calendar entry (could have done this earlier too)
-4. hit the *Observe* button and if you are confident select **yes**
-5. sit back and watch the action
+1. on the VNC open a terminal
+2. put the file `ods_<MJD>.json` into `/opt/mnt/share/ods_rados/ods_rados.json`
+3. type `on_obs_prep.py`
+4. type `aoctkuser.py --enable-rados`
+5. enable the google calendar and make a calendar entry (could have done this earlier too)
+6. hit the *Observe* button and if you are confident select **yes**
+7. sit back and watch the action
 
 ##Process the data##
 The data now sits in that deeply nested directory structure in the ***note*** above.  You now want to dump the autocorrelations for the antennas you want to much smalller 'npz' files, which means you need to find them, generate a bash script, and run the bash script.
