@@ -107,9 +107,9 @@ class Observer:
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
                         if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
-            rec.update(freq=freqs * u.Hz, source_name=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
+            rec.update(freq=freqs * u.Hz, source=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
-            ono_engine.update_source(src_id=rec.source_name, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
+            ###ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             rec.proc()
             self.records.append(rec)
         self.get_overall()
@@ -151,27 +151,16 @@ class Observer:
                                        utc_start=t0, utc_stop=t1)
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
-    def update_ods(self, ods_input, ods_output):
-        """
-        Update the working ods with the new additions.
-
-        Parameters
-        ----------
-        ods_input : str
-            Location of current working ods
-        ods_output : str
-            Location of the one to write.  If None use ods_input
-
-        """
-        self.ods.pipe('output', intake=ods_input, output=ods_output)
-
-    def observe_prep(self):
+    def observe_prep(self, add_to_calendar=False):
         ods2use = '/opt/mnt/share/ods_rados/ods_rados.json'
+        ods2use = 'ods_rados.json'
         ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json"
         ods_upload = "/opt/mnt/share/ods_upload/ods.json"
+        ods_upload = 'ods_upload.json'
 
         self.get_ods(ods2use)
-        self.get_obs_from_ods(add_to_calendar=True)
+        self.get_obs_from_ods(add_to_calendar=add_to_calendar)
+        self.ods.write_ods(ods_upload, adds='output', original=ods_active)
 
     def observe(self, is_actual=True):
         if not len(self.records):
