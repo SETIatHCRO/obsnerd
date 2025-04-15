@@ -262,7 +262,7 @@ class Plan:
         odsfn = f"ods_{smjd}.json"
         obsinfofn = f"obsinfo_{smjd}.json"
         with ods_engine.ODS() as ods:
-            ods.write_ods(odsfn, new_tracks, intake=None, defaults=default_file)
+            ods.write_ods(odsfn, new_tracks, original=None, defaults=default_file, cull=[])
         print(f"Writing ODS file: {odsfn}")
         self.write_obsinfo(obsinfofn, filter=filter)
 

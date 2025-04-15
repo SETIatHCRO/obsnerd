@@ -3,8 +3,9 @@ from copy import copy
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
-from obsnerd import ono_engine, ono_record
+from . import DATA_PATH, ono_engine, on_track
 import astropy.units as u
+from os.path import join as opjoin
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
@@ -34,14 +35,15 @@ class Observer:
                                                 filelog_format=LOG_FORMATS['filelog_format'],
                                                 conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
-        self.records = []  # ono_records to be made out of ODS
-        rec = ono_record.Record()
+        self.records = []  # on_track to be made out of ODS
+        track= on_track.Track()
         self.embargo = tools.listify(kw['embargo'])
+        self.default_ods_default_file = opjoin(DATA_PATH, 'defaults.json')
         for key, val in kw.items():
-            if key in rec.fields:
+            if key in track.fields:
                 setattr(self, key, val)
 
-    def get_ods(self, ods_input, defaults='defaults.json'):
+    def get_ods(self, ods_input, defaults='__defaults__'):
         """
         Read an ODS input and make dictionary based on start/end.
 
@@ -87,7 +89,7 @@ class Observer:
             logger.error("Unable to read ODS file")
             return
         for entries in self.groups.values():
-            rec = ono_record.Record(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
+            rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                     ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
                                     time_per_int_sec=self.time_per_int_sec, coord='name', lo=self.lo)
             freqs = []
@@ -125,7 +127,7 @@ class Observer:
         except AttributeError:
             logger.error("Need to make observer records before you can get the overall.")
             return
-        self.overall = ono_record.Record()
+        self.overall = on_track.Track()
         for fld in self.overall.fields:
             try:  # Tragically assume that the first record has most of the same stuff as the rest...
                 kw[fld] = getattr(self.records[0], fld)
@@ -163,14 +165,12 @@ class Observer:
         """
         self.ods.pipe('output', intake=ods_input, output=ods_output)
 
-    def observe_prep(self, ods2use='/opt/mnt/share/ods_rados/ods_rados.json'):
-        if self.hostname == 'DAVIDs-MacBook-M1Pro.local':
-            ods2use = 'test_ods.json'
-            logger.warning(f"Reset ods2use to {ods2use}.")
+    def observe_prep(self):
+        ods2use = '/opt/mnt/share/ods_rados/ods_rados.json'
         ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json"
         ods_upload = "/opt/mnt/share/ods_upload/ods.json"
 
-        self.get_ods(ods2use, defaults='defaults.json')
+        self.get_ods(ods2use)
         self.get_obs_from_ods(add_to_calendar=True)
 
     def observe(self, is_actual=True):
