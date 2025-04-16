@@ -182,7 +182,7 @@ class Observer:
             print(f"freqs: {', '.join([str(x) for x in source.freq])}")
             these_freq = [x.to_value('MHz') for x in source.freq]
             self.obs.setrf(freq=these_freq, lo=source.lo, attenuation=source.attenuation)
-            self.obs.move(source=source.source_name, coord_type=source.coord)
+            self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
                 continue
