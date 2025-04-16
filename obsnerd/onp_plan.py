@@ -288,9 +288,9 @@ class Plan:
                 obsinfo['Sources'][track.source]['off_time'] = []
                 obsinfo['Sources'][track.source]['off_angle'] = []
                 for i in range(track.istart, track.istop+1):
-                    toff = track.utc[i] - track.tobs
+                    toff = (track.utc[i] - track.tobs).to_value('sec')
                     aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
-                    obsinfo['Sources'][track.source]['off_time'].append(np.round(toff.to_value('sec'), 1))
+                    obsinfo['Sources'][track.source]['off_time'].append(np.round(toff, 1))
                     obsinfo['Sources'][track.source]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
         try:
             with open(obsinfofn, 'r') as fp:
