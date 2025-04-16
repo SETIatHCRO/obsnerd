@@ -161,14 +161,14 @@ class Observer:
         self.ods.write_ods(ods_upload, adds=ods_output_instance, original=ods_active)
 
     def observe(self, is_actual=True, ods2use = '/opt/mnt/share/ods_rados/ods_rados.json'):
-        if not len(self.records):
-            logger.error("Need to make observer records before you can observe.")
-            return
         if not is_actual:
             self.backend = 'test'
         ods_output_instance = 'output'
         self.get_ods(ods2use)
         self.get_obs_from_ods(add_to_calendar=False, ods_output_instance=ods_output_instance)
+        if not len(self.records):
+            logger.error("Need to make observer records before you can observe.")
+            return
         self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id, conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
         self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once
         self.obs.setbackend(self.backend)  # And same backend
