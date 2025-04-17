@@ -151,6 +151,7 @@ class Plan:
         else:
             logger.error(f"Unknown source: {source}")
             return
+        print("Now run <>.choose_tracks() to select tracks for observation.")
 
     def plot_track_summary(self, satname='all', show_az_transit_track=False):
         line_styles = ['-', '--', '-.', ':']
@@ -201,11 +202,13 @@ class Plan:
         self.minimum_duration = TimeDelta(minimum_duration_min * 60.0, format='sec')
         self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
         self.track_list = {}
+        now = ttools.interpret_date('now')
         for sat in self.tracks:
             for i, track in enumerate(self.tracks[sat]):
-                dt = track.utc[track.imax] - ttools.interpret_date('now')
+                dt = track.utc[track.imax] - now
                 key = int(dt.to_value('sec'))
                 self.track_list[key] = {"sat": sat, "track": i, "use": 's'}
+                track.set_par(iobs=None, ods='s')
         print("Choose for the following satellite tracks:")
         print("\ty - use and implement ods record")
         print("\tr - use but don't implement ods record")
@@ -213,9 +216,10 @@ class Plan:
         print("\te - end choosing tracks\n")
         for key in sorted(self.track_list.keys()):
             track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
-            ctrk = input(f"{sat}/{i} -- {track.el[track.imax].to_value('deg'):.0f} @ {track.utc[track.imax].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) :  ")
+            ctrk = input(f"{sat}/{i} -- {track.el[track.imax].to_value('deg'):.0f}\u00b0 @ {track.utc[track.imax].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) :  ")
             if ctrk == 'e':
                 print("Ending track selection.")
+                print("Now run <>.proc_tracks() to write the ODS file and obsinfo.json file.")
                 return
             elif ctrk == 's':
                 continue
@@ -224,6 +228,7 @@ class Plan:
                 ind = track.imax
                 track.set_par(iobs=ind, ods=ctrk)
                 plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
+        print("Now run <>.proc_tracks() to write the ODS file and obsinfo.json file.")
 
     def proc_tracks(self, defaults='__default__', filter='__default__'):
         """
@@ -240,34 +245,36 @@ class Plan:
         new_tracks = []
         self.start_mjd = None
         default_file = self.default_ods_default_file if defaults == '__default__' else defaults
-        for satname in self.tracks:
-            for track in self.tracks[satname]:
-                if track.iobs is None:
-                    continue
-                tobs =  track.utc[track.iobs]
-                tstart = tobs - obslen_TD2
-                if tstart < track.utc[0]:
-                    istart = 0
-                else:
-                    istart = np.where(track.utc > tstart)[0][0] - 1
-                tstop = tobs + obslen_TD2
-                if tstop > track.utc[-1]:
-                    istop = len(track.utc) - 1
-                else:
-                    istop = np.where(track.utc < tstop)[0][-1] + 1
-                track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
-                for ff in self.freqs:
-                    odict = {'src_id':f"{track.source}",
-                             'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
-                             'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
-                             'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
-                             'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
-                             'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
-                             'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz')}
-                    new_tracks.append(odict)
-                mjd = track.utc[track.istart].mjd
-                if self.start_mjd is None or mjd < self.start_mjd:
-                    self.start_mjd = copy(mjd)
+        for key in self.track_list:
+            track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
+            if self.track_list[key]['use'] == 's':
+                continue
+            tobs =  track.utc[track.iobs]
+            tstart = tobs - obslen_TD2
+            if tstart < track.utc[0]:
+                istart = 0
+            else:
+                istart = np.where(track.utc > tstart)[0][0] - 1
+            tstop = tobs + obslen_TD2
+            if tstop > track.utc[-1]:
+                istop = len(track.utc) - 1
+            else:
+                istop = np.where(track.utc < tstop)[0][-1] + 1
+            track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
+            ods_stat = 'True' if self.track_list[key]['use'] == 'y' else 'False'
+            for ff in self.freqs:
+                odict = {'src_id':f"{track.source}",
+                         'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
+                         'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
+                         'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
+                         'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
+                         'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
+                         'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz'),
+                         "notes": f"inAdv:True;ods:{ods_stat}"}
+                new_tracks.append(odict)
+            mjd = track.utc[track.istart].mjd
+            if self.start_mjd is None or mjd < self.start_mjd:
+                self.start_mjd = copy(mjd)
         smjd = f"{np.floor(self.start_mjd):.0f}"
         odsfn = f"ods_{smjd}.json"
         obsinfofn = f"obsinfo_{smjd}.json"
@@ -275,6 +282,7 @@ class Plan:
             ods.write_ods(odsfn, new_tracks, original=None, defaults=default_file, cull=[])
         print(f"Writing ODS file: {odsfn}")
         self.write_obsinfo(obsinfofn, filter=filter)
+        print("Now copy the ods file up to obs-node1 and observe.")
 
     def write_obsinfo(self, obsinfofn, filter='__default__'):
         from astropy.coordinates import angular_separation
@@ -297,6 +305,7 @@ class Plan:
                 obsinfo['Sources'][track.source]['el'] = track.el[track.iobs].to_value('deg')
                 obsinfo['Sources'][track.source]['off_time'] = []
                 obsinfo['Sources'][track.source]['off_angle'] = []
+                obsinfo['Sources'][track.source]['ods'] = True if track.ods == 'y' else False
                 for i in range(track.istart, track.istop+1):
                     toff = (track.utc[i] - track.tobs).to_value('sec')
                     aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
