@@ -102,6 +102,7 @@ class Observer:
                         pars[par] = entries[i][par]
                     new_entry = copy(entries[i])
                     new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
+                    print(entries[i])
                     self.ods.add_new_record(ods_output_instance, **new_entry)
                 else:  # Just check if different
                     for par in list(pars.keys()):
