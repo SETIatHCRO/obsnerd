@@ -13,7 +13,7 @@ from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'observer': None, 'project_id': None,
             'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
-            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': 'rfsoc_active-1k,4e,4l', 'embargo': [],
+            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': ':ant_file.dat', 'embargo': [],
             'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
 
 SPACEX_LO = 1990 * u.MHz
@@ -41,8 +41,8 @@ class Observer:
         self.default_ods_default_file = opjoin(DATA_PATH, 'defaults.json')
         # Check for antenna file
         if kw['ants'][0] == ':':
-            with open(kw['ants'][1:], 'r') as f:
-                kw['ants'] = f.read().strip()
+            with open(kw['ants'][1:], 'r') as fp:
+                kw['ants'] = fp.read().strip()
         for key, val in kw.items():
             if key in track.fields:
                 setattr(self, key, val)
