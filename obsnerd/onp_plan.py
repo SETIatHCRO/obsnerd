@@ -200,20 +200,30 @@ class Plan:
         """
         self.minimum_duration = TimeDelta(minimum_duration_min * 60.0, format='sec')
         self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
+        self.track_list = {}
         for sat in self.tracks:
-            ctrks = input(f"Choose track/ODS(+/-) for {sat}, or '[s]kip' or '[e]nd' (e.g. 0+,1+,2-,3+): ")
-            if ctrks[0].lower() == 'e':
+            for i, track in enumerate(self.tracks[sat]):
+                dt = track.utc[track.imax] - ttools.interpret_date('now')
+                key = int(dt.to_value('sec'))
+                self.track_list[key] = {"sat": sat, "track": i, "use": 's'}
+        print("Choose for the following satellite tracks:")
+        print("\ty - use and implement ods record")
+        print("\tr - use but don't implement ods record")
+        print("\ts - skip track")
+        print("\te - end choosing tracks\n")
+        for key in sorted(self.track_list.keys()):
+            track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
+            ctrk = input(f"{sat}/{i} -- {track.el[track.imax].to_value('deg'):.0f} @ {track.utc[track.imax].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) :  ")
+            if ctrk == 'e':
+                print("Ending track selection.")
                 return
-            elif ctrks[0].lower() == 's':
+            elif ctrk == 's':
                 continue
-            this_sat = self.tracks[sat]
-            for ch in [[int(x[:-1]), x[-1]] for x in ctrks.split(',')]:
-                trk, do_ods = ch
-                ooddss = True if do_ods == '+' else False
-                ind = this_sat[trk].imax
-                this_sat[trk].set_par(iobs=ind, ods=ooddss)
-                plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].el[ind].value, 'r.')
-                plt.plot(this_sat[trk].utc[ind].datetime, this_sat[trk].az[ind].value, 'r.')
+            elif ctrk in ['y', 'r']:
+                self.track_list[key]['use'] = ctrk
+                ind = track.imax
+                track.set_par(iobs=ind, ods=ctrk)
+                plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
 
     def proc_tracks(self, defaults='__default__', filter='__default__'):
         """
