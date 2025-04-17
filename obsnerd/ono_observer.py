@@ -39,6 +39,10 @@ class Observer:
         track= on_track.Track()
         self.embargo = tools.listify(kw['embargo'])
         self.default_ods_default_file = opjoin(DATA_PATH, 'defaults.json')
+        # Check for antenna file
+        if kw['ants'][0] == ':':
+            with open(kw['ants'][1:], 'r') as f:
+                kw['ants'] = f.read().strip()
         for key, val in kw.items():
             if key in track.fields:
                 setattr(self, key, val)

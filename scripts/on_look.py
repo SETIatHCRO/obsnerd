@@ -9,7 +9,7 @@ from obsnerd.on_sys import AXIS_OPTIONS
 
 
 if __name__ == '__main__':
-    ap.add_argument('source', help="Name of data file (.npz or .uvh5) for single band or source/obsid.")
+    ap.add_argument('source', help="Typically an obsid.")
     ap.add_argument('-a', '--ant', help='antenna to use', default='2a')
     ap.add_argument('-p', '--pol', help="polarization to use", default='xx')
     ap.add_argument('-w', '--waterfall', help="Flag to generate all of the waterfalls.", action='store_true')
