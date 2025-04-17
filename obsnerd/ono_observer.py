@@ -3,7 +3,7 @@ from copy import copy
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
-from . import DATA_PATH, ono_engine, on_track
+from . import DATA_PATH, ono_engine, on_track, on_sys
 import astropy.units as u
 from os.path import join as opjoin
 
@@ -71,7 +71,8 @@ class Observer:
             self.groups.setdefault(key, [])
             self.groups[key].append(entry)
 
-    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz', ods_output_instance='output'):
+    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz', ods_output_instance='output',
+                         update_source_database=True):
         """
         Generate the obsnerd records based on an ods (as read in get_ods).
 
@@ -102,15 +103,17 @@ class Observer:
                         pars[par] = entries[i][par]
                     new_entry = copy(entries[i])
                     new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
-                    print(entries[i])
-                    self.ods.add_new_record(ods_output_instance, **new_entry)
+                    notes = on_sys.parse_ods_notes(entries[i])
+                    if notes['ods'] == 'True':
+                        self.ods.add_new_record(ods_output_instance, **new_entry)
                 else:  # Just check if different
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
                         if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
             rec.update(freq=freqs * u.Hz, source=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
-            ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
+            if update_source_database:
+                ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             rec.proc()
             self.records.append(rec)
         self.get_overall()
@@ -155,10 +158,11 @@ class Observer:
     def observe_prep(self, add_to_calendar=False,
                      ods2use = '/opt/mnt/share/ods_rados/ods_rados.json',
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
-                     ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json"):
+                     ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json",
+                     update_source_database=True):
         ods_output_instance = 'output'
         self.get_ods(ods2use)
-        self.get_obs_from_ods(add_to_calendar=add_to_calendar, ods_output_instance=ods_output_instance)
+        self.get_obs_from_ods(add_to_calendar=add_to_calendar, ods_output_instance=ods_output_instance, update_source_database=update_source_database)
         self.ods.write_ods(ods_upload, adds=ods_output_instance, original=ods_active)
 
     def observe(self, is_actual=True, ods2use = '/opt/mnt/share/ods_rados/ods_rados.json'):
