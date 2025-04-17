@@ -8,7 +8,7 @@ ap.add_argument('--ods2use', help="ODS file to use for observations", default='/
 ap.add_argument('--ods-upload', dest='ods_upload', help="ODS file to upload for TBA", default="/opt/mnt/share/ods_upload/ods.json")
 ap.add_argument('--ods-active', dest='ods_active', help="Active ODS location", default="https://www.seti.org/sites/default/files/HCRO/ods.json")
 # Note the inverted logic...
-ap.add_argument('--skip-source-database', dest='update_source_database', help="Update the source database with the ODS entries", action='store_false')
+ap.add_argument('--skip-source-database', dest='update_source_database', help="[SKIP] Update the source database with the ODS entries", action='store_false')
 args = ap.parse_args()
 
 # Initialize the observer
