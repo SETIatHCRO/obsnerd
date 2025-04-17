@@ -26,7 +26,7 @@ For example `plan.get_tracks(satname='1112', start='now', duration=8*60)`
 
 You can get more tracks using `get_tracks` again
 
-If this looks like a good set, choose the ones you want (track number and +/- if you want to activate ODS for that track):
+If this looks like a good set, choose the ones you want:
 
     plan.choose_tracks()
 
@@ -41,11 +41,10 @@ Check that they both look reasonable (primarily the ods file)
 ##Observe##
 1. on the VNC open a terminal
 2. put the file `ods_<MJD>.json` into `/opt/mnt/share/ods_rados/ods_rados.json`
-3. type `on_obs_prep.py`
+3. type `on_obs_prep.py --add-to-calendar`
 4. type `aoctkuser.py --enable-rados`
-5. enable the google calendar and make a calendar entry (could have done this earlier too)
-6. hit the *Observe* button and if you are confident select **yes**
-7. sit back and watch the action
+5. hit the *Observe* button and if you are confident select **yes**
+6. sit back and watch the action
 
 ##Process the data##
 The data now sits in that deeply nested directory structure in the ***note*** above.  You now want to dump the autocorrelations for the antennas you want to much smalller 'npz' files, which means you need to find them, generate a bash script, and run the bash script.
@@ -53,11 +52,10 @@ The data now sits in that deeply nested directory structure in the ***note*** ab
 Do this while logged into **obs-node1** and in the **~/rfsoc\_obs\_scripts/p054** directory
 
 1. Find them by typing `on_gen_dump.py ?` at the terminal
-2. Generate the scripts by typing `on_gen_dump.py <date-from-above>` (use `on_gen_dump.py -h` for options).  This generates three scripts:  *copy\_files.sh*, *dump\_autos.sh*, *download\_files.sh*.
-3. Run the script `bash copy_files.sh` to copy the files over to the local drive (currently seems faster to copy, but will still take a very long time)
-4. Run the generated script `bash dump_autos.sh` (also will take a very long time).  This generates npz files containing the specified autocorrelations per antenna/polarization/cnode.  The name of the file is the **obsrec** defined above
-5. Move the *download\_files.sh* to your local machine and run to download the files.
-6. When you are done, remove the duplicated files on obs-node1.
+2. Generate the scripts by typing `on_gen_dump.py <date-from-above>` (use `on_gen_dump.py -h` for options).  This generates two scripts:  *dump\_autos.sh* and *download\_files.sh*.
+3. Run the generated script `bash dump_autos.sh` (also will take a very long time).  This generates npz files containing the specified autocorrelations per antenna/polarization/cnode.  The name of the file is the **obsrec** defined above
+4. Move the *download\_files.sh* to your local machine and run to download the files.
+5. When you are done, remove the duplicated files on obs-node1.
 
 ##Generate the dashboard##
 In the directory with the obsinfo file and the npz files in the appropriate directory specified therein (if not the default **data** directory), you can view the data and generate the dashboard.

@@ -6,9 +6,9 @@ from odsutils import ods_tools as tools
 import os.path as op
 
 
+
 def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
                          ants='all', pols='xx,xy,yy,yx', LOs='all', CNODEs='all',
-                         copy_first = True,
                          download_script_filename='download_files.sh',
                          copy_script_filename='copy_files.sh',
                          dump_script_filename='dump_autos.sh'):
@@ -33,7 +33,7 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
                     if X['lo'] in LOs and X['cnode'] in CNODEs:
                         files[X['obsrec']] = copy(X)
                         fp.write(f'scp "sonata@obs-node1.hcro.org:./rfsoc_obs_scripts/p054/{X["obsrec"]}.npz" .\n')
-    if copy_first:
+    if copy_script_filename is not None:
         with open(copy_script_filename, 'w') as fp:
             for obsrec, data in files.items():
                 dsplit = data['filename'].split('/')
