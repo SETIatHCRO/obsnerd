@@ -5,11 +5,11 @@ import numpy as np
 from . import on_sys
 from argparse import Namespace
 import json
-from glob import glob
+from numpy import floor
 import astropy.units as u
 
 
-def get_obsinfo_from_oinput(oinput, offset=0):
+def get_obsinfo_filename_from_oinput(oinput):
     """
     Get the obsinfo filename from an input.
     This function tries to determine the obsinfo filename based on the input provided.
@@ -17,26 +17,27 @@ def get_obsinfo_from_oinput(oinput, offset=0):
     Parameters
     ----------
     oinput : str
-        Either a source, obsid, mjd or an obsinfo filename.
-    offset : int
-        Offset to apply to the input if it is a number (default is 0) because we often straddle UTC midnight.
+        Either an obsid, mjd or an obsinfo filename.
 
     """
+    if oinput.endswith('.json'):
+        if op.exists(oinput):
+            return oinput
+        return None
     try:
-        return f"obsinfo_{np.floor(float(oinput))-1:.0f}.json"
+        oinput_is_mjd = float(oinput)
+        mjd_options = [f"obsinfo_{oinput_is_mjd:.5f}.json",
+                       f"obsinfo_{floor(oinput_is_mjd):.0f}.json",
+                       f"obsinfo_{floor(oinput_is_mjd)-1:.0f}.json"]
+        for mjd_option in mjd_options:
+            if op.exists(mjd_option):
+                return mjd_option
+        return None
     except (ValueError, TypeError):
         pass
-    if oinput.endswith('.json'):
-        return oinput
     _, mjd = on_sys.split_obsid(oinput)
     if mjd is not None:
-        mjd = str(mjd).split('.')[0]
-        return f"obsinfo_{mjd}.json"
-    for obsinfo in glob('obsinfo_*.json'):
-        with open(obsinfo, 'r') as fp:
-            data = json.load(fp)
-            if oinput in data['Sources']:
-                return obsinfo
+        return get_obsinfo_filename_from_mjd(str(mjd))
     return None
 
 
@@ -69,26 +70,16 @@ def read_obsinfo(oinput):
         Input to be read -- see get_obsinfo_from_oinput
 
     """
-    filename = get_obsinfo_from_oinput(oinput, offset=0)
+    filename = get_obsinfo_filename_from_oinput(oinput)
     if filename is None:
-        return Namespace(filename=None)
-    try:
-        fp = open(filename, 'r')
-    except FileNotFoundError:
-        filename = get_obsinfo_from_oinput(oinput, offset=1)
-        try:
-            fp = open(filename, 'r')
-        except FileNotFoundError:
-            print(f"Obsinfo not found from {oinput}.")
-            return Namespace(filename=None)
-    obsinfo = Namespace(filename=filename)
-        
+        return Namespace(filename=None, sources={})
+    obsinfo = Namespace(filename=filename, sources={})
     with open(filename, 'r') as fp:
         data = json.load(fp)
+
     for key, value in data.items():
         if key != 'Sources':
             setattr(obsinfo, key.lower(), value)
-    setattr(obsinfo, 'sources', {})
     for key, value in data['Sources'].items():
         obsinfo.sources[key] = Track(source=key)
         obsinfo.sources[key].set_track(**value)

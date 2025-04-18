@@ -7,7 +7,7 @@ This reads in a source file and step through observations
 """
 
 ap = argparse.ArgumentParser()
-ap.add_argument('source', help='Target list or json file with inputs', nargs='?', default="/opt/mnt/share/ods_rados/ods_rados.json")
+ap.add_argument('source', help='Target list or json file with inputs', nargs='?', default="/opt/mnt/share/ods_project/ods_rados.json")
 ap.add_argument('-t', '--source_type', help="Type of source above", choices=['ods'], default='ods')
 ap.add_argument('-o', '--observer', help="Name of observer", default="Was a loser and didn't give an observer")
 ap.add_argument('-n', '--project_name', help="Name of project", default="Was a loser and didn't give a project name")

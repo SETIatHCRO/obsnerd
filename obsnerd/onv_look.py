@@ -128,17 +128,17 @@ class Look:
         if oinput is None:
             return
         try:
-            oinput = f"obsinfo_{np.floor(float(oinput)):.0f}.json"
+            oinput_is_mjd = float(oinput)
         except (ValueError, TypeError):
-            pass
+            oinput_is_mjd = False
         # Now get info
         if oinput.endswith('.uvh5'):
             self.read_a_uvh5(oinput)
         elif oinput.endswith('.npz'):
             self.read_an_npz(oinput)
-        elif oinput.endswith('.json'):
+        elif oinput_is_mjd or oinput.endswith('.json'):  # Read in obsinfo file
             self.obs = on_track.read_obsinfo(oinput)
-            print(f"Reading {oinput} into self.obs")
+            print(f"Reading {self.obs.filename} into self.obs")
             self.found_obsids = []
             for source in self.obs.sources:
                 self.found_obsids.append(self.obs.sources[source].obsid)
@@ -156,7 +156,7 @@ class Look:
             print(f"Setting obsrec_files for {self.obsid}")
             self.obsrec_files = [] if self.obsid is None else [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
             if self.obs is None:
-                self.get(self.mjd)
+                self.get(str(self.mjd))
 
     def read_in_files(self):
         self.freqs = []

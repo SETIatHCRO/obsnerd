@@ -20,9 +20,9 @@ Set up the planning tool from with ipython and get 'tracks'
 
     from obsnerd import onp_plan
     plan = onp_plan.Plan()
-    plan.get_tracks(satname='some-search-string', start='now', duration=number_of_minutes)
+    plan.get_tracks(satname='some-search-string', start='now+30m', duration=number_of_minutes)
 
-For example `plan.get_tracks(satname='1112', start='now', duration=8*60)`
+For example `plan.get_tracks(satname='1112', start='now+30m', duration=3*60)`
 
 You can get more tracks using `get_tracks` again
 
@@ -40,7 +40,7 @@ Check that they both look reasonable (primarily the ods file)
 
 ##Observe##
 1. on the VNC open a terminal
-2. put the file `ods_<MJD>.json` into `/opt/mnt/share/ods_rados/ods_rados.json`
+2. put the file `ods_<MJD>.json` into `/opt/mnt/share/ods_project/ods_rados.json`
 3. type `on_obs_prep.py --add-to-calendar`
 4. type `aoctkuser.py --enable-rados`
 5. hit the *Observe* button and if you are confident select **yes**
@@ -53,9 +53,8 @@ Do this while logged into **obs-node1** and in the **~/rfsoc\_obs\_scripts/p054*
 
 1. Find them by typing `on_gen_dump.py ?` at the terminal
 2. Generate the scripts by typing `on_gen_dump.py <date-from-above>` (use `on_gen_dump.py -h` for options).  This generates two scripts:  *dump\_autos.sh* and *download\_files.sh*.
-3. Run the generated script `bash dump_autos.sh` (also will take a very long time).  This generates npz files containing the specified autocorrelations per antenna/polarization/cnode.  The name of the file is the **obsrec** defined above
-4. Move the *download\_files.sh* to your local machine and run to download the files.
-5. When you are done, remove the duplicated files on obs-node1.
+3. Run the generated script `bash dump_autos.sh` (this will take a very long time).  This generates npz files containing the specified autocorrelations per antenna/polarization/cnode.  The name of the file is the **obsrec** defined above
+4. Move the *download\_files.sh* to your local machine and run to download the files if you wish to process them locally.
 
 ##Generate the dashboard##
 In the directory with the obsinfo file and the npz files in the appropriate directory specified therein (if not the default **data** directory), you can view the data and generate the dashboard.
