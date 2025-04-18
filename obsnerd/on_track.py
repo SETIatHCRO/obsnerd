@@ -9,18 +9,21 @@ from glob import glob
 import astropy.units as u
 
 
-def get_obsinfo_from_oinput(oinput):
+def get_obsinfo_from_oinput(oinput, offset=0):
     """
-    Get the obsinfo filename from an obsid.
+    Get the obsinfo filename from an input.
+    This function tries to determine the obsinfo filename based on the input provided.
 
     Parameters
     ----------
     oinput : str
         Either a source, obsid, mjd or an obsinfo filename.
+    offset : int
+        Offset to apply to the input if it is a number (default is 0) because we often straddle UTC midnight.
 
     """
     try:
-        return f"obsinfo_{np.floor(float(oinput)):.0f}.json"
+        return f"obsinfo_{np.floor(float(oinput))-1:.0f}.json"
     except (ValueError, TypeError):
         pass
     if oinput.endswith('.json'):
@@ -63,13 +66,23 @@ def read_obsinfo(oinput):
     Parameters
     ----------
     oinput : str
-        Input to be read -- see getobsinfo_from_oinput
+        Input to be read -- see get_obsinfo_from_oinput
 
     """
-    filename = get_obsinfo_from_oinput(oinput)
-    obsinfo = Namespace(filename=filename)
+    filename = get_obsinfo_from_oinput(oinput, offset=0)
     if filename is None:
-        return obsinfo
+        return Namespace(filename=None)
+    try:
+        fp = open(filename, 'r')
+    except FileNotFoundError:
+        filename = get_obsinfo_from_oinput(oinput, offset=1)
+        try:
+            fp = open(filename, 'r')
+        except FileNotFoundError:
+            print(f"Obsinfo not found from {oinput}.")
+            return Namespace(filename=None)
+    obsinfo = Namespace(filename=filename)
+        
     with open(filename, 'r') as fp:
         data = json.load(fp)
     for key, value in data.items():
