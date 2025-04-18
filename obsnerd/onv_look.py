@@ -447,6 +447,8 @@ class Look:
             D['use_dB'] = True if pol in ['xx', 'yy'] else False
         if D['log']:
             logs = onv_logs.TBALog(D['log'])
+        else:
+            logs = None
 
         self.time_axis = on_sys.AXIS_OPTIONS[time_axis[0].lower()]
         self.get_time_axes(log=logs)

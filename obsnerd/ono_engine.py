@@ -143,7 +143,7 @@ class CommandHandler:
             import time
             time.sleep(20)
         ata_control.autotune(self.ant_list)
-        logger.warning("REMOVING ATTENTUATION")
+        logger.warning("REMOVING ATTENUATION")
         # ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
         #                              [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
         self.rec.update(freq=self.freq, lo=lo, attenuation=attenuation, focus=ffoc)
