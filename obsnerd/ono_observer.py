@@ -160,14 +160,15 @@ class Observer:
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
     def observe_prep(self, add_to_calendar=False,
-                     ods2use = '/opt/mnt/share/ods_project/ods_rados.json',
+                     ods2use = "/opt/mnt/share/ods_project/ods_rados.json",
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
                      ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json",
-                     update_source_database=True):
-        ods_output_instance = 'output'
+                     update_source_database=True,
+                     ods_output_instance: 'output'):
         self.get_ods(ods2use)
         self.get_obs_from_ods(add_to_calendar=add_to_calendar, ods_output_instance=ods_output_instance, update_source_database=update_source_database)
-        self.ods.write_ods(ods_upload, adds=ods_output_instance, original=ods_active)
+        self.ods.post_ods(ods2use, instance_name=ods_output_instance)
+        self.ods.assemble_ods(op.dirname(ods2use), post_to=ods_upload, update_local=True, cull=['time', 'duplicate'])
 
     def observe(self, is_actual=True, ods2use = '/opt/mnt/share/ods_project/ods_rados.json'):
         if not is_actual:
