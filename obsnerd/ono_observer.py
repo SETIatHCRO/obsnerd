@@ -164,7 +164,7 @@ class Observer:
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
                      ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json",
                      update_source_database=True,
-                     ods_output_instance: 'output'):
+                     ods_output_instance='output'):
         self.get_ods(ods2use)
         self.get_obs_from_ods(add_to_calendar=add_to_calendar, ods_output_instance=ods_output_instance, update_source_database=update_source_database)
         self.ods.post_ods(ods2use, instance_name=ods_output_instance)
