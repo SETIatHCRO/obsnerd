@@ -12,7 +12,7 @@ ap.add_argument('--skip-source-database', dest='update_source_database', help="[
 args = ap.parse_args()
 
 # Initialize the observer
-observer = ono_observer.Observer()
+observer = ono_observer.Observer(project_name='SatSpot', project_id='p054')
 observer.observe_prep(add_to_calendar=args.add_to_calendar,
                      ods2use=args.ods2use,
                      ods_upload=args.ods_upload,

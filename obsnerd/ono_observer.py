@@ -5,16 +5,13 @@ from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
 from . import DATA_PATH, ono_engine, on_track, on_sys
 import astropy.units as u
-from os.path import join as opjoin
 import os.path as op
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
 from . import LOG_FILENAME, LOG_FORMATS, __version__
 
-DEFAULTS = {'observer': None, 'project_id': None,
-            'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
+DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': ':ant_file.dat', 'embargo': [],
             'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
 
@@ -40,7 +37,7 @@ class Observer:
         self.records = []  # on_track to be made out of ODS
         track= on_track.Track()
         self.embargo = tools.listify(kw['embargo'])
-        self.default_ods_default_file = opjoin(DATA_PATH, 'defaults.json')
+        self.default_ods_default_file = op.join(DATA_PATH, 'defaults.json')
         # Check for antenna file
         if kw['ants'][0] == ':':
             with open(kw['ants'][1:], 'r') as fp:
