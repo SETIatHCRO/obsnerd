@@ -90,7 +90,7 @@ class Plan:
                                          src_start_utc=self.start, src_end_utc=self.stop,
                                          freq_lower_hz=freq[1] * 1E6, freq_upper_hz=freq[1] * 1E6)
         self.this_cal.ods.view_ods()
-        self.this_cal.ods.write_ods('test_ods.json')
+        self.this_cal.ods.post_ods('test_ods.json')
 
     def get_tracks(self, satname, start, duration, freqs=[1990.0, 5990.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0,
                    DTC_only=True, time_resolution=10, source='sopp'):
@@ -279,7 +279,9 @@ class Plan:
         odsfn = f"ods_{smjd}.json"
         obsinfofn = f"obsinfo_{smjd}.json"
         with ods_engine.ODS() as ods:
-            ods.write_ods(odsfn, new_tracks, original=None, defaults=default_file, cull=[])
+            ods.get_defaults_dict(default_file)
+            ods.add_from_list(new_tracks)
+            ods.post_ods(odsfn)
         print(f"Writing ODS file: {odsfn}")
         self.write_obsinfo(obsinfofn, filter=filter)
         print("Now copy the ods file up to obs-node1 and observe.")
