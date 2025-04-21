@@ -6,6 +6,8 @@ from odsutils import logger_setup, ods_engine
 from . import DATA_PATH, ono_engine, on_track, on_sys
 import astropy.units as u
 from os.path import join as opjoin
+import os.path as op
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
