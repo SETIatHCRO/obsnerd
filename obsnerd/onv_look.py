@@ -538,7 +538,7 @@ class Look:
         else:
             axf.set_xlim(left=self.freqs[0], right=self.freqs[-1])
 
-        fn = f"{self.obsid}_{self.lo}_{ant}_{pol}.png"
+        fn = f"{self.obsid}_{self.lo}_{ant}_{pol}_{time_axis}.png"
         if D['save']:
             plt.savefig(fn)
 
