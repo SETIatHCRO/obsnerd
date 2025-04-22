@@ -7,8 +7,11 @@ from astropy.time import Time
 class TBALog:
     inner = 3.0
     outer = 5.0
-    def __init__(self, logs):
-        self.log_files = sorted(glob(logs))
+    def __init__(self, single_file=None):
+        if single_file is not None:
+            self.log_files = [single_file]
+        else:
+            self.log_files = sorted(glob("ATA*.txt") + glob("ATA*.csv"))
         self.times = {'inner': [], 'outer': []}
         self.sats = {'inner': [], 'outer': []}
         for logfn in self.log_files:

@@ -53,7 +53,7 @@ Do this while logged into **obs-node1** and in the **~/rfsoc\_obs\_scripts/p054*
 
 1. Find them by typing `on_gen_dump.py ?` at the terminal
 2. Generate the scripts by typing `on_gen_dump.py <date-from-above>` (use `on_gen_dump.py -h` for options).  This generates two scripts:  *dump\_autos.sh* and *download\_files.sh*.
-3. Run the generated script `bash dump_autos.sh` (this will take a very long time).  This generates npz files containing the specified autocorrelations per antenna/polarization/cnode.  The name of the file is the **obsrec** defined above
+3. Run the generated script `bash dump_autos.sh` (this will take a very long time so do it under a screen).  This generates npz files containing the specified autocorrelations per antenna/polarization/cnode.  The name of the file is the **obsrec** defined above
 4. Move the *download\_files.sh* to your local machine and run to download the files if you wish to process them locally.
 
 ##Generate the dashboard##
