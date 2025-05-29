@@ -163,11 +163,13 @@ class Observer:
     def observe_prep(self, add_to_calendar=False,
                      ods_rados = "/opt/mnt/share/ods_project/ods_rados.json",
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
-                     update_source_database=True):
+                     update_source_database=True,
+                     ods_assembly=True):
         self.get_ods(op.basename(ods_rados))
         self.get_obs_from_ods(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
         self.ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
-        self.ods.assemble_ods(op.dirname(ods_rados), post_to=ods_upload, update_local=True, cull=['time', 'duplicate'])
+        if ods_assembly:
+            self.ods.assemble_ods(op.dirname(ods_rados), post_to=ods_upload, update_local=True, cull=['time', 'duplicate'])
 
     def observe(self, is_actual=True, ods2use = 'ods_rados.json'):
         if not is_actual:

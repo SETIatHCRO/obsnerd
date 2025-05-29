@@ -9,6 +9,7 @@ ap.add_argument('--ods-upload', dest='ods_upload', help="ODS file to upload for 
 ap.add_argument('--ods-active', dest='ods_active', help="Active ODS location", default="https://www.seti.org/sites/default/files/HCRO/ods.json")
 # Note the inverted logic...
 ap.add_argument('--skip-source-database', dest='update_source_database', help="[SKIP] Update the source database with the ODS entries", action='store_false')
+ap.add_argument('--skip-ods-assembly', dest='ods_assembly', help="[SKIP] Assembling and publishing the ODS file", action='store_false')
 args = ap.parse_args()
 
 # Initialize the observer
@@ -17,4 +18,5 @@ observer.observe_prep(add_to_calendar=args.add_to_calendar,
                      ods2use=args.ods2use,
                      ods_upload=args.ods_upload,
                      ods_active=args.ods_active,
-                     update_source_database=args.update_source_database)
+                     update_source_database=args.update_source_database,
+                     ods_assembly=args.ods_assembly)
