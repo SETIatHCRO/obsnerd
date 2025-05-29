@@ -6,7 +6,6 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--add-to-calendar', dest='add_to_calendar', help="Add the observations to the calendar", action='store_true')
 ap.add_argument('--ods_rados', help="ODS file to use for ODS publishing", default='/opt/mnt/share/ods_project/ods_rados.json')
 ap.add_argument('--ods-upload', dest='ods_upload', help="ODS file to upload for TBA", default="/opt/mnt/share/ods_upload/ods.json")
-ap.add_argument('--ods-active', dest='ods_active', help="Active ODS location", default="https://www.seti.org/sites/default/files/HCRO/ods.json")
 # Note the inverted logic...
 ap.add_argument('--skip-source-database', dest='update_source_database', help="[SKIP] Update the source database with the ODS entries", action='store_false')
 ap.add_argument('--skip-ods-assembly', dest='ods_assembly', help="[SKIP] Assembling and publishing the ODS file", action='store_false')
