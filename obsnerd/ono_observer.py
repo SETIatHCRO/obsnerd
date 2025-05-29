@@ -18,6 +18,7 @@ DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LO
 SPACEX_LO = 1990 * u.MHz
 SPACEX_HI = 1995 * u.MHz
 
+ODS_URL = 'https://www.seti.org/sites/default/files/HCRO/ods.json'
 
 class Observer:
     def __init__(self, **kwargs):
@@ -74,8 +75,7 @@ class Observer:
             self.groups.setdefault(key, [])
             self.groups[key].append(entry)
 
-    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz', ods_output_instance='output',
-                         update_source_database=True):
+    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz', update_source_database=True):
         """
         Generate the obsnerd records based on an ods (as read in get_ods).
 
@@ -88,7 +88,8 @@ class Observer:
 
         """
         self.records = []
-        self.ods.new_ods_instance(ods_output_instance)
+        self.ods.new_ods_instance('OUTPUT_ALL')
+        self.ods.new_ods_instance('OUTPUT_ODS')
         if self.groups is None:
             logger.error("Unable to read ODS file")
             return
@@ -107,8 +108,9 @@ class Observer:
                     new_entry = copy(entries[i])
                     new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
                     notes = on_sys.parse_ods_notes(entries[i])
+                    self.ods.add_new_record("OUTPUT_ALL", **new_entry)
                     if notes['ods'] == 'True':
-                        self.ods.add_new_record(ods_output_instance, **new_entry)
+                        self.ods.add_new_record("OUTPUT_ODS", **new_entry)
                 else:  # Just check if different
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
@@ -159,22 +161,19 @@ class Observer:
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
     def observe_prep(self, add_to_calendar=False,
-                     ods2use = "/opt/mnt/share/ods_project/ods_rados.json",
+                     ods_rados = "/opt/mnt/share/ods_project/ods_rados.json",
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
-                     ods_active = "https://www.seti.org/sites/default/files/HCRO/ods.json",
-                     update_source_database=True,
-                     ods_output_instance='output'):
-        self.get_ods(ods2use)
-        self.get_obs_from_ods(add_to_calendar=add_to_calendar, ods_output_instance=ods_output_instance, update_source_database=update_source_database)
-        self.ods.post_ods(ods2use, instance_name=ods_output_instance)
-        self.ods.assemble_ods(op.dirname(ods2use), post_to=ods_upload, update_local=True, cull=['time', 'duplicate'])
+                     update_source_database=True):
+        self.get_ods(op.basename(ods_rados))
+        self.get_obs_from_ods(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
+        self.ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
+        self.ods.assemble_ods(op.dirname(ods_rados), post_to=ods_upload, update_local=True, cull=['time', 'duplicate'])
 
-    def observe(self, is_actual=True, ods2use = '/opt/mnt/share/ods_project/ods_rados.json'):
+    def observe(self, is_actual=True, ods2use = 'ods_rados.json'):
         if not is_actual:
             self.backend = 'test'
-        ods_output_instance = 'output'
         self.get_ods(ods2use)
-        self.get_obs_from_ods(add_to_calendar=False, ods_output_instance=ods_output_instance)
+        self.get_obs_from_ods(add_to_calendar=False)
         if not len(self.records):
             logger.error("Need to make observer records before you can observe.")
             return
