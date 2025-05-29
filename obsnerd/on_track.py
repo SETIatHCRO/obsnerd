@@ -7,7 +7,7 @@ from argparse import Namespace
 import json
 from numpy import floor
 import astropy.units as u
-
+from glob import glob
 
 def get_obsinfo_filename_from_oinput(oinput):
     """

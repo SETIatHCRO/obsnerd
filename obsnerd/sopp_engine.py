@@ -56,6 +56,8 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
         If False don't write
 
     """
+    if satname == '*':
+        satname = ''
     tracks = {}
     # Filters
     filterer = (

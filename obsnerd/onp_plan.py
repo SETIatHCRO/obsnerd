@@ -187,20 +187,27 @@ class Plan:
         plt.axis(ymin=axlim[2], ymax=axlim[3])
         plt.legend()
 
-    def choose_tracks(self, obslen_min=8, minimum_duration_min=5):
+    def choose_tracks(self, auto=True, obslen_min=8, obsel_deg=25):
         """
         Interactive chooser of tracks to use -- edits the Track instances.
 
         Parameters
         ----------
-        obslen_min : float, optional
+        auto : bool
+            If True, automatically choose tracks, by default False
+        obslen_min : float
             Observation length in minutes, by default 8
-        minimum_duration_min : float, optional
-            Minimum duration above el_limit in minutes, by default 5
+        obsel_min : float
+            Minimum el_limit to show in degrees, by default 15
 
         """
-        self.minimum_duration = TimeDelta(minimum_duration_min * 60.0, format='sec')
         self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
+        if auto:
+            if isinstance(auto, bool):
+                track_separation = 1.75 * self.obslen
+            else:
+                track_separation = TimeDelta(auto * 60.0, format='sec')
+            print(f"Automatically choosing tracks at {track_separation.to_value('sec') / 60.0:.1f} min separation.")
         self.track_list = {}
         now = ttools.interpret_date('now')
         for sat in self.tracks:
@@ -209,14 +216,21 @@ class Plan:
                 key = int(dt.to_value('sec'))
                 self.track_list[key] = {"sat": sat, "track": i, "use": 's'}
                 track.set_par(iobs=None, ods='s')
-        print("Choose for the following satellite tracks:")
-        print("\ty - use and implement ods record")
-        print("\tr - use but don't implement ods record")
-        print("\ts - skip track")
-        print("\te - end choosing tracks\n")
+        if not auto:
+            print("Choose for the following satellite tracks:")
+            print("\ty - use and implement ods record")
+            print("\tr - use but don't implement ods record")
+            print("\ts - skip track")
+            print("\te - end choosing tracks\n")
+        last_one = ttools.interpret_date('yesterday')
         for key in sorted(self.track_list.keys()):
             track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
-            ctrk = input(f"{sat}/{i} -- {track.el[track.imax].to_value('deg'):.0f}\u00b0 @ {track.utc[track.imax].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) :  ")
+            if track.el[track.imax].to_value('deg') < obsel_deg:
+                continue
+            if auto:
+                ctrk = 'y' if track.utc[track.imax] - last_one > track_separation else 's'
+            else:
+                ctrk = input(f"{sat}/{i} -- {track.el[track.imax].to_value('deg'):.0f}\u00b0 @ {track.utc[track.imax].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) :  ")
             if ctrk == 'e':
                 print("Ending track selection.")
                 print("Now run <>.proc_tracks() to write the ODS file and obsinfo.json file.")
@@ -224,10 +238,12 @@ class Plan:
             elif ctrk == 's':
                 continue
             elif ctrk in ['y', 'r']:
+                last_one = copy(track.utc[track.imax])
                 self.track_list[key]['use'] = ctrk
                 ind = track.imax
                 track.set_par(iobs=ind, ods=ctrk)
                 plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
+                print(f"Using {track.source} at {track.utc[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
         print("Now run <>.proc_tracks() to write the ODS file and obsinfo.json file.")
 
     def proc_tracks(self, defaults='__default__', filter='__default__'):
@@ -284,7 +300,8 @@ class Plan:
             ods.post_ods(odsfn)
         print(f"Writing ODS file: {odsfn}")
         self.write_obsinfo(obsinfofn, filter=filter)
-        print("Now copy the ods file up to obs-node1 and observe.")
+        print("Edit the ods file to update the notes field if you don't want to set an ODS record.,")
+        print("...then copy the ods file up to obs-node1 and observe.")
 
     def write_obsinfo(self, obsinfofn, filter='__default__'):
         from astropy.coordinates import angular_separation

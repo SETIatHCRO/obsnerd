@@ -351,14 +351,17 @@ class Look:
         }
         if log:
             for scope in ['inner', 'outer']:
+                if len(log.filt_times[scope]) == 0:
+                    self.taxes[scope] = {'datetime': [], 'seconds': [], 'boresight': []}
+                    continue
                 self.taxes[scope] = {}
                 self.taxes[scope]['datetime'] = {
-                    'values': log.times[scope],
+                    'values': log.filt_times[scope],
                     'label': 'Time',
                     'reference': self.this_source.utc
                 }
                 self.taxes[scope]['seconds'] = {
-                    'values': (log.times[scope] - self.this_source.utc).to_value('sec'),
+                    'values': (log.filt_times[scope] - self.this_source.utc).to_value('sec'),
                     'label': 'Seconds',
                     'reference': self.this_source.utc
                 }
@@ -447,6 +450,7 @@ class Look:
             D['use_dB'] = True if pol in ['xx', 'yy'] else False
         if D['log']:
             logs = onv_logs.TBALog(D['log'])
+            logs.filter_time(self.this_source.utc)
         else:
             logs = None
 

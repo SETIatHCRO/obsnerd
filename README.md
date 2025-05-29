@@ -22,13 +22,13 @@ Set up the planning tool from with ipython and get 'tracks'
     plan = onp_plan.Plan()
     plan.get_tracks(satname='some-search-string', start='now+30m', duration=number_of_minutes)
 
-For example `plan.get_tracks(satname='1112', start='now+30m', duration=3*60)`
+For example `plan.get_tracks(satname='*', start='now+30m', duration=2*60)`
 
 You can get more tracks using `get_tracks` again
 
-If this looks like a good set, choose the ones you want:
+If this looks like a good set, choose the ones you want (there is an auto-choose mode by default):
 
-    plan.choose_tracks()
+    plan.choose_tracks(auto=True)
 
 If you want to continue with that set,
 
@@ -43,7 +43,7 @@ Check that they both look reasonable (primarily the ods file)
 2. put the file `ods_<MJD>.json` into `/opt/mnt/share/ods_project/ods_rados.json`
 3. type `on_obs_prep.py --add-to-calendar`
 4. type `aoctkuser.py --enable-rados`
-5. hit the *Observe* button and if you are confident select **yes**
+5. hit the *Observe* button and if you are confident select **yes** twice.
 6. sit back and watch the action
 
 ##Process the data##

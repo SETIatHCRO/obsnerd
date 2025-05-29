@@ -7,7 +7,7 @@ import os.path as op
 
 
 
-def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
+def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p057/',
                          ants='all', pols='xx,xy,yy,yx', LOs='all', CNODEs='all',
                          download_script_filename='download_files.sh',
                          copy_script_filename='copy_files.sh',

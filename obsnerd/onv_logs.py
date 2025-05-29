@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from numpy import ones
 from glob import glob
 from astropy.time import Time
@@ -19,9 +19,32 @@ class TBALog:
                 for line in fp:
                     data = line.split(',')
                     self.times[data[2]].append(datetime.strptime(data[0], '%Y-%m-%d %H:%M:%S'))
-                    self.sats[data[2]].append(data[4])
+                    self.sats[data[2]].append(data[4].strip())
         for scope in ['inner', 'outer']:
             self.times[scope] = Time(self.times[scope])
+
+    def filter_time(self, central, delta=4):
+        """
+        Filter the log files to only include those that are within the specified time range.
+
+        Parameters
+        ----------
+        central : datetime
+            Central time to filter around.
+        delta : float
+            Time range in minutes to filter around the central time.
+
+        """
+        dt = timedelta(minutes=delta)
+        self.filt_times = {'inner': [], 'outer': []}
+        self.filt_sats = {'inner': [], 'outer': []}
+        for scope in ['inner', 'outer']:
+            for time, sat in zip(self.times[scope], self.sats[scope]):
+                if central - dt < time < central + dt:
+                    self.filt_times[scope].append(time)
+                    self.filt_sats[scope].append(sat)
+            if len(self.filt_times[scope]):
+                self.filt_times[scope] = Time(self.filt_times[scope])
 
     def plot(self):
         import matplotlib.pyplot as plt
