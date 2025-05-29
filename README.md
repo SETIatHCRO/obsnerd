@@ -40,7 +40,7 @@ Check that they both look reasonable (primarily the ods file)
 
 ##Observe##
 1. on the VNC open a terminal
-2. put the file `ods_<MJD>.json` onto obs-node1 as `~/rfsoc_obs_scripts/p054/ods_rados.json`
+2. put the file `ods_<MJD>.json` onto *obs-node1* as `~/rfsoc_obs_scripts/p054/ods_rados.json`
 3. type `on_obs_prep.py --add-to-calendar`
 4. type `aoctkuser.py --enable-rados`
 5. hit the *Observe* button and if you are confident select **yes** twice.
