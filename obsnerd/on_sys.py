@@ -12,6 +12,7 @@ SLEW_SPEED = 1.5  # deg/sec
 
 ANT_LISTS = {'old_feeds': ['']}
 
+
 def parse_ods_notes(entry):
     """
     Parses notes and returns a dictionary with keys 'source', 'cnode', 'lo', 'obsid', 'mjd'.

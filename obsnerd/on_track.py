@@ -9,6 +9,7 @@ from numpy import floor
 import astropy.units as u
 from glob import glob
 
+
 def get_obsinfo_filename_from_oinput(oinput):
     """
     Get the obsinfo filename from an input.
@@ -98,13 +99,16 @@ class Track:
     ]
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
     short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time_sec']
+    use_def = {'y': "use with ods",
+               'n': "use without ods",
+               's': "skip (don't use)"}
 
     def __init__(self, **kwargs):
         self.update(**kwargs)
         self.iobs = None
 
-    def __repr__(self, use='fields'):
-        return self.view(fields_to_show=getattr(self, use), bracket=['<', '>'], sep='  -- ')
+    def __repr__(self, fprnt='fields'):
+        return self.view(fields_to_show=getattr(self, fprnt), bracket=['<', '>'], sep='  -- ')
 
     def __str__(self):
         return self.view(fields_to_show=self.fields, bracket=['', ''], sep='\n')
