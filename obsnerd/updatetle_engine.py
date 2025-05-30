@@ -25,6 +25,9 @@ def updatetle(base_path, base_url):
 
     print('Reading Celestrak master file')
     for line in master:
+        #if 'Active Satellites' in line:
+        if '.txt' in line:
+            print(line)
         data = line.split('"')
         for word in data:
             if '.txt' in word and word.startswith('/NORAD/elements/'):

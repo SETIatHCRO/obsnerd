@@ -201,6 +201,7 @@ class Plan:
             Minimum el_limit to show in degrees, by default 15
 
         """
+        self.auto = auto
         self.obslen = TimeDelta(obslen_min * 60.0, format='sec')
         if auto:
             if isinstance(auto, bool):
@@ -277,6 +278,8 @@ class Plan:
             else:
                 istop = np.where(track.utc < tstop)[0][-1] + 1
             track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
+            if self.auto:
+                self.track_list[key]['use'] = input("ODS record? (y/n): ")
             ods_stat = 'True' if self.track_list[key]['use'] == 'y' else 'False'
             for ff in self.freqs:
                 odict = {'src_id':f"{track.source}",
