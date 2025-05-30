@@ -1,5 +1,5 @@
 import requests
-from html.parser import HTMLParser
+from bs4 import BeautifulSoup
 from os import path
 import logging
 from odsutils import logger_setup
@@ -10,58 +10,44 @@ logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
 logger_setup.Logger(logger, conlog='INFO', filelog='INFO', log_filename=LOG_FILENAME, path='.')
 
-class DataParser(HTMLParser):
-    def handle_data(self, data):
-        self.description = data
+
+def make_tle_filename(tle_name):
+    """
+    Create a TLE filename from the TLE name.
+    """
+    tle_name = tle_name.strip()
+    tle_name = tle_name.replace(' ', '_').replace('/', '_')
+    tle_name = tle_name.replace('(', '').replace(')', '')
+    tle_name = tle_name.replace("'", '').replace('"', '')
+    tle_name = tle_name.replace(',', '').replace('.', '')
+    tle_name = tle_name.replace('?', '').replace('!', '')
+    tle_name = tle_name.replace('&', 'and')
+    return f"{tle_name}.tle"
 
 
-def updatetle(base_path, base_url):
+def updatetle(group='*', base_path='./tle', base_url='https://celestrak.org/NORAD/elements/'):
+    if group == '*':
+        group = ''
     master_file = requests.get(base_url)
-    master = master_file.text.splitlines()
-    tlefiles = {}
-    base_path = path.expanduser(base_path)
+    soup = BeautifulSoup(master_file.text, 'html.parser')
+    for td in soup.find_all('td'):
+        this_href = td.find('a')
+        try:
+            ttype = this_href.get('title')
+        except AttributeError:
+            continue
+        if "debris" in td.text.lower() or "cesium" in td.text.lower():
+            continue
+        if ttype == 'TLE Data' and group in td.text:
+            actual_href = this_href.get('href')
+            groupname = actual_href.split('=')[1].split('&')[0]
+            tlefilename = path.join(base_path, make_tle_filename(groupname))
+            print(f"{td.text} - {tlefilename}:  {actual_href}")
+            tle_url = path.join(base_url, actual_href)
+            tle_file = requests.get(tle_url)
+            with open(tlefilename, 'w') as f:
+                f.write(tle_file.text)
 
-    ignore = ['debris', 'cesium']
-
-    print('Reading Celestrak master file')
-    for line in master:
-        #if 'Active Satellites' in line:
-        if '.txt' in line:
-            print(line)
-        data = line.split('"')
-        for word in data:
-            if '.txt' in word and word.startswith('/NORAD/elements/'):
-                hpp = DataParser()
-                hpp.feed(line)
-                this_file = word.split('/')[-1]
-                tlefiles[this_file] = hpp.description
-
-    print(f"Updating from {base_url}")
-    with open(path.join(base_path, 'master.dat'), 'w') as master:
-        for lll in tlefiles:
-            useThis = True
-            for ig in ignore:
-                if ig in tlefiles[lll].lower():
-                    useThis = False
-            if useThis:
-                a = lll.split('.')
-                outfile = a[0]+'.tle'
-                reading = f'{tlefiles[lll]:30s}  {lll}'
-                sat = requests.get(path.join(base_url, lll))
-                if sat.status_code == 404:
-                    new_url = base_url + f"gp.php?GROUP={lll.split('.txt')[0]}&FORMAT=tle"
-                    reading = f"{tlefiles[lll]:30s}  {new_url.split('?')[1]}"
-                    sat = requests.get(new_url)
-
-                if sat.status_code != 200:
-                    print(f"Invalid code for {tlefiles[lll]}:  {sat.status_code}")
-                else:
-                    print(reading)
-                    sat_text = sat.text.splitlines()
-                    with open(path.join(base_path, outfile), 'w') as fp:
-                        for line in sat_text:
-                            print(line, file=fp)
-                print("{}:  {}".format(outfile, tlefiles[lll]), file=master)
-
+ 
 def update_log():
     logger.info('Updating TLEs')
