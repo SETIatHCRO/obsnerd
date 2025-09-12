@@ -62,4 +62,4 @@ class TBALog:
     def ods_mon(self, fn='online_ods_mon.csv'):
         from odsutils import ods_engine
         self.ods = ods_engine.ODS(version='latest', output='INFO')
-        self.ods.add_from_file(fn)
+        self.ods.add(fn)

@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
 
 
-
 import colorsys
 
 def generate_colors(n):
@@ -49,7 +48,7 @@ class Plan:
         self.tracks = {}
         self.bandwidth = None
         self.el_limit = None
-        self.default_ods_default_file = opjoin(DATA_PATH, 'defaults.json')
+        self.default_ods_default_file = opjoin(DATA_PATH, 'ods_defaults_B.json')
         self.default_filter_file = opjoin(DATA_PATH, 'filters.json')
 
     def setupcal(self):
@@ -83,13 +82,13 @@ class Plan:
         self.stop = ttools.t_delta(self.start, obs_len_sec, 's')
         obscoord = SkyCoord(alt = el*u.deg, az = az*u.deg, obstime = self.tref, frame = 'altaz', location = self.this_cal.location.loc)
         radec = obscoord.transform_to('gcrs')
-        self.this_cal.ods.get_defaults_dict(self.default_ods_default_file)
-        self.this_cal.ods.add_new_record(src_id='Asource', src_ra_j2000_deg=radec.ra.deg, src_dec_j2000_deg=radec.dec.deg,
-                                         src_start_utc=self.start, src_end_utc=self.stop,
-                                         freq_lower_hz=freq[0] * 1E6, freq_upper_hz=freq[0] * 1E6)
-        self.this_cal.ods.add_new_record(src_id='Asource', src_ra_j2000_deg=radec.ra.deg, src_dec_j2000_deg=radec.dec.deg,
-                                         src_start_utc=self.start, src_end_utc=self.stop,
-                                         freq_lower_hz=freq[1] * 1E6, freq_upper_hz=freq[1] * 1E6)
+        self.this_cal.ods.get_defaults(self.default_ods_default_file)
+        self.this_cal.ods.new_record(src_id='Asource', src_ra_j2000_deg=radec.ra.deg, src_dec_j2000_deg=radec.dec.deg,
+                                     src_start_utc=self.start, src_end_utc=self.stop,
+                                     freq_lower_hz=freq[0] * 1E6, freq_upper_hz=freq[0] * 1E6)
+        self.this_cal.ods.new_record(src_id='Asource', src_ra_j2000_deg=radec.ra.deg, src_dec_j2000_deg=radec.dec.deg,
+                                     src_start_utc=self.start, src_end_utc=self.stop,
+                                     freq_lower_hz=freq[1] * 1E6, freq_upper_hz=freq[1] * 1E6)
         self.this_cal.ods.view_ods()
         self.this_cal.ods.post_ods('test_ods.json')
 
@@ -286,7 +285,7 @@ class Plan:
                          'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
                          'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
                          'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz'),
-                         "notes": f"inAdv:True;ods:{ods_stat}"}
+                         'version': "ODS2OBS"}
                 new_tracks.append(odict)
             mjd = track.utc[track.istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
@@ -295,8 +294,8 @@ class Plan:
         odsfn = f"ods_{smjd}.json"
         obsinfofn = f"obsinfo_{smjd}.json"
         with ods_engine.ODS() as ods:
-            ods.get_defaults_dict(default_file)
-            ods.add_from_list(new_tracks)
+            ods.get_defaults(default_file)
+            ods.add(new_tracks)
             ods.post_ods(odsfn)
         print(f"Writing ODS file: {odsfn}")
         self.write_obsinfo(obsinfofn, filter=filter)

@@ -38,7 +38,7 @@ class Observer:
         self.records = []  # on_track to be made out of ODS
         track= on_track.Track()
         self.embargo = tools.listify(kw['embargo'])
-        self.default_ods_default_file = op.join(DATA_PATH, 'defaults.json')
+        self.default_ods_default_file = op.join(DATA_PATH, 'ods_defaults_B.json')
         # Check for antenna file
         if kw['ants'][0] == ':':
             with open(kw['ants'][1:], 'r') as fp:
@@ -47,7 +47,7 @@ class Observer:
             if key in track.fields:
                 setattr(self, key, val)
 
-    def get_ods(self, ods_input, defaults='__defaults__'):
+    def get_ods(self, ods_input, defaults=None):
         """
         Read an ODS input and make dictionary based on start/end.
 
@@ -59,23 +59,22 @@ class Observer:
             Default values to use
 
         """
-        self.ods = ods_engine.ODS()
-        if ods_input.endswith('.json') or ods_input.startswith('http'):
-            if not self.ods.read_ods(ods_input):
-                logger.error("Unable to read ODS file")
-                self.groups = None
-                return
-        else:
-            self.ods.get_defaults_dict(defaults)
-            self.ods.add_from_file(ods_input)
+        defaults = defaults if defaults is not None else self.default_ods_default_file
+        self.ods = ods_engine.ODS(conlog='WARNING', defaults=defaults)
+        self.ods.add(ods_input)
         self.ods.ods['primary'].sort()
         self.groups = {}
+        group_keys = {}
         for entry in self.ods.ods['primary'].entries:
             key = (entry['src_start_utc'].datetime, entry['src_end_utc'].datetime)
             self.groups.setdefault(key, [])
             self.groups[key].append(entry)
+            group_keys[entry['src_start_utc'].datetime] = key
+        self.sorted_group_keys = []  # Sorted by start time -- assumes a fair bit of niceness in the groups list
+        for key in sorted(group_keys.keys()):
+            self.sorted_group_keys.append(group_keys[key])
 
-    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz', update_source_database=True):
+    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz', update_source_database=False):
         """
         Generate the obsnerd records based on an ods (as read in get_ods).
 
@@ -93,7 +92,8 @@ class Observer:
         if self.groups is None:
             logger.error("Unable to read ODS file")
             return
-        for entries in self.groups.values():
+        for group_key in self.sorted_group_keys:
+            entries = self.groups[group_key]
             rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                     ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
                                     time_per_int_sec=self.time_per_int_sec, coord='name', lo=self.lo)
@@ -108,9 +108,9 @@ class Observer:
                     new_entry = copy(entries[i])
                     new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
                     notes = on_sys.parse_ods_notes(entries[i])
-                    self.ods.add_new_record("OUTPUT_ALL", **new_entry)
+                    self.ods.add(**new_entry, instance_name="OUTPUT_ALL")
                     if notes['ods'] == 'True':
-                        self.ods.add_new_record("OUTPUT_ODS", **new_entry)
+                        self.ods.add(**new_entry, instance_name="OUTPUT_ODS")
                 else:  # Just check if different
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
@@ -169,7 +169,7 @@ class Observer:
         self.get_obs_from_ods(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
         self.ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
         if ods_assembly:
-            self.ods.assemble_ods(op.dirname(ods_rados), post_to=ods_upload, update_local=True, cull=['time', 'duplicate'])
+            self.ods.assemble_ods(op.dirname(ods_rados), post_to=ods_upload)
 
     def observe(self, is_actual=True, ods2use = 'ods_rados.json'):
         if not is_actual:

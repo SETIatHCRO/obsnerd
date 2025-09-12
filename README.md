@@ -16,6 +16,8 @@ The focus right now is to observe the Starlink Direct-to-Cell (DTC) satellites.
 ##Find satellites##
 Need to find and set up the satellites.  This is currently clumsily interactive.  The main problem is that THERE ARE SO MANY!
 
+Be sure to update the tle files.
+
 Set up the planning tool from with ipython and get 'tracks'
 
     from obsnerd import onp_plan

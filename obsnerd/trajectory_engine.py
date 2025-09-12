@@ -67,8 +67,7 @@ class Track:
         az = np.array(self.az, dtype=float)
         el = np.array(self.el, dtype=float)
         print("!!!!NEED TO GET DISTANCES FROM SOPP!!!! (OR from_file?)")
-        if self.name.startswith('Gal'):
-            self.ir = np.zeros(len(tai)) + 1E-20
+        self.ir = np.zeros(len(tai)) + 1E-20
         ephem = ((np.array([tai, az, el, self.ir], dtype=object)))
         self.ephemtxt = np.savetxt(filename, ephem.T, fmt='%i  %.5f  %.5f  %.10E')
 
