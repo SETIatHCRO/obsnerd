@@ -107,9 +107,8 @@ class Observer:
                         pars[par] = entries[i][par]
                     new_entry = copy(entries[i])
                     new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
-                    notes = on_sys.parse_ods_notes(entries[i])
                     self.ods.add(**new_entry, instance_name="OUTPUT_ALL")
-                    if notes['ods'] == 'True':
+                    if 'Make' in entries[i].get('version', 'Make'):  # Only add to OUTPUT_ODS if Make string in version, default to Make
                         self.ods.add(**new_entry, instance_name="OUTPUT_ODS")
                 else:  # Just check if different
                     for par in list(pars.keys()):
@@ -169,7 +168,7 @@ class Observer:
         self.get_obs_from_ods(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
         self.ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
         if ods_assembly:
-            self.ods.assemble_ods(op.dirname(ods_rados), post_to=ods_upload)
+            self.ods.assemble_ods(ods_rados, post_to=ods_upload)
 
     def observe(self, is_actual=True, ods2use = 'ods_rados.json'):
         if not is_actual:

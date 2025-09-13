@@ -276,7 +276,7 @@ class Plan:
             else:
                 istop = np.where(track.utc < tstop)[0][-1] + 1
             track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
-            ods_stat = 'True' if self.track_list[key]['use'] == 'y' else 'False'
+            ods_stat = 'Make' if self.track_list[key]['use'] == 'y' else 'Skip'
             for ff in self.freqs:
                 odict = {'src_id':f"{track.source}",
                          'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
@@ -285,7 +285,7 @@ class Plan:
                          'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
                          'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
                          'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz'),
-                         'version': "ODS2OBS"}
+                         'version': f"ODS2OBS:{ods_stat}"}
                 new_tracks.append(odict)
             mjd = track.utc[track.istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
@@ -299,7 +299,7 @@ class Plan:
             ods.post_ods(odsfn)
         print(f"Writing ODS file: {odsfn}")
         self.write_obsinfo(obsinfofn, filter=filter)
-        print("Copy the ods file up to obs-node1:./rfsoc_obs_scripts/p054/ods_rados.json.")
+        print("Copy the ods file:  scp ods_60931.json sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/ods_rados.json.")
 
     def write_obsinfo(self, obsinfofn, filter='__default__'):
         from astropy.coordinates import angular_separation

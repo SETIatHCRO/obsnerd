@@ -13,19 +13,6 @@ SLEW_SPEED = 1.5  # deg/sec
 ANT_LISTS = {'old_feeds': ['']}
 
 
-def parse_ods_notes(entry):
-    """
-    Parses notes and returns a dictionary with keys 'source', 'cnode', 'lo', 'obsid', 'mjd'.
-    """
-    if 'notes' not in entry:
-        return {}
-    data = {'ods': 'True'}  # default value to use ODS entry
-    for item in entry['notes'].split(';'):
-        if ':' in item:
-            key, val = item.split(':')
-            data[key.strip()] = val.strip()
-    return data
-
 def make_lo(lo):
     if lo.upper() not in ALL_LOS:
         raise ValueError(f"LO must be one of {ALL_LOS}")
