@@ -109,7 +109,7 @@ class Observer:
                     new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
                     self.ods.new_record(**new_entry, instance_name="OUTPUT_ALL")
                     if 'Make' in entries[i].get('version', 'Make'):  # Only add to OUTPUT_ODS if Make string in version, default to Make
-                        self.ods.new_entry(**new_entry, instance_name="OUTPUT_ODS")
+                        self.ods.new_record(**new_entry, instance_name="OUTPUT_ODS")
                 else:  # Just check if different
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
