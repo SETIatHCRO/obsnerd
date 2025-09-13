@@ -4,7 +4,8 @@ import argparse
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--add-to-calendar', dest='add_to_calendar', help="Add the observations to the calendar", action='store_true')
-ap.add_argument('--ods_rados', help="ODS file to use for ODS publishing", default='/opt/mnt/share/ods_project/ods_rados.json')
+ap.add_argument('--input-ods', dest='input_ods', help="Input ODS file to use for observation preparation", default='ods_rados.json')
+ap.add_argument('--ods-rados', dest='ods_rados', help="ODS file to use for ODS publishing", default='/opt/mnt/share/ods_project/ods_rados.json')
 ap.add_argument('--ods-upload', dest='ods_upload', help="ODS file to upload for TBA", default="/opt/mnt/share/ods_upload/ods.json")
 # Note the inverted logic...
 ap.add_argument('--skip-source-database', dest='update_source_database', help="[SKIP] Update the source database with the ODS entries", action='store_false')
@@ -14,7 +15,8 @@ args = ap.parse_args()
 # Initialize the observer
 observer = ono_observer.Observer(project_name='SatSpot', project_id='p054')
 observer.observe_prep(add_to_calendar=args.add_to_calendar,
-                     ods_rados=args.ods_rados,
-                     ods_upload=args.ods_upload,
-                     update_source_database=args.update_source_database,
-                     ods_assembly=args.ods_assembly)
+                      input_ods=args.input_ods,
+                      ods_rados=args.ods_rados,
+                      ods_upload=args.ods_upload,
+                      update_source_database=args.update_source_database,
+                      ods_assembly=args.ods_assembly)

@@ -160,11 +160,12 @@ class Observer:
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
     def observe_prep(self, add_to_calendar=False,
+                     input_ods = 'ods_rados.json',
                      ods_rados = "/opt/mnt/share/ods_project/ods_rados.json",
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
                      update_source_database=True,
                      ods_assembly=True):
-        self.get_ods(op.basename(ods_rados))
+        self.get_ods(input_ods)
         self.get_obs_from_ods(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
         self.ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
         if ods_assembly:
