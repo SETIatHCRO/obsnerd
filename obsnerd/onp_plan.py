@@ -299,7 +299,7 @@ class Plan:
             ods.post_ods(odsfn)
         print(f"Writing ODS file: {odsfn}")
         self.write_obsinfo(obsinfofn, filter=filter)
-        print(f"Copy the ods file:  scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/ods_rados.json")
+        print(f"Copy the ods file:  scp {odsfn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/ods_rados.json")
 
     def write_obsinfo(self, obsinfofn, filter='__default__'):
         from astropy.coordinates import angular_separation
