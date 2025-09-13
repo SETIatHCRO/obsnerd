@@ -3,7 +3,7 @@ from copy import copy
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
-from . import DATA_PATH, ono_engine, on_track, on_sys
+from . import DATA_PATH, ono_engine, on_track
 import astropy.units as u
 import os.path as op
 
