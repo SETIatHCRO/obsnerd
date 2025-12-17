@@ -18,7 +18,7 @@ DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LO
 SPACEX_LO = 1990 * u.MHz
 SPACEX_HI = 1995 * u.MHz
 
-ODS_URL = 'https://www.seti.org/sites/default/files/HCRO/ods.json'
+ODS_URL = 'https://ods.hcro.org/ods.json'
 
 class Observer:
     def __init__(self, **kwargs):
