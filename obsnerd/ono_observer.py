@@ -186,9 +186,9 @@ class Observer:
             if source.coord != 'name':
                 logger.error(f"Currently only support 'name' coord type, not '{self.coord}'")
                 continue
-            if not i: print(source.__repr__(use='header'))
+            if not i: print(source.__repr__(fprnt='header'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
-            print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(use='short')}")
+            print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(fprnt='short')}")
             print(f"freqs: {', '.join([str(x) for x in source.freq])}")
             these_freq = [x.to_value('MHz') for x in source.freq]
             self.obs.setrf(freq=these_freq, lo=source.lo, attenuation=source.attenuation)
