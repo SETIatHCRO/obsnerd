@@ -36,7 +36,7 @@ If you want to continue with that set,
 
     plan.proc_tracks()
 
-This will write two files **ods_\<MJD>.json** and **obsinfo_\<MJD>.json**
+This will write two files **ods_<MJD>.json** and **obsinfo_<MJD>.json**
 
 Check that they both look reasonable (primarily the ods file)
 

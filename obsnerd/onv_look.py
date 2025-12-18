@@ -136,6 +136,7 @@ class Look:
             self.read_a_uvh5(oinput)
         elif oinput.endswith('.npz'):
             self.read_an_npz(oinput)
+            self.obsrec_files = [oinput]
         elif oinput_is_mjd or oinput.endswith('.json'):  # Read in obsinfo file
             self.obs = on_track.read_obsinfo(oinput)
             print(f"Reading {self.obs.filename} into self.obs")
