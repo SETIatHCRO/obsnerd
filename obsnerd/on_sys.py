@@ -1,4 +1,7 @@
 from odsutils.ods_tools import listify
+from os import path as op
+from glob import glob
+
 
 ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
 ALL_LOS = ['A', 'B']
@@ -12,8 +15,9 @@ SLEW_SPEED = 1.5  # deg/sec
 
 ANT_LISTS = {'old_feeds': ['']}
 
-
 def make_lo(lo):
+    if lo is None:
+        return ''
     if lo.upper() not in ALL_LOS:
         raise ValueError(f"LO must be one of {ALL_LOS}")
     return lo.upper()
@@ -28,6 +32,154 @@ def make_cnode(cns):
         return [f"C{int(x):04d}" for x in cns]
     except ValueError:
         return cns
+
+
+class InputMetadata:
+    """
+    This holds metadata for a Look instance supplied input.
+
+    It does not track other attributes of the Look class.
+
+    From the README.md file:
+        source - a unique source name.
+        obsid - a unique observation identifier: <SOURCE>_<MJD{.5f}>
+        obsrec - a unique observation/hardware identifier: <OBSID>_<LO>_<CNODE>
+        obsrec file - the filename holding the obsrec information (generally <OBSREC>.npz note)
+        experiment - a session looking at sources (typically within an MJD day or two)
+        obsinfo - a file containing information on obsids for a given experiment: obsinfo_<MJD>.json
+
+    Parameters
+    ----------
+    oinput : str
+        oinput to parse
+
+    """
+    parameters = ['input', 'source', 'mjd', 'obsid', 'obsrec', 'obsinfo', 'input_type', 'is_file', 'lo', 'cnode']
+    def __init__(self, oinput):
+        for p in self.parameters:
+            setattr(self, p, None)
+        self.input = oinput
+        self.parse()
+
+    def __str__(self):
+        s = 'Metadata:\n'
+        for p in self.parameters:
+            s += f"  {p}: {getattr(self, p)}\n"
+        return s
+
+    def __repr__(self):
+        s = '<Metadata: '
+        for p in self.parameters:
+            s += f"{p}={getattr(self, p)}, "
+        s = s[:-2] + '>'
+        return s
+
+    def parse(self):
+        """
+        This parses the input to set obsid, source, mjd, obsrec_files.
+
+        Parameters
+        ----------
+        oinput : str
+            oinput to use to find obsid etc...
+
+        Attributes
+        ----------
+        obsid : str
+            ObsID found from input
+        source : str
+            Source name found from input
+        mjd : float
+            MJD found from input
+        obsrec_files : list of str
+            List of obsrec files found from input
+        """
+        if self.input is None:
+            self.input_type = None
+            return
+        try:
+            self.mjd = float(self.input)
+            self.input_type = 'mjd'
+            return
+        except (ValueError, TypeError):
+            pass
+        if self.input.endswith('.uvh5'):
+            self.is_file = True
+            self.input_type = 'uvh5'
+            for k, v in  parse_uvh5_filename(self.input).items():
+                setattr(self, k, v)
+        elif self.input.endswith('.npz'):
+            self.is_file = True
+            self.input_type = 'npz'
+            for k, v in  split_obsrec(self.input).items():
+                setattr(self, k, v)
+        elif self.input.startswith('obsinfo') or self.input.endswith('.json'):
+            self.is_file = True
+            self.input_type = 'obsinfo'
+            if not self.input.endswith('.json'):
+                self.obsinfo = f"{self.input}.json"
+            self.mjd =  self.obsinfo[:-5].split('_')[-1]
+        else:  # obsid or source or obsrec
+            data = self.input.split('_')
+            if len(data) == 4:
+                self.input_type = 'obsrec'
+                for k, v in  split_obsrec(self.input).items():
+                    setattr(self, k, v)
+            elif len(data) == 2:
+                self.input_type = 'obsid'
+                self.source, self.mjd =  split_obsid(self.input)
+                self.obsid = self.input
+            else:
+                self.input_type = 'source'
+                self.source = self.input
+        try:
+            self.mjd = float(self.mjd)
+        except (ValueError, TypeError):
+            pass
+
+
+def get_obsinfo_filename_from_oinput(oinput):
+    """
+    Get the obsinfo filename from an input.
+    This function tries to determine the obsinfo filename based on the input provided.
+
+    Parameters
+    ----------
+    oinput : str
+        Either an obsid, mjd or an obsinfo filename.
+
+    """
+    meta = InputMetadata(oinput)
+    if meta.input_type == 'obsinfo':
+        if op.exists(meta.obsinfo):
+            return meta.obsinfo
+        return None
+    if meta.mjd is None:
+        return None
+    for p in range(len(oinput)+1, 0, -1):
+        mjd_option = f"obsinfo_{meta.mjd:.{p}f}.json"
+        if op.exists(mjd_option):
+            return mjd_option
+    return None
+
+
+def get_obsid_from_source(source, data_dir='.'):
+    """
+    Get the obsid from a source.
+ 
+    Parameters
+    ----------
+    source : str
+        Source name.
+    data_dir : str
+        Directory where the data is stored.
+
+    """
+    for npzfnfp in glob(f'{data_dir}/*.npz'):
+        npzfn = op.basename(npzfnfp)
+        if source in npzfn:
+            return  split_obsrec(npzfn)['obsid'] 
+    return None
 
 
 def make_obsid(source, mjd):

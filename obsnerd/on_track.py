@@ -1,64 +1,9 @@
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
-from os import path as op
 import numpy as np
 from . import on_sys
 from argparse import Namespace
 import json
-from numpy import floor
-import astropy.units as u
-from glob import glob
-
-
-def get_obsinfo_filename_from_oinput(oinput):
-    """
-    Get the obsinfo filename from an input.
-    This function tries to determine the obsinfo filename based on the input provided.
-
-    Parameters
-    ----------
-    oinput : str
-        Either an obsid, mjd or an obsinfo filename.
-
-    """
-    if oinput.endswith('.json'):
-        if op.exists(oinput):
-            return oinput
-        return None
-    try:
-        oinput_is_mjd = float(oinput)
-        mjd_options = [f"obsinfo_{oinput_is_mjd:.5f}.json",
-                       f"obsinfo_{floor(oinput_is_mjd):.0f}.json",
-                       f"obsinfo_{floor(oinput_is_mjd)-1:.0f}.json"]
-        for mjd_option in mjd_options:
-            if op.exists(mjd_option):
-                return mjd_option
-        return None
-    except (ValueError, TypeError):
-        pass
-    _, mjd = on_sys.split_obsid(oinput)
-    if mjd is not None:
-        return get_obsinfo_filename_from_mjd(str(mjd))
-    return None
-
-
-def get_obsid_from_source(source, data_dir='.'):
-    """
-    Get the obsid from a source.
-
-    Parameters
-    ----------
-    source : str
-        Source name.
-    data_dir : str
-        Directory where the data is stored.
-
-    """
-    for npzfnfp in glob(f'{data_dir}/*.npz'):
-        npzfn = op.basename(npzfnfp)
-        if source in npzfn:
-            return on_sys.split_obsrec(npzfn)['obsid'] 
-    return None
 
 
 def read_obsinfo(oinput):
@@ -71,7 +16,7 @@ def read_obsinfo(oinput):
         Input to be read -- see get_obsinfo_from_oinput
 
     """
-    filename = get_obsinfo_filename_from_oinput(oinput)
+    filename = on_sys.get_obsinfo_filename_from_oinput(oinput)
     if filename is None:
         return Namespace(filename=None, sources={})
     obsinfo = Namespace(filename=filename, sources={})
@@ -90,6 +35,7 @@ def read_obsinfo(oinput):
             except KeyError:
                 pass
     return obsinfo
+
 
 class Track:
     fields = [

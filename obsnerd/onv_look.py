@@ -32,6 +32,8 @@ class Filter:
         self.norm = norm
         self.color = color
         self.shape = 'rect'  # only option for now
+        if shape != 'rect':
+            print("Only 'rect' shape is supported currently.")
         self.invert = invert
 
     def __str__(self):
@@ -89,10 +91,10 @@ class Filter:
 
 
 class Look:
-    def __init__(self, oinput=None, lo='A', cnode='all', freq_unit='MHz'):
+    def __init__(self, oinput=None, lo=None, cnode=None, freq_unit='MHz'):
         """
         This initializes the Look class.  Generally will then use "get" to read in or prep data.
-
+        
         Parameters
         ----------
         lo : str
@@ -103,8 +105,21 @@ class Look:
             Frequency unit
 
         """
+        self.meta = on_sys.InputMetadata(oinput)
         self.lo = on_sys.make_lo(lo)
+        if self.meta.lo is not None:
+            if len(self.lo):
+                if self.lo != self.meta.lo:
+                    raise ValueError(f"LO mismatch: {self.lo} != {self.meta.lo}")
+            else:
+                self.lo = self.meta.lo
         self.cnode = on_sys.make_cnode(cnode)
+        if self.meta.cnode is not None:
+            if len(self.cnode):
+                if set(self.cnode) != set(self.meta.cnode):
+                    raise ValueError(f"Cnode mismatch: {self.cnode} != {self.meta.cnode}")
+            else:
+                self.cnode = [self.meta.cnode]
         self.freq_unit = freq_unit
         self.npzfile = {}
         self.freqs = []
@@ -124,20 +139,13 @@ class Look:
          - source name (str with files in obs.dir_data)
 
         """
-        # Some pre-processing
-        if oinput is None:
-            return
-        try:
-            oinput_is_mjd = float(oinput)
-        except (ValueError, TypeError):
-            oinput_is_mjd = False
         # Now get info
-        if oinput.endswith('.uvh5'):
+        if self.meta.input_type == 'uvh5':
             self.read_a_uvh5(oinput)
-        elif oinput.endswith('.npz'):
+        elif self.meta.input_type == 'npz':
             self.read_an_npz(oinput)
             self.obsrec_files = [oinput]
-        elif oinput_is_mjd or oinput.endswith('.json'):  # Read in obsinfo file
+        elif self.meta.input_type in ['mjd', 'json']:  # Read in obsinfo file
             self.obs = on_track.read_obsinfo(oinput)
             print(f"Reading {self.obs.filename} into self.obs")
             self.found_obsids = []
@@ -171,12 +179,12 @@ class Look:
                 self.read_an_npz(obsrec)
             else:
                 print(f"Invalid file {obsrec}")
-        if self.file_type == 'npz':
+        if self.meta.input_type == 'npz':
             self.freqs = [f.to_value(self.freq_unit) for f in self.freqs]
 
     def read_a_uvh5(self, fn):
         print(f"Reading {fn}")
-        self.file_type = 'uvh5'
+        self.meta.input_type = 'uvh5'
         self.uvh5_pieces = on_sys.parse_uvh5_filename(fn)
         self.fn = fn
         self.source = self.uvh5_pieces['source']
@@ -212,7 +220,7 @@ class Look:
             List of observation time stamps - gets overwritten very time
 
         """
-        self.file_type = 'npz'
+        self.meta.input_type = 'npz'
         try:
             self.fn = path.join(self.obs.dir_data, obsrec_file)
         except AttributeError:
@@ -272,18 +280,18 @@ class Look:
         if self.b is None:
             self.b = self.a
         is_auto = (self.a == self.b)
-        if self.file_type == 'npz' and not is_auto:
+        if self.meta.input_type == 'npz' and not is_auto:
             raise ValueError("For no good reason I've limited npz files to autos only")
         print(f"Reading ({self.a},{self.b}){self.pol}", end='')
         dataf = []
-        if self.file_type == 'uvh5':  # Only one file
+        if self.meta.input_type == 'uvh5':  # Only one file
             self.ano = self.ant_map[self.a]
             self.bno = self.ant_map[self.b]
             self.data = self.uv.get_data(self.ano, self.bno, pol)
             if is_auto and auto_as_abs:
                 self.data = np.abs(self.data)
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
-        elif self.file_type == 'npz':
+        elif self.meta.input_type == 'npz':
             for obsrec_file in self.obsrec_files:
                 if self.npzfile[obsrec_file] is None:
                     continue
