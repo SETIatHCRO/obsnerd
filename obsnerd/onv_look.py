@@ -116,7 +116,7 @@ class Look:
         self.cnode = on_sys.make_cnode(cnode)
         if self.meta.cnode is not None:
             if len(self.cnode):
-                if set(self.cnode) != set(self.meta.cnode):
+                if set(self.cnode) != set([self.meta.cnode]):
                     raise ValueError(f"Cnode mismatch: {self.cnode} != {self.meta.cnode}")
             else:
                 self.cnode = [self.meta.cnode]
@@ -274,6 +274,8 @@ class Look:
             Maximum value
 
         """
+        if isinstance(self.freqs, list):
+            self.freqs = u.Quantity(self.freqs)
         self.a = a
         self.b = b
         self.pol = pol
@@ -590,7 +592,7 @@ class Look:
             plt.savefig(fn)
 
     def plot_wf(self, plotting='amplitude', use_dB=True):
-        ptitle = (f'WF: {self.obsid} - ({self.a},{self.b}){self.pol}')
+        ptitle = (f'WF: {self.meta.obsid} - ({self.a},{self.b}){self.pol}')
         fig, ax = plt.subplots()
         ax.set_title(ptitle)
         if plotting[0].lower() == 'a':
@@ -599,12 +601,12 @@ class Look:
         ax.set_aspect('auto')
 
     def plot_freqs(self, use_dB=True):
-        plt.figure(f'Freqs: {self.obsid} - ({self.a}, {self.b})')
+        plt.figure(f'Freqs: {self.meta.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.times)):
-            plt.plot(self.freqs, toMag(self.data[i], use_dB))        
+            plt.plot(self.freqs, toMag(self.data[i], use_dB)) 
         plt.xlabel(self.freq_unit)
     
     def plot_times(self, use_dB=True):
-        plt.figure(f'Times: {self.obsid} - ({self.a}, {self.b})')
+        plt.figure(f'Times: {self.meta.obsid} - ({self.a}, {self.b})')
         for i in range(len(self.freqs)):
             plt.plot(self.times.datetime, toMag(self.data[:, i], use_dB))
