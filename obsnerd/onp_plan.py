@@ -58,7 +58,7 @@ class Plan:
         lst = f"{int(self.this_cal.current_lst.hms.h):02d}:{int(self.this_cal.current_lst.hms.m):02d}:{int(self.this_cal.current_lst.hms.s):02d}"
         logger.info(f"Current LST:  {lst}")
 
-    def test_obs(self, az, el, freq=[1990.0, 5990.0], start_in_sec=10*60, obs_len_sec=8 * 60):
+    def test_obs(self, az, el, freq=[1990.0, 1990.0, 5990.0, 2400.0], start_in_sec=10*60, obs_len_sec=8 * 60):
         """
         Schedule a test observation.
 
@@ -278,6 +278,7 @@ class Plan:
             track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
             ods_stat = 'Make' if self.track_list[key]['use'] == 'y' else 'Skip'
             for ff in self.freqs:
+                print(track.source, ff)
                 odict = {'src_id':f"{track.source}",
                          'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
                          'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),

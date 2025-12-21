@@ -13,7 +13,7 @@ from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': ':ant_file.dat', 'embargo': [],
-            'lo': ['A', 'B'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
+            'lo': ['A', 'B', 'C', 'D'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
 
 SPACEX_LO = 1990 * u.MHz
 SPACEX_HI = 1995 * u.MHz
