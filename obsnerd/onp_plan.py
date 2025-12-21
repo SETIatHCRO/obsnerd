@@ -11,10 +11,13 @@ import json
 from copy import copy
 import numpy as np
 from os.path import join as opjoin
+from os.path import exists as opexists
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
+
+FREQ_INPUT_FILE = 'freqs_input.txt'
 
 
 import colorsys
@@ -38,18 +41,26 @@ def generate_colors(n):
     return colors
 
 class Plan:
-    def __init__(self, conlog='INFO', filelog=False, path='', loc='ata'):
+    def __init__(self, freqs=None, bandwidth=100.0, conlog='INFO', filelog=False, path='', loc='ata'):
         self.location = locations.Location(name=loc)
         self.log_settings = logger_setup.Logger(logger, conlog=conlog, filelog=filelog, log_filename=LOG_FILENAME, path=path,
                                                 conlog_format=LOG_FORMATS['conlog_format'], filelog_format=LOG_FORMATS['filelog_format'])
         logger.info(f"{__name__} ver. {__version__}")
         self.minimum_duration = TimeDelta(0.0, format='sec')
         self.freqs = None
-        self.tracks = {}
-        self.bandwidth = None
+        if freqs is None:
+            if opexists(FREQ_INPUT_FILE):
+                with open(FREQ_INPUT_FILE, 'r') as fp:
+                    self.freqs = [float(line.strip()) * u.MHz for line in fp if line.strip() and not line.startswith('#')]
+            else:
+                raise ValueError(f"No frequencies provided and {FREQ_INPUT_FILE} not found.")
+        else:
+            self.freqs = [f * u.MHz for f in freqs]
+        self.bandwidth = bandwidth * u.MHz
         self.el_limit = None
         self.default_ods_default_file = opjoin(DATA_PATH, 'ods_defaults_B.json')
         self.default_filter_file = opjoin(DATA_PATH, 'filters.json')
+        self.tracks = {}
 
     def setupcal(self):
         self.this_cal = aocalendar.Calendar(calfile='now', path=self.log_settings.path, conlog=self.log_settings.conlog,
@@ -58,9 +69,9 @@ class Plan:
         lst = f"{int(self.this_cal.current_lst.hms.h):02d}:{int(self.this_cal.current_lst.hms.m):02d}:{int(self.this_cal.current_lst.hms.s):02d}"
         logger.info(f"Current LST:  {lst}")
 
-    def test_obs(self, az, el, freq=[1990.0, 1990.0, 5990.0, 2400.0], start_in_sec=10*60, obs_len_sec=8 * 60):
+    def test_obs(self, az, el, freq=[1990.0, 1999.0, 1981.0, 2400.0], start_in_sec=10*60, obs_len_sec=8 * 60):
         """
-        Schedule a test observation.
+        Schedule a test observation.  HASN'T BEEN UPDATED YET -- DON't USE.
 
         Parameters
         ----------
@@ -92,8 +103,7 @@ class Plan:
         self.this_cal.ods.view_ods()
         self.this_cal.ods.post_ods('test_ods.json')
 
-    def get_tracks(self, satname, start, duration, freqs=[1990.0, 1990.0, 5990.0, 2400.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0,
-                   DTC_only=True, time_resolution=10, source='sopp'):
+    def get_tracks(self, satname, start, duration, el_limit=15.0, DTC_only=True, time_resolution=10, source='sopp'):
         """
         Get satellite tracks for satellites regex-found from 'satname'.
 
@@ -105,10 +115,6 @@ class Plan:
             Start time of the observation (UTC)
         duration : float
             Duration of the observation (minutes)
-        freqs : list, optional
-            Frequencies to observe, by default [1990.0, 5990.0] (currently ignored in search)
-        bandwidth : float, optional
-            Bandwidth of the observation, by default 100.0
         freq_unit : str, optional
             Frequency unit, by default 'MHz'
         el_limit : float, optional
@@ -121,14 +127,6 @@ class Plan:
             Source of satellite data, by default 'sopp'
 
         """
-        if self.freqs is None:
-            self.freqs = [f * u.Unit(freq_unit) for f in freqs]
-        else:
-            logger.warning(f"Using freqs: {self.freqs}")
-        if self.bandwidth is None:
-            self.bandwidth = bandwidth * u.Unit(freq_unit)
-        else:
-            logger.warning(f"Using bandwidth: {self.bandwidth}")
         if self.el_limit is None:
             self.el_limit = el_limit * u.deg
         else:

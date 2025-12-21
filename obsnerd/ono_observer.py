@@ -120,6 +120,7 @@ class Observer:
                 ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             rec.proc()
             self.records.append(rec)
+            print(rec)
         self.get_overall()
         if add_to_calendar:
             self.update_calendar()
