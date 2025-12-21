@@ -92,6 +92,7 @@ class Observer:
         if self.groups is None:
             logger.error("Unable to read ODS file")
             return
+        ctr = 0
         for group_key in self.sorted_group_keys:
             entries = self.groups[group_key]
             rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
@@ -120,7 +121,10 @@ class Observer:
                 ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             rec.proc()
             self.records.append(rec)
+            ctr += 1
+            print(f"Generated observer record. {ctr}======================================================")
             print(rec)
+            print("===============================================================================")
         self.get_overall()
         if add_to_calendar:
             self.update_calendar()
