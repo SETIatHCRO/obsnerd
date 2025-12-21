@@ -92,7 +92,7 @@ class Plan:
         self.this_cal.ods.view_ods()
         self.this_cal.ods.post_ods('test_ods.json')
 
-    def get_tracks(self, satname, start, duration, freqs=[1990.0, 5990.0, 1990.0, 2400.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0,
+    def get_tracks(self, satname, start, duration, freqs=[1990.0, 1990.0, 5990.0, 2400.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0,
                    DTC_only=True, time_resolution=10, source='sopp'):
         """
         Get satellite tracks for satellites regex-found from 'satname'.
