@@ -185,7 +185,7 @@ class Plan:
         plt.axis(ymin=axlim[2], ymax=axlim[3])
         plt.legend()
 
-    def choose_tracks(self, auto=True, obslen_min=8, obsel_deg=25):
+    def choose_tracks(self, auto=True, obslen_min=8, obsel_deg=25, keyhole_deg=86.0):
         """
         Interactive chooser of tracks to use -- edits the Track instances.
 
@@ -195,8 +195,10 @@ class Plan:
             If True, automatically choose tracks, by default False
         obslen_min : float
             Observation length in minutes, by default 8
-        obsel_min : float
-            Minimum el_limit to show in degrees, by default 15
+        obsel_deg : float
+            Minimum el_limit to show in degrees, by default 25
+        keyhole_deg : float
+            Keyhole angle in degrees, by default 86.0
 
         """
         self.auto = auto
@@ -224,7 +226,7 @@ class Plan:
         last_one = ttools.interpret_date('yesterday')
         for key in sorted(self.track_list.keys()):
             track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
-            if track.el[track.imax].to_value('deg') < obsel_deg:
+            if track.el[track.imax].to_value('deg') < obsel_deg or track.el[track.imax].to_value('deg') > keyhole_deg:
                 continue
             ind = track.imax
             if auto:
