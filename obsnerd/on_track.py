@@ -6,17 +6,16 @@ from argparse import Namespace
 import json
 
 
-def read_obsinfo(oinput):
+def read_obsinfo(filename):
     """
     Read an obsinfo file.
 
     Parameters
     ----------
-    oinput : str
-        Input to be read -- see get_obsinfo_from_oinput
+    filename : str
+        Filename of the obsinfo file to be read
 
     """
-    filename = on_sys.get_obsinfo_filename_from_oinput(oinput)
     if filename is None:
         return Namespace(filename=None, sources={})
     obsinfo = Namespace(filename=filename, sources={})

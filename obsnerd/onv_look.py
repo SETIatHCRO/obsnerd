@@ -91,12 +91,14 @@ class Filter:
 
 
 class Look:
-    def __init__(self, oinput=None, lo=None, cnode=None, freq_unit='MHz'):
+    def __init__(self, oinput=None, lo='A', cnode='all', freq_unit='MHz'):
         """
-        This initializes the Look class.  Generally will then use "get" to read in or prep data.
+        This initializes the Look class and reads in the input.
         
         Parameters
         ----------
+        oinput : str
+            oinput is one of:  npz file, uvh5 file, obsrec, obsid -- currently not source or obsinfo
         lo : str
             LO designation
         cnode : str
@@ -106,20 +108,12 @@ class Look:
 
         """
         self.meta = on_sys.InputMetadata(oinput)
-        self.lo = on_sys.make_lo(lo)
-        if self.meta.lo is not None:
-            if len(self.lo):
-                if self.lo != self.meta.lo:
-                    raise ValueError(f"LO mismatch: {self.lo} != {self.meta.lo}")
-            else:
-                self.lo = self.meta.lo
-        self.cnode = on_sys.make_cnode(cnode)
-        if self.meta.cnode is not None:
-            if len(self.cnode):
-                if set(self.cnode) != set([self.meta.cnode]):
-                    raise ValueError(f"Cnode mismatch: {self.cnode} != {self.meta.cnode}")
-            else:
-                self.cnode = [self.meta.cnode]
+        if self.meta.input_type == 'obsid':    
+            self.lo = on_sys.make_lo(lo)
+            self.cnode = on_sys.make_cnode(cnode)
+        else:
+            self.lo = self.meta.lo
+            self.cnode = [self.meta.cnode]
         self.freq_unit = freq_unit
         self.npzfile = {}
         self.freqs = []
@@ -131,44 +125,33 @@ class Look:
         """
         This reads in the input and sets up the class for further processing.
 
+        Sets up the obsrec_files and obsinfo as available.  Although it can accommodate multiple obsids it only does one.
+
         Input may be one of the following:
          - uvh5 file (.uvh5)
          - npz file (.npz)
-         - obsinfo filename (.json or mjd)
+         - obrec (str parseable into source/mjd/lo/cnode)
          - obsid (str parseable into source/mjd)
-         - source name (str with files in obs.dir_data)
 
         """
         # Now get info
+        self.meta.obsinfo = on_sys.get_obsinfo_filename_from_oinput(oinput)
+        self.obs = on_track.read_obsinfo(self.meta.obsinfo)
         if self.meta.input_type == 'uvh5':
-            self.read_a_uvh5(oinput)
+            self.obsrec_files = {self.meta.source: [oinput]}
         elif self.meta.input_type == 'npz':
-            self.read_an_npz(oinput)
-            self.obsrec_files = {self.meta.obsid: oinput}
-        elif self.meta.input_type in ['mjd', 'obsinfo']:  # Read in obsinfo file
-            self.obs = on_track.read_obsinfo(self.meta.obsinfo)
-            print(f"Reading {self.obs.filename} into self.obs")
-            self.obsrec_files = {}
-            for source in self.obs.sources:
-                self.obsrec_files[self.obs.sources[source].obsid] = [f"{self.obs.sources[source].obsid}_{self.lo}_{x}.npz" for x in self.cnode]
-        else:  # This is an obsid or source, and want to end up with obsid, source, mjd
-            dir_data = DEFAULT_DATA_DIR if self.obs is None else self.obs.dir_data
-            _source, self.mjd = on_sys.split_obsid(oinput)
-            self.source = oinput if self.mjd is None else _source
-            self.obsid = on_track.get_obsid_from_source(self.source, dir_data) if self.mjd is None else oinput
-            if self.obsid is None:
-                print(f"Couldn't find obsid from {self.source} in {dir_data}")
-                return
-            else:
-                self.source, self.mjd = on_sys.split_obsid(self.obsid)
-            print(f"Setting obsrec_files for {self.obsid}")
-            self.obsrec_files = [] if self.obsid is None else [f"{self.obsid}_{self.lo}_{x}.npz" for x in self.cnode]
-            if self.obs is None:
-                self.get(str(self.mjd))
+            self.obsrec_files = {self.meta.source: [oinput]}
+        elif self.meta.input_type == 'obsrec':
+            self.obsrec_files = {self.meta.source: [f"{oinput}.npz"]}
+        elif self.meta.input_type == 'obsid':
+            self.obsrec_files = {self.meta.source: [f"{self.meta.obsid}_{self.lo}_{x}.npz" for x in self.cnode]}
+        else:
+            raise ValueError(f"Invalid input type: {self.meta.input_type}")
+        self.read_in_files(self.meta.source)
 
-    def read_in_files(self):
+    def read_in_files(self, source):
         self.freqs = []
-        for obsrec in self.obsrec_files:
+        for obsrec in self.obsrec_files[source]:
             if obsrec.endswith('.uvh5'):
                 self.read_a_uvh5(obsrec)
                 if len(self.obsrec_files) > 1:
@@ -186,7 +169,6 @@ class Look:
         self.meta.input_type = 'uvh5'
         self.uvh5_pieces = on_sys.parse_uvh5_filename(fn)
         self.fn = fn
-        self.source = self.uvh5_pieces['source']
         self.uv = UVData()
         self.uv.read(self.fn)
         self.ant_numbers = self.uv.get_ants()
@@ -281,7 +263,7 @@ class Look:
         if self.b is None:
             self.b = self.a
         is_auto = (self.a == self.b)
-        if self.meta.input_type == 'npz' and not is_auto:
+        if self.meta.input_type in ['npz', 'obsrec'] and not is_auto:
             raise ValueError("For no good reason I've limited npz files to autos only")
         print(f"Reading ({self.a},{self.b}){self.pol}", end='')
         dataf = []
@@ -293,7 +275,7 @@ class Look:
                 self.data = np.abs(self.data)
             self.times = Time(self.uv.get_times(self.ano, self.bno), format='jd')
         elif self.meta.input_type == 'npz':
-            for obsrec_file in self.obsrec_files:
+            for obsrec_file in self.obsrec_files[self.meta.source]:
                 if self.npzfile[obsrec_file] is None:
                     continue
                 if f"{self.a}{pol}" not in self.npzfile[obsrec_file].keys():
@@ -446,12 +428,11 @@ class Look:
         kwargs : use_dB, save, t_wfticks, f_wfticks, zoom_time, zoom_freq, filter_time
     
         """
-        self.read_in_files()
         if self.obs is None:
             print("No obsinfo found -- limited options.")
         else:
-            self.this_source = self.obs.sources[self.source]
-        print(f"Dashboard for {self.obsid} - ({ant},{pol})")
+            self.this_source = self.obs.sources[self.meta.source]
+        print(f"Dashboard for {self.meta.obsid} - ({ant},{pol})")
         D = {'use_dB': True, 'save': False, 't_wfticks': 8, 'f_wfticks': 8, 'log': False,
              'zoom_time': False, 'zoom_freq': False, 'filter_time': {}, 'show_diff': False}
         D.update(kwargs)
@@ -483,7 +464,7 @@ class Look:
 
         plt.figure('Dashboard', figsize=(16, 9))
         #, gridspec_kw={'width_ratios': [3, 1]}
-        self.suptitle = f"{self.obsid}: {self.this_source.utc.datetime.isoformat(timespec='seconds')}"
+        self.suptitle = f"{self.meta.obsid}: {self.this_source.utc.datetime.isoformat(timespec='seconds')}"
         self.suptitle += f'  --  ({self.a},{self.b}) {self.pol}'
         plt.suptitle(self.suptitle)
         axwf = plt.subplot2grid((2, 2), (0, 0), rowspan=2, colspan=1)
@@ -552,7 +533,7 @@ class Look:
         else:
             axf.set_xlim(left=self.freqs[0], right=self.freqs[-1])
 
-        fn = f"{self.obsid}_{self.lo}_{ant}_{pol}_{time_axis}.png"
+        fn = f"{self.meta.obsid}_{self.lo}_{ant}_{pol}_{time_axis}.png"
         if D['save']:
             plt.savefig(fn)
 
@@ -585,9 +566,9 @@ class Look:
                 axs[i][j].set_xticks([])
                 axs[i][j].set_yticks([])
                 ctr += 1
-        fig.suptitle(f"{self.obsid}:{pol}")
+        fig.suptitle(f"{self.meta.obsid}:{pol}")
         if save:
-            fn = f"{self.obsid}_{pol}.png"
+            fn = f"{self.meta.obsid}_{pol}.png"
             plt.savefig(fn)
 
     def plot_wf(self, plotting='amplitude', use_dB=True):

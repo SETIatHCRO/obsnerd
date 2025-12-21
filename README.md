@@ -22,9 +22,9 @@ Set up the planning tool from with ipython and get 'tracks'
 
     from obsnerd import onp_plan
     plan = onp_plan.Plan()
-    plan.get_tracks(satname='some-search-string', start='now+30m', duration=number_of_minutes)
+    plan.get_tracks(satname='some-search-string', start='now+20m', duration=number_of_minutes)
 
-For example `plan.get_tracks(satname='*', start='now+30m', duration=2*60)`
+For example `plan.get_tracks(satname='*', start='now+20m', duration=60)`
 
 You can get more tracks using `get_tracks` again
 

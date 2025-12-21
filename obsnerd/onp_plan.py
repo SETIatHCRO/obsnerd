@@ -92,7 +92,7 @@ class Plan:
         self.this_cal.ods.view_ods()
         self.this_cal.ods.post_ods('test_ods.json')
 
-    def get_tracks(self, satname, start, duration, freqs=[1990.0, 5990.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0,
+    def get_tracks(self, satname, start, duration, freqs=[1990.0, 5990.0, 1990.0, 2400.0], bandwidth=100.0, freq_unit='MHz', el_limit=15.0,
                    DTC_only=True, time_resolution=10, source='sopp'):
         """
         Get satellite tracks for satellites regex-found from 'satname'.
@@ -245,7 +245,7 @@ class Plan:
                 print(f"\t{track.use_def[track.use]} {track.source} at {track.utc[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
         print("Now run  plan.proc_tracks() to write the ODS file and obsinfo.json file.")
 
-    def proc_tracks(self, defaults='__default__', filter='__default__'):
+    def proc_tracks(self, defaults='__default__', decimal_places=1, filter='__default__'):
         """
         After choosing tracks, write the ODS file and the obsinfo.json file.
 
@@ -290,11 +290,9 @@ class Plan:
             mjd = track.utc[track.istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
                 self.start_mjd = copy(mjd)
-        precision = 10.0
-        pdig = 1
-        smjd = f"{np.floor(self.start_mjd * precision)/precision:.{pdig}f}"
+        smjd = on_sys.make_mjd_for_filename(self.start_mjd, decimal_places=decimal_places)
         odsfn = f"ods_{smjd}.json"
-        obsinfofn = f"obsinfo_{smjd}.json"
+        obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
         with ods_engine.ODS() as ods:
             ods.get_defaults(default_file)
             ods.add(new_tracks)

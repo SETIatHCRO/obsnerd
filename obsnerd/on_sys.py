@@ -158,9 +158,8 @@ def get_obsinfo_filename_from_oinput(oinput):
         return None
     if meta.mjd is None:
         return None
-    for p in range(len(oinput)+1, 0, -1):
-        mjd_option = f"obsinfo_{meta.mjd:.{p}f}.json"
-        print(f"Checking for obsinfo file: {mjd_option}")
+    for p in range(len(oinput)-5, 0, -1):
+        mjd_option = make_obsinfo_filename(meta.mjd, decimal_places=p)
         if op.exists(mjd_option):
             return mjd_option
     return None
@@ -185,8 +184,21 @@ def get_obsid_from_source(source, data_dir='.'):
     return None
 
 
-def make_obsid(source, mjd):
-    return f"{source}_{float(mjd):.5f}"
+def make_obsid(source, mjd, decimal_places=5):
+    smjd = make_mjd_for_filename(mjd, decimal_places=decimal_places)
+    return f"{source}_{smjd}"
+
+
+def make_obsinfo_filename(mjd, decimal_places=1):
+    smjd = make_mjd_for_filename(mjd, decimal_places=decimal_places)
+    return f"obsinfo_{smjd}.json"
+
+
+def make_mjd_for_filename(mjd, decimal_places=5):
+    from numpy import floor
+    mult = 10 ** decimal_places
+    mjd = int(floor(mjd * mult)) / mult
+    return f"{float(mjd):.{decimal_places}f}"
 
 
 def split_obsid(obsid):
