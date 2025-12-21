@@ -144,14 +144,13 @@ class Look:
             self.read_a_uvh5(oinput)
         elif self.meta.input_type == 'npz':
             self.read_an_npz(oinput)
-            self.obsrec_files = [oinput]
-        elif self.meta.input_type in ['mjd', 'json']:  # Read in obsinfo file
-            self.obs = on_track.read_obsinfo(oinput)
+            self.obsrec_files = {self.meta.obsid: oinput}
+        elif self.meta.input_type in ['mjd', 'obsinfo']:  # Read in obsinfo file
+            self.obs = on_track.read_obsinfo(self.meta.obsinfo)
             print(f"Reading {self.obs.filename} into self.obs")
-            self.found_obsids = []
+            self.obsrec_files = {}
             for source in self.obs.sources:
-                self.found_obsids.append(self.obs.sources[source].obsid)
-            print("Found obsids:  ", ', '.join(self.found_obsids))
+                self.obsrec_files[self.obs.sources[source].obsid] = [f"{self.obs.sources[source].obsid}_{self.lo}_{x}.npz" for x in self.cnode]
         else:  # This is an obsid or source, and want to end up with obsid, source, mjd
             dir_data = DEFAULT_DATA_DIR if self.obs is None else self.obs.dir_data
             _source, self.mjd = on_sys.split_obsid(oinput)

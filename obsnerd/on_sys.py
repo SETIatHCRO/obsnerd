@@ -118,6 +118,8 @@ class InputMetadata:
             self.input_type = 'obsinfo'
             if not self.input.endswith('.json'):
                 self.obsinfo = f"{self.input}.json"
+            else:
+                self.obsinfo = self.input
             self.mjd =  self.obsinfo[:-5].split('_')[-1]
         else:  # obsid or source or obsrec
             data = self.input.split('_')
@@ -158,6 +160,7 @@ def get_obsinfo_filename_from_oinput(oinput):
         return None
     for p in range(len(oinput)+1, 0, -1):
         mjd_option = f"obsinfo_{meta.mjd:.{p}f}.json"
+        print(f"Checking for obsinfo file: {mjd_option}")
         if op.exists(mjd_option):
             return mjd_option
     return None

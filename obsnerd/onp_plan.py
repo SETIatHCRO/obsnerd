@@ -151,7 +151,7 @@ class Plan:
         else:
             logger.error(f"Unknown source: {source}")
             return
-        print("Now run <>.choose_tracks() to select tracks for observation.")
+        print("Now run  plan.choose_tracks(auto=True) to select tracks for observation.")
 
     def plot_track_summary(self, satname='all', show_az_transit_track=False):
         line_styles = ['-', '--', '-.', ':']
@@ -243,7 +243,7 @@ class Plan:
                 track.set_par(iobs=ind, use=self.track_list[key]['use'])
                 plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
                 print(f"\t{track.use_def[track.use]} {track.source} at {track.utc[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
-        print("Now run <>.proc_tracks() to write the ODS file and obsinfo.json file.")
+        print("Now run  plan.proc_tracks() to write the ODS file and obsinfo.json file.")
 
     def proc_tracks(self, defaults='__default__', filter='__default__'):
         """
@@ -290,7 +290,9 @@ class Plan:
             mjd = track.utc[track.istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
                 self.start_mjd = copy(mjd)
-        smjd = f"{np.floor(self.start_mjd):.0f}"
+        precision = 10.0
+        pdig = 1
+        smjd = f"{np.floor(self.start_mjd * precision)/precision:.{pdig}f}"
         odsfn = f"ods_{smjd}.json"
         obsinfofn = f"obsinfo_{smjd}.json"
         with ods_engine.ODS() as ods:
