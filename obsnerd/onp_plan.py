@@ -185,7 +185,7 @@ class Plan:
         plt.axis(ymin=axlim[2], ymax=axlim[3])
         plt.legend()
 
-    def choose_tracks(self, auto=True, obslen_min=8, obsel_deg=25, keyhole_deg=86.0):
+    def choose_tracks(self, auto=True, obslen_min=8, obsel_deg=25, keyhole_deg=84.0):
         """
         Interactive chooser of tracks to use -- edits the Track instances.
 
@@ -198,7 +198,7 @@ class Plan:
         obsel_deg : float
             Minimum el_limit to show in degrees, by default 25
         keyhole_deg : float
-            Keyhole angle in degrees, by default 86.0
+            Keyhole angle in degrees, by default 84.0
 
         """
         self.auto = auto
