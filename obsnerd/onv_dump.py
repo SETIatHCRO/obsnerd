@@ -110,7 +110,7 @@ class Dump:
         self.look = onv_look.Look(self.obsinput, lo=self.lo, cnode=self.cnodes)
         ants = tools.listify(ants, {'all': self.look.ant_names})
         pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
-        outdata = {'ants': ants, 'freqs': self.look.freqs, 'pols': pols, 'source': self.look.source, 'uvh5': self.look.fn, 'freq_unit': self.look.freq_unit}
+        outdata = {'ants': ants, 'freqs': self.look.freqs, 'pols': pols, 'source': self.look.meta.source, 'uvh5': self.look.meta.filename, 'freq_unit': self.look.freq_unit}
         print(f"Dumping autos in {self.look.fn} for {','.join(ants)} {','.join(pols)}", end=' ... ')
         for ant in ants:
             for pol in pols:
