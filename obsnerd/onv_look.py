@@ -217,7 +217,7 @@ class Look:
         self.freq_unit = str(self.npzfile[obsrec_file]['freq_unit'])
         self.freqs += list(self.npzfile[obsrec_file]['freqs'] * u.Unit(self.freq_unit))
         self.times = Time(self.npzfile[obsrec_file]['times'], format='jd')
-        self.pols = list(self.npzfile[obsrec_file]['pols'])
+        self.pols = [str(x) for x in self.npzfile[obsrec_file]['pols']]
         return True
 
     def get_bl(self, a, b=None, pol='xx', auto_as_abs=True):
