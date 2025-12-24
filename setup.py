@@ -16,7 +16,7 @@ setup_args = {
     'scripts': glob.glob('scripts/*'),
     'packages': ['obsnerd'],
     'include_package_data': True,
-    'package_data': {"obsnerd": ['data/*.json']}
+    'package_data': {"obsnerd": ['data/*.yaml']}
 }
 
 if __name__ == '__main__':
