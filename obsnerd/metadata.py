@@ -139,15 +139,18 @@ def start(samp_rate, decimation, nfft):
     log = Onlog(auto_read=True)
     move = log.get_latest_value('move to', parse=':')
     print(f"Move type is {move}")
+    print("obsnerd metadata start will fail since onlog.make_datetime isn't there anymore and I've I've put in timetools.interpret_date instead")
+    print("SO THIS IS NOT DOING ANYTHING RIGHT NOW")
+    return
     data = {
         'tstart': datetime.now().astimezone(UTC).isoformat(),
         'fcen': float(log.get_latest_value('fcen', parse=':')),
         'bw': samp_rate / 1E6,
         'decimation': decimation,
         'nfft': nfft,
-        'tle': onutil.make_datetime(date=log.get_latest_value('TLEs', parse='timestamp'), tz=0.0),
+        'tle': timetools.interpret_date(date=log.get_latest_value('TLEs', parse='timestamp'), tz=0.0),
         'source': log.get_latest_value('source', parse=':'),
-        'expected': onutil.make_datetime(date=log.get_latest_value('expected', parse=' '), tz=0.0),
+        'expected': timetools.interpret_date(date=log.get_latest_value('expected', parse=' '), tz=0.0),
         'move': move,
         'move_data': log.get_latest_value(move, parse=':')
     }

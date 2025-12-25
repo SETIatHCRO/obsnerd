@@ -1,7 +1,6 @@
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 import numpy as np
-from . import on_sys
 from argparse import Namespace
 import json
 

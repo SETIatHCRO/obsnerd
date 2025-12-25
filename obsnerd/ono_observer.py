@@ -3,7 +3,7 @@ from copy import copy
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
-from . import DATA_PATH, ono_engine, on_track
+from . import DATA_PATH, ono_engine, on_track, get_config
 import astropy.units as u
 import os.path as op
 
@@ -12,7 +12,7 @@ logger.setLevel('DEBUG')  # Set to lowest
 from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
-            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': ':ant_file.dat', 'embargo': [],
+            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'ants': ':config', 'embargo': [],
             'lo': ['A', 'B', 'C', 'D'], 'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
 
 SPACEX_LO = 1990 * u.MHz
@@ -41,6 +41,9 @@ class Observer:
         self.default_ods_default_file = op.join(DATA_PATH, 'ods_defaults_B.json')
         # Check for antenna file
         if kw['ants'][0] == ':':
+            if kw['ants'] == ':config':
+                config = get_config()
+                kw['ants'] = config.get('Observer', 'ants', fallback='ants.txt')
             with open(kw['ants'][1:], 'r') as fp:
                 kw['ants'] = fp.read().strip()
         for key, val in kw.items():
