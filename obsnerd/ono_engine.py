@@ -89,8 +89,10 @@ class CommandHandler:
             self.ant_list = copy(on_sys.ANT_LIST[ant_list])
         elif isinstance(ant_list, str):
             self.ant_list = tools.listify(ant_list)
-        if not len(self.ant_list):
-            raise ValueError("No antennas specified.")
+        elif isinstance(ant_list, list):
+            self.ant_list = ant_list
+        else:
+            raise ValueError("Invalid ant_list specification.")
         for badun in remove_ants:
             if badun in self.ant_list:
                 logger.info(f"Removing antenna {badun}")

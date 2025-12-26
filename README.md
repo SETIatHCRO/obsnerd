@@ -43,10 +43,11 @@ Check that they both look reasonable (primarily the ods file)
 ##Observe##
 1. on the VNC open a terminal
 2. put the file `ods_<MJD>.json` onto *obs-node1* as `~/rfsoc_obs_scripts/p054/ods_rados.json`
-3. type `on_obs_prep.py --add-to-calendar`
-4. type `aoctkuser.py --enable-rados`
-5. hit the *Observe* button and if you are confident select **yes** twice.
-6. sit back and watch the action
+3. make sure that the `config.yaml` file in up-to-date in that directory.
+4. type `on_obs_prep.py --add-to-calendar`
+5. type `aoctkuser.py --enable-rados`
+6. hit the *Observe* button and if you are confident select **yes** twice.
+7. sit back and watch the action
 
 ##Process the data##
 The data now sits in that deeply nested directory structure in the ***note*** above.  You now want to dump the autocorrelations for the antennas you want to much smalller 'npz' files, which means you need to find them, generate a bash script, and run the bash script.
