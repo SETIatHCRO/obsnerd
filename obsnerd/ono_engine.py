@@ -30,16 +30,27 @@ logger.setLevel('DEBUG')  # Set to lowest
 
 OBS_START_DELAY = 10  # time to prep data until collecting
 OBS_DAWDLE = 5  # extra time to "sleep" to make sure things are done
-LO_LIST = ['A', 'B']
 DEFAULTS = {'observer': None, 'project_id': None, 'project_name': None,
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'obs_start_delay': OBS_START_DELAY, 'obs_dawdle': OBS_DAWDLE}
 
 
-def get_LO_hpguppi(LOs=['A', 'B']):
-    # d = hpguppi_defaults.hashpipe_targets_LoA.copy()
+def get_LO_hpguppi(LOs=on_sys.ALL_LOS):
+    available_LO = {}
+    available_LO['A'] = hpguppi_defaults.hashpipe_targets_LoA.copy()
+    available_LO['B'] = hpguppi_defaults.hashpipe_targets_LoB.copy()
+    available_LO['C'] = hpguppi_defaults.hashpipe_targets_LoC.copy()
+    available_LO['D'] = hpguppi_defaults.hashpipe_targets_LoD.copy()
+    using = {}
+    for lo in LOs:
+        for node in available_LO[lo]:
+            if node not in using:
+                using[node] = available_LO[lo][node]
+            else:
+                using[node] += available_LO[lo][node]
+    return using
     # d.update(hpguppi_defaults.hashpipe_targets_LoB)
-    return {'seti-node%i'%i: [0,1] for i in range(1,8)}
+    #return {'seti-node%i'%i: [0,1] for i in range(1,15)}
 
 
 def update_source(src_id, ra_hr, dec_deg, owner='ddeboer', category='starlink'):
@@ -131,6 +142,8 @@ class CommandHandler:
         self.freq = freq
         freq_MHz = [x.to_value('MHz') for x in self.freq][0]
         self.lo = tools.listify(lo)
+        if len(self.lo) != len(freq_MHz):
+            raise ValueError("Length of lo must match length of freq")
         self.attenuation = tools.listify(attenuation)
         # antlo_list = [ant+lo.upper() for lo in lo for ant in self.ant_list]
         # snap_if.tune_if_antslo(antlo_list)

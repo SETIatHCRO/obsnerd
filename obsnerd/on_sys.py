@@ -4,7 +4,7 @@ from glob import glob
 
 
 ALL_CNODES = ['C0352', 'C0544', 'C0736', 'C0928', 'C1120', 'C1312', 'C1504']
-ALL_LOS = ['A', 'B']
+ALL_LOS = ['A', 'B', 'C', 'D']
 AXIS_OPTIONS = {'b': 'boresight', 'd': 'datetime', 's': 'seconds'}
 FILTER_AXIS = {'time': 0, 'freq': 1}
 OBS_START_DELAY = 10  # sec
@@ -127,6 +127,10 @@ class InputMetadata:
                 self.input_type = 'obsrec'
                 for k, v in  split_obsrec(self.input).items():
                     setattr(self, k, v)
+            elif len(data) == 3:
+                self.input_type = 'obsidt'
+                for k, v in  split_obsidt(self.input).items():
+                    setattr(self, k, v)
             elif len(data) == 2:
                 self.input_type = 'obsid'
                 self.source, self.mjd =  split_obsid(self.input)
@@ -204,6 +208,8 @@ def make_mjd_for_filename(mjd, decimal_places=5):
 def split_obsid(obsid):
     if obsid is None:
         return None, None
+    if len(obsid.split('_')) != 2:
+        raise ValueError("Invalid obsid format")
     mjd = obsid.split('_')[-1]
     source = obsid[:(len(obsid) - len(mjd) - 1)]
     try:
@@ -215,6 +221,17 @@ def split_obsid(obsid):
     return source, mjd
 
 
+def split_obsidt(obsidt):
+    if obsidt is None:
+        return None, None, None
+    if len(obsidt.split('_')) != 3:
+        raise ValueError("Invalid obsidt format")
+    lo = obsidt.split('_')[-1]
+    obsid = '_'.join(obsidt.split('_')[:-1])
+    source, mjd = split_obsid(obsid)
+    return {'source': source, 'mjd': mjd, 'obsid': obsid, 'lo': lo}
+
+
 def make_obsrec(source, mjd, lo, cnode):
     cnode = make_cnode(cnode)
     obsid = make_obsid(source, mjd)
@@ -222,6 +239,10 @@ def make_obsrec(source, mjd, lo, cnode):
 
 
 def split_obsrec(obsrec):
+    if obsrec is None:
+        return None, None, None, None
+    if len(obsid.split('_')) != 4:
+        raise ValueError("Invalid obsrec format")
     if obsrec.endswith('.npz'):
         obsrec = obsrec[:-4]
     data = obsrec.split('_')

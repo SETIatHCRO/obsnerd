@@ -111,9 +111,14 @@ class Look:
         if self.meta.input_type == 'obsid':    
             self.lo = on_sys.make_lo(lo)
             self.cnode = on_sys.make_cnode(cnode)
-        else:
+        elif self.meta.input_type == 'obsidt':
+            self.lo = self.meta.lo
+            self.cnode = on_sys.make_cnode(cnode)
+        elif self.meta.input_type == 'obsrec':
             self.lo = self.meta.lo
             self.cnode = [self.meta.cnode]
+        else:
+            raise ValueError(f"Invalid input type for Look: {self.meta.input_type}")
         self.freq_unit = freq_unit
         self.npzfile = {}
         self.freqs = []
@@ -145,6 +150,8 @@ class Look:
             self.obsrec_files = {self.meta.source: [f"{oinput}.npz"]}
         elif self.meta.input_type == 'obsid':
             self.obsrec_files = {self.meta.source: [f"{self.meta.obsid}_{self.lo}_{x}.npz" for x in self.cnode]}
+        elif self.meta.input_type == 'obsidt':
+            self.obsrec_files = {self.meta.source: [f"{self.meta.obsid}_{self.meta.lo}_{x}.npz" for x in self.cnode]}
         else:
             raise ValueError(f"Invalid input type: {self.meta.input_type}")
         self.read_in_files(self.meta.source)

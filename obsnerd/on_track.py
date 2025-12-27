@@ -68,16 +68,10 @@ class Track:
         except AttributeError:
             pass
 
-    def get_or_None(self, key):
-        try:
-            return getattr(self, key)
-        except AttributeError:
-            return None
-
     def proc(self):
         t = {}
         for key in ['start', 'end', 'obs_time_sec']:
-            t[key] = self.get_or_None(key)
+            t[key] = getattr(self, key, None)
         if t['obs_time_sec'] is None or t['obs_time_sec'] == '-':
             self.obs_time_sec = int((self.end - self.start).to_value('sec'))
         elif t['end'] is None or t['end'] == '-':

@@ -1,6 +1,6 @@
 import logging
 from aocalendar import aocalendar
-from . import LOG_FILENAME, LOG_FORMATS, DATA_PATH, __version__, on_sys
+from . import LOG_FILENAME, LOG_FORMATS, DATA_PATH, __version__, on_sys, on_config
 from odsutils import logger_setup, locations
 from odsutils import ods_timetools as ttools
 from astropy.coordinates import SkyCoord
@@ -11,7 +11,6 @@ import json
 from copy import copy
 import numpy as np
 from os.path import join as opjoin
-from os.path import exists as opexists
 
 
 logger = logging.getLogger(__name__)
@@ -41,26 +40,17 @@ def generate_colors(n):
     return colors
 
 class Plan:
-    def __init__(self, freqs=None, bandwidth=100.0, conlog='INFO', filelog=False, path='', loc='ata'):
+    def __init__(self, conlog='INFO', filelog=False, config_file=None, loc='ata'):
         self.location = locations.Location(name=loc)
-        self.log_settings = logger_setup.Logger(logger, conlog=conlog, filelog=filelog, log_filename=LOG_FILENAME, path=path,
+        self.log_settings = logger_setup.Logger(logger, conlog=conlog, filelog=filelog, log_filename=LOG_FILENAME,
                                                 conlog_format=LOG_FORMATS['conlog_format'], filelog_format=LOG_FORMATS['filelog_format'])
         logger.info(f"{__name__} ver. {__version__}")
         self.minimum_duration = TimeDelta(0.0, format='sec')
-        self.freqs = None
-        if freqs is None:
-            if opexists(FREQ_INPUT_FILE):
-                with open(FREQ_INPUT_FILE, 'r') as fp:
-                    self.freqs = [float(line.strip()) * u.MHz for line in fp if line.strip() and not line.startswith('#')]
-            else:
-                raise ValueError(f"No frequencies provided and {FREQ_INPUT_FILE} not found.")
-        else:
-            self.freqs = [f * u.MHz for f in freqs]
-        self.bandwidth = bandwidth * u.MHz
         self.el_limit = None
         self.default_ods_default_file = opjoin(DATA_PATH, 'ods_defaults_B.json')
         self.default_filter_file = opjoin(DATA_PATH, 'filters.json')
         self.tracks = {}
+        self.config = on_config.Config(config_file=config_file)
 
     def setupcal(self):
         self.this_cal = aocalendar.Calendar(calfile='now', path=self.log_settings.path, conlog=self.log_settings.conlog,
@@ -277,15 +267,15 @@ class Plan:
                 istop = np.where(track.utc < tstop)[0][-1] + 1
             track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
             ods_stat = 'Make' if self.track_list[key]['use'] == 'y' else 'Skip'
-            for ff in self.freqs:
+            for ff in self.config.freqs:
                 print(track.source, ff)
                 odict = {'src_id':f"{track.source}",
                          'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
                          'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
                          'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
                          'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
-                         'freq_lower_hz': (ff - self.bandwidth / 2.0).to_value('Hz'),
-                         'freq_upper_hz': (ff + self.bandwidth / 2.0).to_value('Hz'),
+                         'freq_lower_hz': (ff - self.config.tuning_bandwidth / 2.0).to_value('Hz'),
+                         'freq_upper_hz': (ff + self.config.tuning_bandwidth / 2.0).to_value('Hz'),
                          'version': f"ODS2OBS:{ods_stat}"}
                 new_tracks.append(odict)
             mjd = track.utc[track.istart].mjd

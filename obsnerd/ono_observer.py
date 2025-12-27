@@ -45,6 +45,7 @@ class Observer:
         for key, val in kw.items():
             if key in track.fields:
                 setattr(self, key, val)
+        self.ants = self.config.ants
 
     def get_ods(self, ods_input, defaults=None):
         """
@@ -96,7 +97,7 @@ class Observer:
             entries = self.groups[group_key]
             rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                     ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
-                                    time_per_int_sec=self.time_per_int_sec, coord='name', lo=self.lo)
+                                    time_per_int_sec=self.time_per_int_sec, coord='name')
             freqs = []
             pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
             for i in range(len(entries)):

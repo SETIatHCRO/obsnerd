@@ -1,6 +1,7 @@
 #Terminology
 - **source** - a unique source name.
 - **obsid** - a unique observation identifier:  `<SOURCE>_<MJD{.5f}>`
+- **obsidt** - an obsid plus tuning: `<OBSID>_<A/B/C/D>`
 - **obsrec** - a unique observation/hardware identifier:  `<OBSID>_<LO>_<CNODE>`
 - **obsrec file** - the filename holding the obsrec information (generally `<OBSREC>.npz` ***note***)
 - **experiment** - a session looking at sources (typically within an MJD day or two)
