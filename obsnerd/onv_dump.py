@@ -1,13 +1,12 @@
 import numpy as np
 from copy import copy
 from . import on_sys
-from . import onv_look
 from odsutils import ods_tools as tools
 import os.path as op
+import yaml
 
 
-
-def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p057/',
+def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
                          ants='all', pols='xx,xy,yy,yx', LOs='all', CNODEs='all',
                          download_script_filename='download_files.sh',
                          copy_script_filename='copy_files.sh',
@@ -87,28 +86,26 @@ def cull_tracking_file(filename='download_files.sh'):
     return needed_files
 
 class Dump:
-    def __init__(self, obsinput=None, lo='A', cnodes='all'):
+    def __init__(self, obsinput=None, obs='obsout.yaml'):
         """
 
         Parameters
         ----------
         obsinput : str
             File to use generally an obsid
-        lo : str, list, 'all'
-        cnodes : str, list, 'all'
+        obsfile : str
+            Obsinfo file to use
 
         """
         self.obsinput = obsinput
-        self.lo = lo
-        self.cnodes = cnodes
+        self.data = on_sys.InputMetadata(self.obsinput)
+        self.obs_file = obs
+        self.obs = yaml.safe_load(open(self.obs_file, 'r'))
 
-    def dump_autos(self, ants='all', pols='all'):
-        """
-        self.obsinput should be an obsid
-
-        """
-        self.look = onv_look.Look(self.obsinput, lo=self.lo, cnode=self.cnodes)
-        ants = tools.listify(ants, {'all': self.look.ant_names})
+    def dump_autos(self, ants='all', pols='all', lo='all', cnodes='all'):
+        lo = on_sys.make_lo(lo)
+        cnodes = on_sys.make_cnode(cnodes)
+        ants = tools.listify(ants, {'all': self.obs[0]['ants']})
         pols = tools.listify(pols, {'all': ['xx', 'xy', 'yy', 'yx']})
         outdata = {'ants': ants, 'freqs': self.look.freqs, 'pols': pols, 'source': self.look.meta.source, 'uvh5': self.look.meta.filename, 'freq_unit': self.look.freq_unit}
         print(f"Dumping autos in {self.look.fn} for {','.join(ants)} {','.join(pols)}", end=' ... ')
@@ -126,6 +123,7 @@ class Dump:
         self.obsinput should be an obsinfo file
 
         """
+        from . import onv_look
         filters = {}
         filters['on'] = onv_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='r')
         filters['off'] = onv_look.Filter(ftype='time', unit='degrees', lo=-5, hi=5, norm=True, color='k', invert=True)

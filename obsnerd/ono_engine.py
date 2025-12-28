@@ -17,8 +17,7 @@ except ImportError:
 
 import atexit, os
 import astropy.units as u
-from . import __version__, LOG_FILENAME, ono_record
-from . import on_sys
+from . import __version__, LOG_FILENAME, ono_record, on_sys
 from odsutils import logger_setup
 from odsutils import ods_tools as tools
 from time import sleep

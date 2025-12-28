@@ -206,5 +206,6 @@ class Observer:
                 continue
             self.obs.take_data(source.obs_time_sec, source.time_per_int_sec)
         self.obs.release_ants()
+        print("Observation complete -- summary to obsout.yaml")
         import yaml
-        yaml.dump(obsrec, open('obsrec.yaml', 'w'))
+        yaml.dump(obsrec, open('obsout.yaml', 'w'))
