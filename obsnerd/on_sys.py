@@ -15,6 +15,13 @@ SLEW_SPEED = 1.5  # deg/sec
 
 ANT_LISTS = {'old_feeds': ['']}
 
+
+def return_lo(freqs):
+    lo = []
+    for i in range(len(freqs)):
+        lo.append(ALL_LOS[i])
+    return lo
+
 def make_lo(lo):
     if lo is None:
         return ''
@@ -241,7 +248,7 @@ def make_obsrec(source, mjd, lo, cnode):
 def split_obsrec(obsrec):
     if obsrec is None:
         return None, None, None, None
-    if len(obsid.split('_')) != 4:
+    if len(obsrec.split('_')) != 4:
         raise ValueError("Invalid obsrec format")
     if obsrec.endswith('.npz'):
         obsrec = obsrec[:-4]

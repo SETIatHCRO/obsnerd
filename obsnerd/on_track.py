@@ -57,6 +57,11 @@ class Track:
     def __str__(self):
         return self.view(fields_to_show=self.fields, bracket=['', ''], sep='\n')
 
+    def to_dict(self):
+        rec = {}
+        for fld in self.fields:
+            rec[fld] = self.listify(fld)
+
     def update(self, **kwargs):
         for key, val in kwargs.items():
             if key in self.fields:

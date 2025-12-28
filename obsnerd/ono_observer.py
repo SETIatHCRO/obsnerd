@@ -3,7 +3,7 @@ from copy import copy
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
-from . import DATA_PATH, ono_engine, on_track, on_config
+from . import DATA_PATH, ono_engine, on_track, on_config, on_sys
 import astropy.units as u
 import os.path as op
 
@@ -115,7 +115,8 @@ class Observer:
                     for par in list(pars.keys()):
                         pars[par] = entries[i][par]
                         if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
-            rec.update(freq=freqs * u.Hz, source=pars['src_id'], x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
+            rec.update(freq=freqs * u.Hz, lo=on_sys.return_lo(freqs), source=pars['src_id'],
+                       x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
                        start=pars['src_start_utc'], end=pars['src_end_utc'])
             if update_source_database:
                 ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
@@ -187,20 +188,23 @@ class Observer:
         self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id, conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
         self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once
         self.obs.setbackend(self.backend)  # And same backend
+        obsrec = []
         for i, source in enumerate(self.records):
             if source.coord != 'name':
                 logger.error(f"Currently only support 'name' coord type, not '{self.coord}'")
                 continue
+            obsrec.append(source.to_dict())
             if not i: print(source.__repr__(fprnt='header'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(fprnt='short')}")
             print(f"freqs: {', '.join([str(x) for x in source.freq])}")
             these_freq = [x.to_value('MHz') for x in source.freq]
-            these_lo = ['A', 'B', 'C', 'D']
-            self.obs.setrf(freq=these_freq, lo=these_lo, attenuation=source.attenuation)
+            self.obs.setrf(freq=these_freq, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
                 continue
             self.obs.take_data(source.obs_time_sec, source.time_per_int_sec)
         self.obs.release_ants()
+        import yaml
+        yaml.dump(obsrec, open('obsrec.yaml', 'w'))
