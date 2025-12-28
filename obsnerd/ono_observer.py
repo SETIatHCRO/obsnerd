@@ -171,6 +171,10 @@ class Observer:
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
                      update_source_database=True,
                      ods_assembly=True):
+        """
+        Prepare for an observation by making and posting the ODS online and adding the source to the source database.
+
+        """ 
         self.get_ods(input_ods)
         self.get_obs_from_ods(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
         self.ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
