@@ -117,8 +117,6 @@ class Look:
         elif self.meta.input_type == 'obsrec':
             self.lo = self.meta.lo
             self.cnode = [self.meta.cnode]
-        else:
-            raise ValueError(f"Invalid input type for Look: {self.meta.input_type}")
         self.freq_unit = freq_unit
         self.npzfile = {}
         self.freqs = []
