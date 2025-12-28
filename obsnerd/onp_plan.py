@@ -47,8 +47,6 @@ class Plan:
         logger.info(f"{__name__} ver. {__version__}")
         self.minimum_duration = TimeDelta(0.0, format='sec')
         self.el_limit = None
-        self.default_ods_default_file = opjoin(DATA_PATH, 'ods_defaults_B.json')
-        self.default_filter_file = opjoin(DATA_PATH, 'filters.json')
         self.tracks = {}
         self.config = on_config.Config(config_file=config_file)
 
@@ -233,23 +231,20 @@ class Plan:
                 track.set_par(iobs=ind, use=self.track_list[key]['use'])
                 plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
                 print(f"\t{track.use_def[track.use]} {track.source} at {track.utc[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
-        print("Now run  plan.proc_tracks() to write the ODS file and obsinfo.json file.")
+        print("Now run plan.proc_tracks() to write the obsinfo.json file.")
 
-    def proc_tracks(self, defaults='__default__', decimal_places=1, filter='__default__'):
+    def proc_tracks(self, decimal_places=1):
         """
-        After choosing tracks, write the ODS file and the obsinfo.json file.
+        After choosing tracks, write the obsinfo.json file.
 
         Parameter
         ---------
-        filter_file : str, optional
-            Filter file to use, by default 'filters.json' (just passed through to write_obsinfo)
+        decimal_places : int, optional
+            Number of decimal places to use for filenames, by default 1
 
         """
-        from odsutils import ods_engine
         obslen_TD2 = self.obslen / 2.0
-        new_tracks = []
         self.start_mjd = None
-        default_file = self.default_ods_default_file if defaults == '__default__' else defaults
         for key in self.track_list:
             track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
             if self.track_list[key]['use'] == 's':
@@ -266,41 +261,15 @@ class Plan:
             else:
                 istop = np.where(track.utc < tstop)[0][-1] + 1
             track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
-            ods_stat = 'Make' if self.track_list[key]['use'] == 'y' else 'Skip'
-            for ff in self.config.freqs:
-                print(track.source, ff)
-                odict = {'src_id':f"{track.source}",
-                         'src_ra_j2000_deg': track.ra[track.iobs].to_value('deg'),
-                         'src_dec_j2000_deg': track.dec[track.iobs].to_value('deg'),
-                         'src_start_utc': f"{tstart.datetime.isoformat(timespec='seconds')}",
-                         'src_end_utc': f"{tstop.datetime.isoformat(timespec='seconds')}",
-                         'freq_lower_hz': (ff - self.config.tuning_bandwidth / 2.0).to_value('Hz'),
-                         'freq_upper_hz': (ff + self.config.tuning_bandwidth / 2.0).to_value('Hz'),
-                         'version': f"ODS2OBS:{ods_stat}"}
-                new_tracks.append(odict)
-            mjd = track.utc[track.istart].mjd
-            if self.start_mjd is None or mjd < self.start_mjd:
-                self.start_mjd = copy(mjd)
-        smjd = on_sys.make_mjd_for_filename(self.start_mjd, decimal_places=decimal_places)
-        odsfn = f"ods_{smjd}.json"
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
-        with ods_engine.ODS() as ods:
-            ods.get_defaults(default_file)
-            ods.add(new_tracks)
-            ods.post_ods(odsfn)
-        print(f"Writing ODS file: {odsfn}")
-        self.write_obsinfo(obsinfofn, filter=filter)
-        print(f"Copy the ods file:  scp {odsfn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/ods_rados.json")
+        self.write_obsinfo(obsinfofn)
+        print(f"Copy the obsinfo file:  scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.json")
 
-    def write_obsinfo(self, obsinfofn, filter='__default__'):
+    def write_obsinfo(self, obsinfofn):
         from astropy.coordinates import angular_separation
-        filter_file = self.default_filter_file if filter == '__default__' else filter
-        try:
-            with open(filter_file, 'r') as fp:
-                filter = json.load(fp)['Filters']
-        except FileNotFoundError:
-            filter = {}
-        obsinfo = {'dir_data': 'data', 'Filters': filter, "Sources": {}}
+        obsinfo = {'dir_data': 'data', "Sources": {}}
+        for k, v in self.config.items():
+            obsinfo[k] = v
         for satname in self.tracks:
             for track in self.tracks[satname]:
                 if track.iobs is None:
@@ -311,6 +280,8 @@ class Plan:
                 obsinfo['Sources'][track.source]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
                 obsinfo['Sources'][track.source]['az'] = track.az[track.iobs].to_value('deg')
                 obsinfo['Sources'][track.source]['el'] = track.el[track.iobs].to_value('deg')
+                obsinfo['Sources'][track.source]['start'] = track.tstart.datetime.isoformat(timespec='seconds')
+                obsinfo['Sources'][track.source]['stop'] = track.tobs.datetime.isoformat(timespec='seconds')
                 obsinfo['Sources'][track.source]['off_time'] = []
                 obsinfo['Sources'][track.source]['off_angle'] = []
                 obsinfo['Sources'][track.source]['ods'] = True if track.use == 'y' else False
