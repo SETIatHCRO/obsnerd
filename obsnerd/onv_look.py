@@ -141,6 +141,8 @@ class Look:
         """
         # Now get info
         self.meta.obsinfo = on_sys.get_obsinfo_filename_from_oinput(oinput)
+        if self.meta.obsinfo is None:
+            return
         self.obs = on_track.read_obsinfo(self.meta.obsinfo)
         if self.meta.input_type == 'uvh5':
             self.obsrec_files = {self.meta.source: [oinput]}
@@ -152,8 +154,7 @@ class Look:
             self.obsrec_files = {self.meta.source: [f"{self.meta.obsid}_{self.lo}_{x}.npz" for x in self.cnode]}
         elif self.meta.input_type == 'obsidt':
             self.obsrec_files = {self.meta.source: [f"{self.meta.obsid}_{self.meta.lo}_{x}.npz" for x in self.cnode]}
-        else:
-            raise ValueError(f"Invalid input type: {self.meta.input_type}")
+
         self.read_in_files(self.meta.source)
 
     def read_in_files(self, source):
