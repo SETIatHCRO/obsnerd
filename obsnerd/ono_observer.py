@@ -22,7 +22,7 @@ SPACEX_HI = 1995 * u.MHz
 ODS_URL = 'https://ods.hcro.org/ods.json'
 
 class Observer:
-    def __init__(self, obsfile='obsfile_rados.json', **kwargs):
+    def __init__(self, obsfile='obsinfo_rados.json', **kwargs):
         """
         Parameters
         ----------
