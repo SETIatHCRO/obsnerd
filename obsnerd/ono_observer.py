@@ -1,9 +1,10 @@
+import json
 import logging
 from copy import copy
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup, ods_engine
-from . import DATA_PATH, ono_engine, on_track, on_config, on_sys
+from . import DATA_PATH, ono_engine, on_track
 import astropy.units as u
 import os.path as op
 
@@ -12,9 +13,8 @@ logger.setLevel('DEBUG')  # Set to lowest
 from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
-            'observer': 'me', 'project_name': 'Project', 'project_id': 'pid', 'embargo': [],
-            'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5,
-            'config_file': 'config.yaml'}
+            'observer': 'me', 'project_name': 'Project', 'project_id': 'p054', 'embargo': [],
+            'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
 
 SPACEX_LO = 1990 * u.MHz
 SPACEX_HI = 1995 * u.MHz
@@ -22,10 +22,12 @@ SPACEX_HI = 1995 * u.MHz
 ODS_URL = 'https://ods.hcro.org/ods.json'
 
 class Observer:
-    def __init__(self, **kwargs):
+    def __init__(self, obsfile='obsfile_rados.json', **kwargs):
         """
         Parameters
         ----------
+        obsfile : str
+            Obsinfo file to use
         **kwargs: conlog, filelog, log_filename, path
 
         """
@@ -40,90 +42,56 @@ class Observer:
         track= on_track.Track()
         self.embargo = tools.listify(kw['embargo'])
         self.default_ods_default_file = op.join(DATA_PATH, 'ods_defaults_B.json')
-        self.config = on_config.Config(kw['config_file'])
+        self.obsfile = obsfile
+        self.obsinfo = json.load(open(self.obsfile, 'r'))
+        self.freqs = [x * u.Unit(self.obsinfo['Freq_unit']) for x in self.obsinfo['Tunings'].values()]
+        self.lo = list(self.obsinfo['Tunings'].keys())
+        self.ants = self.obsinfo['Ants']
 
         for key, val in kw.items():
             if key in track.fields:
                 setattr(self, key, val)
-        self.ants = self.config.ants
 
-    def get_ods(self, ods_input, defaults=None):
+    def get_obs(self, add_to_calendar=False, update_source_database=False):
         """
-        Read an ODS input and make dictionary based on start/end.
+        Generate the obsnerd records from the obsinfo in obsfile.
+
+        Fields in on_track.Track:
+        'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
+        'source', 'x', 'y', 'coord',
+        'start', 'end', 'obs_time_sec', 'time_per_int_sec'
 
         Parmaeters
         ----------
-        ods_input : str
-            ODS input, file or URL
-        defaults : str or None
-            Default values to use
-
-        """
-        defaults = defaults if defaults is not None else self.default_ods_default_file
-        self.ods = ods_engine.ODS(conlog='WARNING', defaults=defaults)
-        self.ods.add(ods_input)
-        self.ods.ods['primary'].sort()
-        self.groups = {}
-        group_keys = {}
-        for entry in self.ods.ods['primary'].entries:
-            key = (entry['src_start_utc'].datetime, entry['src_end_utc'].datetime)
-            self.groups.setdefault(key, [])
-            self.groups[key].append(entry)
-            group_keys[entry['src_start_utc'].datetime] = key
-        self.sorted_group_keys = []  # Sorted by start time -- assumes a fair bit of niceness in the groups list
-        for key in sorted(group_keys.keys()):
-            self.sorted_group_keys.append(group_keys[key])
-
-    def get_obs_from_ods(self, add_to_calendar=False, lo_offset=10.0, lo_unit='MHz', update_source_database=False):
-        """
-        Generate the obsnerd records based on an ods (as read in get_ods).
-
-        Parmaeters
-        ----------
+        add_to_calendar : bool
+            Whether to add the observation to the calendar
         lo_offset : float
             LO offset to use for frequency.
         lo_unit : str
             Unit of LO offset
-
+        update_source_database : bool
+            Whether to update the source database with new sources.
+        'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
+        'source', 'x', 'y', 'coord',
+        'start', 'end', 'obs_time_sec', 'time_per_int_sec'
+            
         """
         self.records = []
-        self.ods.new_ods_instance('OUTPUT_ALL')
-        self.ods.new_ods_instance('OUTPUT_ODS')
-        if self.groups is None:
-            logger.error("Unable to read ODS file")
-            return
         ctr = 0
-        for group_key in self.sorted_group_keys:
-            entries = self.groups[group_key]
+        for source_name, info in self.obsinfo['Sources'].items():
             rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
-                                    ants=self.ants, attenuation=self.attenuation, focus=self.focus, backend=self.backend,
-                                    time_per_int_sec=self.time_per_int_sec, coord='name')
-            freqs = []
-            pars = {'src_id': None, 'src_ra_j2000_deg': None, 'src_dec_j2000_deg': None, 'src_start_utc': None, 'src_end_utc': None}
-            for i in range(len(entries)):
-                freq_ods = ((entries[i]['freq_lower_hz'] + entries[i]['freq_upper_hz']) / 2.0) * u.Hz
-                freqs.append(freq_ods - lo_offset*u.Unit(lo_unit))
-                if not i:  # Get common parameters in first pass through and make consolidated new ods record
-                    for par in list(pars.keys()):
-                        pars[par] = entries[i][par]
-                    new_entry = copy(entries[i])
-                    new_entry.update({'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')})
-                    self.ods.add(new_entry, instance_name="OUTPUT_ALL")
-                    if 'Make' in entries[i].get('version', 'Make'):  # Only add to OUTPUT_ODS if Make string in version, default to Make
-                        self.ods.add(new_entry, instance_name="OUTPUT_ODS")
-                else:  # Just check if different
-                    for par in list(pars.keys()):
-                        pars[par] = entries[i][par]
-                        if entries[i][par] != pars[par]: logger.error(f"Field mismatch - {par}")
-            rec.update(freq=freqs * u.Hz, lo=on_sys.return_lo(freqs), source=pars['src_id'],
-                       x=pars['src_ra_j2000_deg'] * u.deg, y=pars['src_dec_j2000_deg'] * u.deg,
-                       start=pars['src_start_utc'], end=pars['src_end_utc'])
+                                 ants=self.ants, freq=self.freqs, lo=self.lo,
+                                 start=ttools.interpret_date(info['start'], 'Time'), end=ttools.interpret_date(info['stop'], 'Time'),
+                                 source=source_name, x=info['ra']*u.deg, y=info['dec']*u.deg,
+                                 attenuation=self.attenuation, focus=self.focus, backend=self.backend,
+                                 time_per_int_sec=self.time_per_int_sec, coord='name')
             if update_source_database:
                 ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             rec.proc()
             self.records.append(rec)
             ctr += 1
-            print(f"Generated observer record. {ctr}======================================================")
+            print(f"Generated observer record: {ctr}")
+            print("-------------------------------")
             print(rec)
             print("===============================================================================")
         self.get_overall()
@@ -166,7 +134,6 @@ class Observer:
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
     def observe_prep(self, add_to_calendar=False,
-                     input_ods = 'ods_rados.json',
                      ods_rados = "/opt/mnt/share/ods_project/ods_rados.json",
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
                      update_source_database=True,
@@ -175,23 +142,26 @@ class Observer:
         Prepare for an observation by making and posting the ODS online and adding the source to the source database.
 
         """ 
-        self.get_ods(input_ods)
-        self.get_obs_from_ods(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
-        self.ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
+        from odsutils import ods_engine
+        ods = ods_engine.ODS(engine_url=ODS_URL, default_ods_file=self.default_ods_default_file,
+                             log_settings=self.log_settings)
+        self.get_obs(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
+        ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
         if ods_assembly:
-            self.ods.assemble_ods(ods_rados, post_to=ods_upload)
+            ods.assemble_ods(ods_rados, post_to=ods_upload)
 
-    def observe(self, is_actual=True, ods2use = 'ods_rados.json'):
+    def observe(self, is_actual=True, obsfile2use = 'obsinfo_rados.json'):
         if not is_actual:
             self.backend = 'test'
-        self.get_ods(ods2use)
-        self.get_obs_from_ods(add_to_calendar=False)
+        self.get_obs(add_to_calendar=False)
         if not len(self.records):
             logger.error("Need to make observer records before you can observe.")
             return
         self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id, conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
-        self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once
-        self.obs.setbackend(self.backend)  # And same backend
+        ant_list = self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once...
+        self.obs.setbackend(self.backend)  # ...and same backend...
+        these_freq = [x.to_value('MHz') for x in self.records[0].freq]
+        self.obs.setrf(freq=these_freq, lo=self.records[0].lo, attenuation=self.records[0].attenuation)  # ...and same rf setup
         obsrec = []
         for i, source in enumerate(self.records):
             if source.coord != 'name':
@@ -201,9 +171,6 @@ class Observer:
             if not i: print(source.__repr__(fprnt='header'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(fprnt='short')}")
-            print(f"freqs: {', '.join([str(x) for x in source.freq])}")
-            these_freq = [x.to_value('MHz') for x in source.freq]
-            self.obs.setrf(freq=these_freq, lo=source.lo, attenuation=source.attenuation)
             self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:

@@ -111,6 +111,7 @@ class CommandHandler:
         logger.info(f"antennas:  {(', ').join(self.ant_list)}")
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
         self.rec.update(ants=self.ant_list)
+        return self.ant_list
 
     def release_ants(self, park_when_done=True):
         ata_control.release_antennas(self.ant_list, park_when_done)

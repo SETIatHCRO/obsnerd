@@ -261,14 +261,17 @@ class Plan:
             else:
                 istop = np.where(track.utc < tstop)[0][-1] + 1
             track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
+            mjd = track.utc[track.istart].mjd
+            if self.start_mjd is None or mjd < self.start_mjd:
+                self.start_mjd = copy(mjd)
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
         self.write_obsinfo(obsinfofn)
         print(f"Copy the obsinfo file:  scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.json")
 
     def write_obsinfo(self, obsinfofn):
         from astropy.coordinates import angular_separation
-        obsinfo = {'dir_data': 'data', "Sources": {}}
-        for k, v in self.config.items():
+        obsinfo = {'filename': obsinfofn, 'dir_data': 'data', "Sources": {}}
+        for k, v in self.config.items().items():
             obsinfo[k] = v
         for satname in self.tracks:
             for track in self.tracks[satname]:
@@ -281,7 +284,7 @@ class Plan:
                 obsinfo['Sources'][track.source]['az'] = track.az[track.iobs].to_value('deg')
                 obsinfo['Sources'][track.source]['el'] = track.el[track.iobs].to_value('deg')
                 obsinfo['Sources'][track.source]['start'] = track.tstart.datetime.isoformat(timespec='seconds')
-                obsinfo['Sources'][track.source]['stop'] = track.tobs.datetime.isoformat(timespec='seconds')
+                obsinfo['Sources'][track.source]['stop'] = track.tstop.datetime.isoformat(timespec='seconds')
                 obsinfo['Sources'][track.source]['off_time'] = []
                 obsinfo['Sources'][track.source]['off_angle'] = []
                 obsinfo['Sources'][track.source]['ods'] = True if track.use == 'y' else False

@@ -20,15 +20,27 @@ class Config:
             config_file (str): Path to configuration file. If None, loads default config.yaml from data directory.
         """
 
-        self.get_config(config_file)
+        self.get_config(config_file, _read_only=False)
 
-    def get_config(self, config_file):
+    def items(self):
+        """
+        Make the config class behave like a dictionary. 
+
+        Returns:
+            dict: Dictionary representation of the configuration contents.
+        """
+        return self.get_config(self.config_file, _read_only=True)
+
+    def get_config(self, config_file, _read_only=False):
         if config_file is None:
             config_file = join(DATA_PATH, 'config.yaml')
         if not isfile(config_file):
             raise FileNotFoundError(f"Configuration file {config_file} not found.")
         self.config_file = config_file
-        self.contents = yaml.safe_load(open(config_file, 'r'))
+        contents = yaml.safe_load(open(config_file, 'r'))
+        if _read_only:
+            return contents
+        self.contents = contents
         self.proc_ants()
         self.proc_freqs()
         self.proc_filters()
