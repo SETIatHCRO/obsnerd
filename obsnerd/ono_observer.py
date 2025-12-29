@@ -3,7 +3,7 @@ import logging
 from copy import copy
 from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
-from odsutils import logger_setup, ods_engine
+from odsutils import logger_setup
 from . import DATA_PATH, ono_engine, on_track
 import astropy.units as u
 import os.path as op
@@ -133,7 +133,39 @@ class Observer:
                                        utc_start=t0, utc_stop=t1)
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
-    def observe_prep(self, add_to_calendar=False,
+    def rec2ods(self, record, ignore_freq=True):
+        """
+        Convert an on_track.Track record to an ODS dictionary.
+
+        Parameters
+        ----------
+        record : on_track.Track
+            Record to convert
+
+        Returns
+        -------
+        dict
+            ODS dictionary
+
+        """
+        ods_rec = {'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')}
+        for a, b in record.ods_mapping.items():
+            val = getattr(record, a, None)
+            if a.startswith('freq'):
+                if ignore_freq:
+                    continue
+                else:
+                    print("FREQUENCY NOTE YET IMPLEMENTED IN rec2ods")
+                    continue
+            if val is None:
+                continue
+            if a in ['x', 'y']:
+                ods_rec[b] = val.to_value('deg')
+            else:
+                ods_rec[b] = val
+        return ods_rec
+
+    def observe_prep(self, add_to_calendar=False, defaults=None,
                      ods_rados = "/opt/mnt/share/ods_project/ods_rados.json",
                      ods_upload = "/opt/mnt/share/ods_upload/ods.json",
                      update_source_database=True,
@@ -143,10 +175,15 @@ class Observer:
 
         """ 
         from odsutils import ods_engine
-        ods = ods_engine.ODS(engine_url=ODS_URL, default_ods_file=self.default_ods_default_file,
-                             log_settings=self.log_settings)
         self.get_obs(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
-        ods.post_ods(ods_rados, instance_name="OUTPUT_ODS")
+        defaults = defaults if defaults is not None else self.default_ods_default_file
+        ods = ods_engine.ODS(defaults = defaults)
+        ods_update = []
+        for rec in self.records:
+            ods_rec = self.rec2ods(rec)
+            ods_update.append(ods_rec)
+        ods.add(ods_update)
+        ods.post_ods(ods_rados)
         if ods_assembly:
             ods.assemble_ods(ods_rados, post_to=ods_upload)
 

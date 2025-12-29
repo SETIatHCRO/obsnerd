@@ -5,6 +5,7 @@ from argparse import Namespace
 import json
 
 
+
 def read_obsinfo(filename):
     """
     Read an obsinfo file.
@@ -46,6 +47,15 @@ class Track:
     use_def = {'y': "use with ods",
                'n': "use without ods",
                's': "skip (don't use)"}
+    ods_mapping = {
+        'source': 'src_id',
+        'x': 'src_ra_j2000_deg',
+        'y': 'src_dec_j2000_deg',
+        'start': 'src_start_utc',
+        'end': 'src_end_utc',
+        'time_per_int_sec': 'corr_integ_time_sec',
+        'freq0': 'obs_freq_lo_mhz',
+        'freq1': 'obs_freq_hi_mhz'}
 
     def __init__(self, **kwargs):
         self.update(**kwargs)
