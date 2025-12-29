@@ -2,6 +2,7 @@ from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 import numpy as np
 from argparse import Namespace
+from copy import copy
 import json
 
 
@@ -70,7 +71,8 @@ class Track:
     def to_dict(self):
         rec = {}
         for fld in self.fields:
-            rec[fld] = self.listify(fld)
+            rec[fld] = copy(getattr(self, fld, None))
+        return rec
 
     def update(self, **kwargs):
         for key, val in kwargs.items():

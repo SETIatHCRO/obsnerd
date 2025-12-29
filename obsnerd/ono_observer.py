@@ -195,7 +195,7 @@ class Observer:
             logger.error("Need to make observer records before you can observe.")
             return
         self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id, conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
-        self.ants = self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once...
+        self.obsinfo['Ants'] = self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once...
         self.obs.setbackend(self.backend)  # ...and same backend...
         these_freq = [x.to_value('MHz') for x in self.records[0].freq]
         self.obs.setrf(freq=these_freq, lo=self.records[0].lo, attenuation=self.records[0].attenuation)  # ...and same rf setup
@@ -208,6 +208,7 @@ class Observer:
             if not i: print(source.__repr__(fprnt='header'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(fprnt='short')}")
+            print(source.source, source.coord, source.x, source.y)
             self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
@@ -215,5 +216,4 @@ class Observer:
             self.obs.take_data(source.obs_time_sec, source.time_per_int_sec)
         self.obs.release_ants()
         print("Observation complete -- exit calendar.")
-        import yaml
-        yaml.dump(self.obsinfo, open('obsout.yaml', 'w'))
+        json.dump(self.obsinfo, open('obsout.json', 'w'), indent=2)

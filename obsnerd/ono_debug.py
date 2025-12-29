@@ -5,8 +5,10 @@ from time import sleep
 class Empty:
     def __init__(self, clsname, *args, **kwargs):
         self.clsname = clsname
-        self.hashpipe_targets_LoA = {}
-        self.hashpipe_targets_LoB = {}
+        self.hashpipe_targets_LoA = {'seti-node1': [0, 1], 'seti-node2': [0, 1], 'seti-node3': [0, 1], 'seti-node4': [0]}
+        self.hashpipe_targets_LoB = {'seti-node4': [1], 'seti-node5': [0, 1], 'seti-node6': [0, 1], 'seti-node7': [0, 1]}
+        self.hashpipe_targets_LoC = {'seti-node8': [0, 1], 'seti-node9': [0, 1], 'seti-node10': [0, 1], 'seti-node11': [0]}
+        self.hashpipe_targets_LoD = {'seti-node11': [1], 'seti-node12': [0, 1], 'seti-node13': [0, 1], 'seti-node14': [0, 1]}
     def show(self, method):
         ts = datetime.now().strftime('%H:%M:%S')
         print(f"\t{ts} -- {self.clsname}.{method} not loaded.")
