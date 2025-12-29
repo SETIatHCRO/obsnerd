@@ -140,7 +140,7 @@ class CommandHandler:
         else:
             freq = tools.listify(freq) * u.Unit(freq_unit)
         self.freq = freq
-        freq_MHz = [x.to_value('MHz') for x in self.freq][0]
+        freq_MHz = [x.to_value('MHz') for x in self.freq]
         self.lo = tools.listify(lo)
         if len(self.lo) != len(freq_MHz):
             raise ValueError("Length of lo must match length of freq")
