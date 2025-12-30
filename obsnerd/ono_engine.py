@@ -260,6 +260,8 @@ class CommandHandler:
         self.rec.update(obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
         d = get_LO_hpguppi(self.lo)
         keyval_dict = {'XTIMEINT': time_per_int_sec}
+        print(self.lo)
+        print(d)
         hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=False)
         hpguppi_record_in.record_in(self.obs_start_delay, obs_time_sec, hashpipe_targets = d)
         sleepy = float(self.obs_start_delay + obs_time_sec + self.obs_dawdle)
