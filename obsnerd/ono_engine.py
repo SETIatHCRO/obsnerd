@@ -40,6 +40,7 @@ def get_LO_hpguppi(LOs=on_sys.ALL_LOS):
     available_LO['B'] = hpguppi_defaults.hashpipe_targets_LoB.copy()
     available_LO['C'] = hpguppi_defaults.hashpipe_targets_LoC.copy()
     available_LO['D'] = hpguppi_defaults.hashpipe_targets_LoD.copy()
+    return available_LO
     using = {}
     for lo in LOs:
         for node in available_LO[lo]:
