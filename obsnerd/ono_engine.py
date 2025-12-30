@@ -111,6 +111,7 @@ class CommandHandler:
         logger.info(f"antennas:  {(', ').join(self.ant_list)}")
         atexit.register(ata_control.release_antennas, self.ant_list, park_when_done)
         self.rec.update(ants=self.ant_list)
+        print(f"Using antennas: {', '.join(self.ant_list)}")
         return self.ant_list
 
     def release_ants(self, park_when_done=True):
@@ -162,6 +163,7 @@ class CommandHandler:
         # ata_control.set_atten_thread([[f'{ant}x', f'{ant}y'] for ant in self.ant_list],
         #                              [[self.attenuation[0], self.attenuation[1]] for ant in self.ant_list])
         self.rec.update(freq=self.freq, lo=lo, attenuation=attenuation, focus=ffoc)
+        print(f"Frequency set: {freq_MHz} MHz, LO: {self.lo}")
 
     def setbackend(self, backend='xpgu'):
         """
@@ -191,6 +193,8 @@ class CommandHandler:
             logger.error("Script not found, cannot start backend")
             return
         self.rec.update(backend=backend)
+        print(f"Using backend: {self.backend}")
+        print(f"/home/sonata/src/observing_campaign/backend_setup_scripts/set_keys_uvh5_mv_{self.project_id}.py")
 
     def move(self, source, coord_type='name', use_ants=None, x_unit='deg', y_unit='deg'):
         """
@@ -250,6 +254,7 @@ class CommandHandler:
                             logger.info(f"track: {line.strip()}")
             except FileNotFoundError:
                 pass
+        print(f"Moving to source: {source}")
 
     def take_data(self, obs_time_sec, time_per_int_sec):
         self.rec.update(obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
@@ -260,6 +265,7 @@ class CommandHandler:
         sleepy = float(self.obs_start_delay + obs_time_sec + self.obs_dawdle)
         if sleepy > 0.0:
             sleep(sleepy)
+        print(f"Taking data for {obs_time_sec} seconds with {time_per_int_sec} s integrations.")
 
     def note(self, note):
         """
