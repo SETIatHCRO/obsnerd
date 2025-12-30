@@ -3,7 +3,7 @@ from copy import copy
 from . import on_sys
 from odsutils import ods_tools as tools
 import os.path as op
-import yaml
+import json
 
 
 def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
@@ -19,11 +19,20 @@ def gen_uvh5_dump_script(date_path, base_path='/mnt/primary/ata/projects/p054/',
         return
     LOs = tools.listify(LOs, {'all': on_sys.ALL_LOS})
     CNODEs = on_sys.make_cnode(CNODEs)
+    dlobsinfo = ''
+    if op.exists('obsout.json'):
+        obsinfo = json.load(open('obsout.json', 'r'))
+        try:
+            filename = obsinfo['filename']
+            dlobsinfo = f'scp "sonata@obs-node1.hcro.org:./rfsoc_obs_scripts/p054/obsout.json {filename}"\n'
+        except KeyError:
+            pass
 
     dbase_path = op.join(base_path, date_path)
     print(f"Retrieving from {dbase_path}")
     files = {}
     with open(download_script_filename, 'w') as fp:
+        fp.write(dlobsinfo)
         for basedir, _, filelist in walk(dbase_path):
             if base_path in basedir and '/Lo' in basedir:
                 for fn in filelist:

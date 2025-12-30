@@ -29,7 +29,7 @@ logger.setLevel('DEBUG')  # Set to lowest
 
 OBS_START_DELAY = 10  # time to prep data until collecting
 OBS_DAWDLE = 5  # extra time to "sleep" to make sure things are done
-DEFAULTS = {'observer': None, 'project_id': None, 'project_name': None,
+DEFAULTS = {'observer': None, 'project_id': 'p054', 'project_name': 'SatSpot',
             'conlog': 'WARNING', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
             'obs_start_delay': OBS_START_DELAY, 'obs_dawdle': OBS_DAWDLE}
 
