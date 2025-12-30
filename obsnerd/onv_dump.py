@@ -95,7 +95,7 @@ def cull_tracking_file(filename='download_files.sh'):
     return needed_files
 
 class Dump:
-    def __init__(self, obsinput=None, obs='obsout.yaml'):
+    def __init__(self, obsinput=None, obs='obsout.json'):
         """
 
         Parameters
@@ -109,7 +109,7 @@ class Dump:
         self.obsinput = obsinput
         self.data = on_sys.InputMetadata(self.obsinput)
         self.obs_file = obs
-        self.obs = yaml.safe_load(open(self.obs_file, 'r'))
+        self.obs = json.load(open(self.obs_file, 'r'))
 
     def dump_autos(self, ants='all', pols='all', lo='all', cnodes='all'):
         lo = on_sys.make_lo(lo)
