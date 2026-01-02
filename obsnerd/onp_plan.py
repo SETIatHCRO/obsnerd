@@ -1,6 +1,6 @@
 import logging
 from aocalendar import aocalendar
-from . import LOG_FILENAME, LOG_FORMATS, DATA_PATH, __version__, on_sys, on_config
+from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys, on_config
 from odsutils import logger_setup, locations
 from odsutils import ods_timetools as ttools
 from astropy.coordinates import SkyCoord
@@ -10,13 +10,10 @@ import matplotlib.pyplot as plt
 import json
 from copy import copy
 import numpy as np
-from os.path import join as opjoin
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
-
-FREQ_INPUT_FILE = 'freqs_input.txt'
 
 
 import colorsys
