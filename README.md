@@ -2,9 +2,8 @@
 - **source** - a unique source name.
 - **obsid** - a unique observation identifier:  `<SOURCE>_<MJD{.5f}>`
 - **obsidt** - an obsid plus tuning: `<OBSID>_<A/B/C/D>`
-- **obsrec** - a unique observation/hardware identifier:  `<OBSID>_<LO>_<CNODE>`
-- **obsrec file** - the filename holding the obsrec information (generally `<OBSREC>.npz` ***note***)
-- **experiment** - a session looking at sources (typically within an MJD day or two)
+- **obsrec** - a unique observation/hardware identifier:  `<OBSIDT>_<CNODE>`
+- **obsrec file** - the filename holding the obsrec information (generally `<OBSREC>.npz`, see note below)
 - **obsinfo** - a file containing information on obsids for a given experiment:  `obsinfo_<MJD>.json`
 - **ods** - operational data sharing
 
@@ -17,9 +16,11 @@ The focus right now is to observe the Starlink Direct-to-Cell (DTC) satellites.
 ##Find satellites##
 Need to find and set up the satellites.  This is currently clumsily interactive.  The main problem is that THERE ARE SO MANY!
 
-Be sure to update the tle files.
+Be sure to update the tle files with `on_updatetle.py`.
 
-Set up the planning tool from with ipython and get 'tracks'
+Make sure that you have an appropriate `config.yaml` file.  Note that the default is included in the package under `data/config.yaml`.  This gets copied into the obsinfo file for later processing.
+
+Use the planning tool from within ipython and get 'tracks'
 
     from obsnerd import onp_plan
     plan = onp_plan.Plan()
@@ -37,18 +38,15 @@ If you want to continue with that set,
 
     plan.proc_tracks()
 
-This will write two files **ods_<MJD>.json** and **obsinfo_<MJD>.json**
-
-Check that they both look reasonable (primarily the ods file)
+This will write `obsinfo_<MJD>.json`
 
 ##Observe##
 1. on the VNC open a terminal
 2. put the file `obsinfo_<MJD>.json` onto *obs-node1* as `~/rfsoc_obs_scripts/p054/obsinfo_rados.json`
-3. make sure that the `config.yaml` file in up-to-date in that directory.
-4. type `on_obs_prep.py --add-to-calendar`
-5. type `aoctkuser.py --enable-rados`
-6. hit the *Observe* button and if you are confident select **yes** twice.
-7. sit back and watch the action
+3. type `on_obs_prep.py --add-to-calendar`
+4. type `aoctkuser.py --enable-rados`
+5. hit the *Observe* button and if you are confident select **yes** twice.
+6. sit back and watch the action
 
 ##Process the data##
 The data now sits in that deeply nested directory structure in the ***note*** above.  You now want to dump the autocorrelations for the antennas you want to much smalller 'npz' files, which means you need to find them, generate a bash script, and run the bash script.
