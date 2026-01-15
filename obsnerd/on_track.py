@@ -2,9 +2,8 @@ from odsutils import ods_timetools as ttools
 from odsutils import ods_tools as tools
 import numpy as np
 from argparse import Namespace
-from copy import copy
+from param_track import Parameters
 import json
-
 
 
 def read_obsinfo(filename):
@@ -37,7 +36,7 @@ def read_obsinfo(filename):
     return obsinfo
 
 
-class Track:
+class Track(Parameters):
     fields = [
         'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
         'source', 'x', 'y', 'coord',
@@ -59,42 +58,30 @@ class Track:
         'freq1': 'obs_freq_hi_mhz'}
 
     def __init__(self, **kwargs):
-        self.update(**kwargs)
+        super().__init__(ptnote='Track parameters')
+        self.ptinit(param_list=self.fields)
+        self.ptset(**kwargs)
         self.iobs = None
 
-    def __repr__(self, fprnt='fields'):
-        return self.view(fields_to_show=getattr(self, fprnt), bracket=['<', '>'], sep='  -- ')
+    def __repr__(self):
+        return self.ptshow(return_only=True)
 
     def __str__(self):
         return self.view(fields_to_show=self.fields, bracket=['', ''], sep='\n')
 
-    def to_dict(self):
-        rec = {}
-        for fld in self.fields:
-            rec[fld] = copy(getattr(self, fld, None))
-        return rec
-
-    def update(self, **kwargs):
-        for key, val in kwargs.items():
-            if key in self.fields:
-                setattr(self, key, val)
-
     def listify(self, key, dtype=None):
         try:
-            setattr(self, key, tools.listify(getattr(self, key), dtype=dtype))
+            setattr(self, key, tools.listify(self.ptget(key), dtype=dtype))
         except AttributeError:
             pass
 
     def proc(self):
-        t = {}
-        for key in ['start', 'end', 'obs_time_sec']:
-            t[key] = getattr(self, key, None)
-        if t['obs_time_sec'] is None or t['obs_time_sec'] == '-':
-            self.obs_time_sec = int((self.end - self.start).to_value('sec'))
-        elif t['end'] is None or t['end'] == '-':
-            self.end = ttools.t_delta(self.start, self.obs_time_sec, 's')
-        elif t['start'] is None or t['start'] == '-':
-            self.start = ttools.t_delta(self.end, -1.0 * self.obs_time_sec, 's')
+        if self.obs_time_sec is None or self.obs_time_sec == '-':
+            self.ptset(obs_time_sec = int((self.end - self.start).to_value('sec')))
+        elif self.end is None or self.end == '-':
+            self.ptset(end=ttools.t_delta(self.start, self.obs_time_sec, 's'))
+        elif self.start is None or self.start == '-':
+            self.ptset(start=ttools.t_delta(self.end, -1.0 * self.obs_time_sec, 's'))
         for key, dtype in {'freq': None, 'lo': str, 'attenuation':int}.items():
             self.listify(key, dtype)
 
@@ -104,7 +91,7 @@ class Track:
         s = bracket[0]
         for fld in fields_to_show:
             try:
-                val = getattr(self, fld)
+                val = self.ptget(fld)
                 if isinstance(val, list):
                     val = ', '.join([str(x) for x in val])
                 s += f'{fld}: {val}{sep}'
@@ -136,11 +123,7 @@ class Track:
             else:
                 this_val = val
             if this_val is not None:  # Probably not necessary anymore
-                setattr(self, par, this_val)
-
-    def set_par(self, **kwargs):
-        for par, val in kwargs.items():
-            setattr(self, par, val)
+                setattr(self, par, this_val) 
 
     def calc_properties(self):
         self.duration = self.utc[-1] - self.utc[0]
