@@ -1,6 +1,6 @@
 import logging
 from aocalendar import aocalendar
-from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys, on_config
+from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys, on_config, approx_equal
 from odsutils import logger_setup, locations
 from odsutils import ods_timetools as ttools
 from astropy.coordinates import SkyCoord
@@ -198,6 +198,10 @@ class Plan:
         now = ttools.interpret_date('now')
         for sat in self.tracks:
             for i, track in enumerate(self.tracks[sat]):
+                left = (track.utc[track.imax] - track.utc[0]).to_value('sec')
+                right = (track.utc[-1] - track.utc[track.imax]).to_value('sec')
+                if not approx_equal(left, right, rel_tol=0.1):
+                    continue
                 dt = track.utc[track.imax] - now
                 key = int(dt.to_value('sec'))
                 self.track_list[key] = {"sat": sat, "track": i, "use": 's'}
