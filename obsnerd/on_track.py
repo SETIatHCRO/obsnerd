@@ -58,7 +58,7 @@ class Track(Parameters):
         'freq1': 'obs_freq_hi_mhz'}
 
     def __init__(self, **kwargs):
-        super().__init__(ptnote='Track parameters')
+        super().__init__(ptnote='Track parameters', ptverbose=False)
         self.ptinit(param_list=self.fields)
         self.ptset(**kwargs)
         self.iobs = None

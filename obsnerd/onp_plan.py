@@ -134,7 +134,7 @@ class Plan:
         else:
             logger.error(f"Unknown source: {source}")
             return
-        print("Now run  plan.choose_tracks(auto=True) to select tracks for observation.")
+        print("Now run `plan.choose_tracks(auto=True)` to select tracks for observation.")
 
     def plot_track_summary(self, satname='all', show_az_transit_track=False):
         line_styles = ['-', '--', '-.', ':']
@@ -201,7 +201,7 @@ class Plan:
                 dt = track.utc[track.imax] - now
                 key = int(dt.to_value('sec'))
                 self.track_list[key] = {"sat": sat, "track": i, "use": 's'}
-                track.set_par(iobs=None, use='s')
+                track.ptadd(iobs=None, use='s')
         if not auto:
             print("Choose for the following satellite tracks:")
             print("\ty - use and implement ods record")
@@ -225,7 +225,7 @@ class Plan:
                 break
             elif self.track_list[key]['use'] in ['y', 'n']:
                 last_one = copy(track.utc[ind])
-                track.set_par(iobs=ind, use=self.track_list[key]['use'])
+                track.ptadd(iobs=ind, use=self.track_list[key]['use'])
                 plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
                 print(f"\t{track.use_def[track.use]} {track.source} at {track.utc[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
         print("Now run plan.proc_tracks() to write the obsinfo.json file.")
@@ -257,7 +257,7 @@ class Plan:
                 istop = len(track.utc) - 1
             else:
                 istop = np.where(track.utc < tstop)[0][-1] + 1
-            track.set_par(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
+            track.ptadd(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
             mjd = track.utc[track.istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
                 self.start_mjd = copy(mjd)
