@@ -6,6 +6,7 @@
 - **obsrec file** - the filename holding the obsrec information (generally `<OBSREC>.npz`, see note below)
 - **obsinfo** - a file containing information on obsids for a given experiment:  `obsinfo_<MJD>.json`
 - **ods** - operational data sharing
+- **tba** - telescope boresight avoidance
 
 ***note:*** uvh5 files are put into directories that map to an obsrec:<br>
 `/mnt/primary/ata/projects/pID#/YYYY-MM-DD-HH:MM:SS/uvh5...../Lo[A/B/C/D].C[####]/uvh5......uvh5`

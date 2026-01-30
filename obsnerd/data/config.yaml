@@ -1,11 +1,11 @@
-Ants: rfsoc_active-4j
+Ants: rfsoc_active
 Freq_unit: MHz
 Tuning_Bandwidth: 690.0
 Tunings:
-  A: 1990.0
-  B: 1996.0
-  C: 1984.0
-  D: 2400.0
+  A: 1420.0
+  B: 1990.0
+  C: 2400.0
+  D: 4400.0
 Filters:
   # L-band
   - {'color': 'b', 'band': [1939.0, 1945.0]}
