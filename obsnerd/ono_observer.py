@@ -202,9 +202,9 @@ class Observer:
                 logger.error(f"Currently only support 'name' coord type, not '{source.coord}'")
                 continue
             obsrec.append(source.pt_to_dict())
-            if not i: print(source.ptshow(vals_only=True, include_par='short'))
+            if not i: print(source.ptshow(vals_only=True))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
-            print(f"{ts} -- {i+1}/{len(self.records)}: {source.ptshow(vals_only=True, include_par='short')}")
+            print(f"{ts} -- {i+1}/{len(self.records)}: {source.ptshow(vals_only=True)}")
             print(source.source, source.coord, source.x, source.y)
             self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
