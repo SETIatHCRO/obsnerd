@@ -199,12 +199,12 @@ class Observer:
         obsrec = []
         for i, source in enumerate(self.records):
             if source.coord != 'name':
-                logger.error(f"Currently only support 'name' coord type, not '{self.coord}'")
+                logger.error(f"Currently only support 'name' coord type, not '{source.coord}'")
                 continue
             obsrec.append(source.pt_to_dict())
-            if not i: print(source.__repr__(fprnt='header'))
+            if not i: print(source.ptshow(vals_only=True, include_par='short'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
-            print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(fprnt='short')}")
+            print(f"{ts} -- {i+1}/{len(self.records)}: {source.ptshow(vals_only=True, include_par='short')}")
             print(source.source, source.coord, source.x, source.y)
             self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
