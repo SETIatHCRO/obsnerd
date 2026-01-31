@@ -1,8 +1,8 @@
 from odsutils import ods_timetools as ttools
-from odsutils import ods_tools as tools
 import numpy as np
 from argparse import Namespace
 from param_track import Parameters
+from param_track.param_track_support import listify
 import json
 
 
@@ -42,8 +42,10 @@ class Track(Parameters):
         'source', 'x', 'y', 'coord',
         'start', 'end', 'obs_time_sec', 'time_per_int_sec'
     ]
+
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
     short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time_sec']
+    some_dtype_lists = {'freq': float, 'lo': str, 'attenuation': int}
     use_def = {'y': "use with ods",
                'n': "use without ods",
                's': "skip (don't use)"}
@@ -58,49 +60,33 @@ class Track(Parameters):
         'freq1': 'obs_freq_hi_mhz'}
 
     def __init__(self, **kwargs):
-        super().__init__(ptnote='Track parameters', ptverbose=False)
-        self.ptinit(param_list=self.fields)
-        self.ptset(**kwargs)
-        self.iobs = None
+        super().__init__(ptnote='Track parameters', ptinit=self.fields, pttype=False, ptverbose=False, **kwargs)
+        self.ptadd(iobs=None)
 
-    def __repr__(self):
-        return self.ptshow(return_only=True)
+    def view(self, fields_to_show=None):
+        self.ptshow(vals_only=True, include_par=fields_to_show)
 
-    def __str__(self):
-        return self.view(fields_to_show=self.fields, bracket=['', ''], sep='\n')
+    def update(self, **kwargs):
+        """
+        Update parameters, applying listify to some known dtypes.
+        If changing time, must include 2 of 3 (and only 2) of [start, end, obs_time] to keep them consistent.
 
-    def listify(self, key, dtype=None):
-        try:
-            setattr(self, key, tools.listify(self.ptget(key), dtype=dtype))
-        except AttributeError:
-            pass
+        """
+        dtypekeys = set(kwargs.keys()).intersection(self.some_dtype_lists.keys())
+        for key in dtypekeys:
+            kwargs[key] = listify(kwargs[key], dtype=self.some_dtype_lists[key])
+        timekeys = set(kwargs.keys()).intersection({'start', 'end', 'obs_time_sec'})
+        if timekeys == {'start', 'end'}:
+            kwargs['obs_time_sec'] = int((ttools.t_delta(kwargs['end'], kwargs['start'])).to_value('sec'))
+        elif timekeys == {'start', 'obs_time_sec'}:
+            kwargs['end'] = ttools.t_delta(kwargs['start'], kwargs['obs_time_sec'], 's')
+        elif timekeys == {'end', 'obs_time_sec'}:
+            kwargs['start'] = ttools.t_delta(kwargs['end'], -1.0 * kwargs['obs_time_sec'], 's')
+        elif len(timekeys) > 0:
+            raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'end', 'obs_time' to keep them consistent.")
+        
+        self._pt_set(**kwargs)
 
-    def proc(self):
-        if self.obs_time_sec is None or self.obs_time_sec == '-':
-            self.ptset(obs_time_sec = int((self.end - self.start).to_value('sec')))
-        elif self.end is None or self.end == '-':
-            self.ptset(end=ttools.t_delta(self.start, self.obs_time_sec, 's'))
-        elif self.start is None or self.start == '-':
-            self.ptset(start=ttools.t_delta(self.end, -1.0 * self.obs_time_sec, 's'))
-        for key, dtype in {'freq': None, 'lo': str, 'attenuation':int}.items():
-            self.listify(key, dtype)
-
-    def view(self, fields_to_show=None, bracket=['', ''], sep='\n'):
-        if fields_to_show is None:
-            fields_to_show = self.fields
-        s = bracket[0]
-        for fld in fields_to_show:
-            try:
-                val = self.ptget(fld)
-                if isinstance(val, list):
-                    val = ', '.join([str(x) for x in val])
-                s += f'{fld}: {val}{sep}'
-            except AttributeError:
-                continue
-        s = s.strip(sep)
-        s += bracket[1]
-        return s
-    
     def index_tracker(self, **kwargs):
         """
         If the track is part of a bigger set, then this will keep track of the index in the bigger set.
