@@ -27,7 +27,7 @@ def generate_colors(n):
     
     Returns:
     list: List of RGB color tuples.
-    
+
     """    
     colors = []
     for i in range(n):
@@ -38,7 +38,7 @@ def generate_colors(n):
     return colors
 
 class Plan:
-    def __init__(self, conlog='INFO', filelog=False, config_file=None, loc='ata'):
+    def __init__(self, conlog='INFO', filelog=False, config_file='config.yaml', loc='ata'):
         self.location = locations.Location(name=loc)
         self.log_settings = logger_setup.Logger(logger, conlog=conlog, filelog=filelog, log_filename=LOG_FILENAME,
                                                 conlog_format=LOG_FORMATS['conlog_format'], filelog_format=LOG_FORMATS['filelog_format'])
