@@ -116,7 +116,7 @@ class Observer:
             except (AttributeError, IndexError):
                 continue
         kw['start'], kw['end'] = t0, t1
-        self.overall.update(**kw)
+        self.overall.ptset(**kw)
 
     def update_calendar(self):
         # Get times to 5minutes

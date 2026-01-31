@@ -27,6 +27,7 @@ def generate_colors(n):
     
     Returns:
     list: List of RGB color tuples.
+    
     """    
     colors = []
     for i in range(n):
