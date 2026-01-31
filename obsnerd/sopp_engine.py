@@ -150,9 +150,9 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
         srcname = window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')
         eventid = f"{srcname}{i}"
         this_track = Track(source=eventid)
-        this_track.set_track(az=array(az)*u.deg, el=array(el)*u.deg, utc=Time(tae), dist=array(dist)*u.m)
+        this_track.update(az=array(az)*u.deg, el=array(el)*u.deg, utc=Time(tae), dist=array(dist)*u.m)
         sky = SkyCoord(alt=this_track.el, az=this_track.az, obstime=this_track.utc, frame='altaz', location=location)
-        this_track.set_track(ra=sky.gcrs.ra, dec=sky.gcrs.dec)
+        this_track.update(ra=sky.gcrs.ra, dec=sky.gcrs.dec)
         this_track.calc_properties()
         tracks.setdefault(srcname, [])
         tracks[srcname].append(this_track)
