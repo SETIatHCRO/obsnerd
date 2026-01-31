@@ -61,7 +61,8 @@ class Track(Parameters):
 
     def __init__(self, **kwargs):
         super().__init__(ptnote='Track parameters', ptinit=self.fields, pttype=False, ptverbose=False, **kwargs)
-        self.ptadd(iobs=None)
+        self.ptinit(['iobs', 'iref', 'istart', 'istop'])
+        self.ptinit(['ra', 'dec', 'az', 'el', 'dist', 'utc'])
 
     def view(self, fields_to_show=None):
         self.ptshow(vals_only=True, include_par=fields_to_show)
@@ -72,8 +73,14 @@ class Track(Parameters):
         If changing time, must include 2 of 3 (and only 2) of [start, end, obs_time] to keep them consistent.
 
         """
-        dtypekeys = set(kwargs.keys()).intersection(self.some_dtype_lists.keys())
-        for key in dtypekeys:
+        for key in set(kwargs.keys()).intersection({'ra', 'dec', 'az', 'el', 'dist'}):
+            if isinstance(kwargs[key], str):
+                kwargs[key] = float(kwargs[key])
+            else:
+                kwargs[key] = kwargs[key]
+        if 'utc' in kwargs:
+            kwargs['utc'] = ttools.interpret_date(kwargs['utc'])
+        for key in set(kwargs.keys()).intersection(self.some_dtype_lists.keys()):
             kwargs[key] = listify(kwargs[key], dtype=self.some_dtype_lists[key])
         timekeys = set(kwargs.keys()).intersection({'start', 'end', 'obs_time_sec'})
         if timekeys == {'start', 'end'}:
@@ -86,30 +93,6 @@ class Track(Parameters):
             raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'end', 'obs_time' to keep them consistent.")
         
         self._pt_set(**kwargs)
-
-    def index_tracker(self, **kwargs):
-        """
-        If the track is part of a bigger set, then this will keep track of the index in the bigger set.
-
-        """
-        for par, val in kwargs.items():
-            if par not in ['iref', 'istart', 'istop']:
-                continue
-            setattr(self, par, val)
-
-    def set_track(self, **kwargs):
-        for par, val in kwargs.items():
-            if par in ['ra', 'dec', 'az', 'el', 'dist']:
-                if isinstance(val, str):
-                    this_val = float(val)
-                else:
-                    this_val = val
-            elif par == 'utc':
-                this_val = ttools.interpret_date(val)
-            else:
-                this_val = val
-            if this_val is not None:  # Probably not necessary anymore
-                setattr(self, par, this_val) 
 
     def calc_properties(self):
         self.duration = self.utc[-1] - self.utc[0]
