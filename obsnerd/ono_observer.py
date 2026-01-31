@@ -201,7 +201,7 @@ class Observer:
             if source.coord != 'name':
                 logger.error(f"Currently only support 'name' coord type, not '{self.coord}'")
                 continue
-            obsrec.append(source.to_dict())
+            obsrec.append(source.pt_to_dict())
             if not i: print(source.__repr__(fprnt='header'))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{len(self.records)}: {source.__repr__(fprnt='short')}")
