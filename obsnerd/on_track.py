@@ -60,9 +60,10 @@ class Track(Parameters):
         'freq1': 'obs_freq_hi_mhz'}
 
     def __init__(self, **kwargs):
-        super().__init__(ptnote='Track parameters', ptinit=self.fields, pttype=False, ptverbose=False, **kwargs)
+        super().__init__(ptnote='Track parameters', ptinit=self.fields, pttype=False, ptverbose=False)
         self.ptinit(['iobs', 'iref', 'istart', 'istop'])
         self.ptinit(['ra', 'dec', 'az', 'el', 'dist', 'utc'])
+        self.update(**kwargs)
 
     def view(self, fields_to_show=None):
         self.ptshow(vals_only=True, include_par=fields_to_show)
@@ -83,8 +84,11 @@ class Track(Parameters):
         for key in set(kwargs.keys()).intersection(self.some_dtype_lists.keys()):
             kwargs[key] = listify(kwargs[key], dtype=self.some_dtype_lists[key])
         timekeys = set(kwargs.keys()).intersection({'start', 'end', 'obs_time_sec'})
+        for key in timekeys:
+            if kwargs[key] is None or not kwargs[key]:
+                timekeys.remove(key)
         if timekeys == {'start', 'end'}:
-            kwargs['obs_time_sec'] = int((ttools.t_delta(kwargs['end'], kwargs['start'])).to_value('sec'))
+            kwargs['obs_time_sec'] = int((kwargs['end'] - kwargs['start']).to_value('sec'))
         elif timekeys == {'start', 'obs_time_sec'}:
             kwargs['end'] = ttools.t_delta(kwargs['start'], kwargs['obs_time_sec'], 's')
         elif timekeys == {'end', 'obs_time_sec'}:

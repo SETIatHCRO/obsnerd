@@ -39,7 +39,7 @@ class Observer:
                                                 conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
         self.records = []  # on_track to be made out of ODS
-        track= on_track.Track()
+        track = on_track.Track()
         self.embargo = tools.listify(kw['embargo'])
         self.default_ods_default_file = op.join(DATA_PATH, 'ods_defaults_B.json')
         self.obsfile = obsfile
@@ -87,13 +87,10 @@ class Observer:
                                  time_per_int_sec=self.time_per_int_sec, coord='name')
             if update_source_database:
                 ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
-            rec.proc()
             self.records.append(rec)
             ctr += 1
-            print(f"Generated observer record: {ctr}")
-            print("-------------------------------")
-            print(rec)
-            print("===============================================================================")
+            print(f"Generated observer record {ctr}:  {rec.source} -- {rec.start} to {rec.end}")
+
         self.get_overall()
         if add_to_calendar:
             self.update_calendar()
