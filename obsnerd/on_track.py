@@ -71,7 +71,7 @@ class Track(Parameters):
     def update(self, **kwargs):
         """
         Update parameters, applying listify to some known dtypes.
-        If changing time, must include 2 of 3 (and only 2) of [start, end, obs_time] to keep them consistent.
+        If changing time, must include 2 of 3 (and only 2) of [start, end, obs_time_sec] to keep them consistent.
 
         """
         for key in set(kwargs.keys()).intersection({'ra', 'dec', 'az', 'el', 'dist'}):
@@ -94,7 +94,7 @@ class Track(Parameters):
         elif timekeys == {'end', 'obs_time_sec'}:
             kwargs['start'] = ttools.t_delta(kwargs['end'], -1.0 * kwargs['obs_time_sec'], 's')
         elif len(timekeys) > 0:
-            raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'end', 'obs_time' to keep them consistent.")
+            raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'end', 'obs_time_sec' to keep them consistent.")
         
         self._pt_set(**kwargs)
 

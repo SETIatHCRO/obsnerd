@@ -231,7 +231,7 @@ class CommandHandler:
         else:
             x, y = None, None
             logger.info(f'move to: {source}')
-        self.rec.update(source_name=source, x=x, y=y, coord=coord_type)
+        self.rec.update(source=source, x=x, y=y, coord=coord_type)
         if coord_type == 'azel':
             logger.info(f"azel: {x},{y}")
             sr = ata_control.set_az_el(use_ants, x.to_value('deg'), y.to_value('deg'))
@@ -243,7 +243,7 @@ class CommandHandler:
             logger.info(f"source: {source}")
             sr = ata_control.make_and_track_ephems(source, use_ants)
         elif coord_type == 'traj':
-            logger.info(f"traj: {self.source}")
+            logger.info(f"traj: {source}")
             from obsnerd.trajectory_engine import TRACK_YAML_FILENAME
             ephem = ata_control.upload_ephemeris(self.source)
             sr = ata_control.track_ephemeris(ephem, use_ants, wait=True)
@@ -257,7 +257,7 @@ class CommandHandler:
         print(f"Moving to source: {source}")
 
     def take_data(self, obs_time_sec, time_per_int_sec):
-        self.rec.update(obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
+        self.rec.update(start=self.rec.start, obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
         d = get_LO_hpguppi(self.lo)
         keyval_dict = {'XTIMEINT': time_per_int_sec}
         print(self.lo)
