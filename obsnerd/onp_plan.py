@@ -237,18 +237,20 @@ class Plan:
                 plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
                 print(f"\t{track.use_def[track.use]} {track.source} at {track.utc[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
         if auto:
-            self.proc_tracks()
+            self.proc_tracks(write_to_clipboard=True)
         else:
             print("Now run plan.proc_tracks() to write the obsinfo.json file.")
 
-    def proc_tracks(self, decimal_places=1):
+    def proc_tracks(self, decimal_places=1, write_to_clipboard=False):
         """
         After choosing tracks, write the obsinfo.json file.
 
-        Parameter
+        Parameters
         ---------
         decimal_places : int, optional
             Number of decimal places to use for filenames, by default 1
+        write_to_clipboard : bool, optional
+            If True, write the obsinfo filename to the clipboard (macOS only), by default False
 
         """
         obslen_TD2 = self.obslen / 2.0
@@ -275,4 +277,9 @@ class Plan:
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
         self.obsinfo = on_obsinfo.Obsinfo()
         self.obsinfo.write_track_plan_to_obsinfo(obsinfofn, self.config_file, self.tracks)
-        print(f"Copy the obsinfo file:  scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.json")
+        clipcmd = f"scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.json"
+        if write_to_clipboard:
+            from param_track.param_track_support import write_to_clipboard
+            write_to_clipboard(clipcmd)
+        else:
+            print(f"Copy the obsinfo file:  {clipcmd}")
