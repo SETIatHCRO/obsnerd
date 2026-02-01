@@ -256,8 +256,8 @@ class CommandHandler:
                 pass
         print(f"Moving to source: {source}")
 
-    def take_data(self, obs_time_sec, time_per_int_sec):
-        self.rec.update(start=self.rec.start, obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
+    def take_data(self, start, obs_time_sec, time_per_int_sec):
+        self.rec.update(start=start, obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
         d = get_LO_hpguppi(self.lo)
         keyval_dict = {'XTIMEINT': time_per_int_sec}
         print(self.lo)

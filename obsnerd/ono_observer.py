@@ -210,7 +210,7 @@ class Observer:
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
                 continue
-            self.obs.take_data(source.obs_time_sec, source.time_per_int_sec)
+            self.obs.take_data(source.start, source.obs_time_sec, source.time_per_int_sec)
         self.obs.release_ants()
         print("Observation complete -- exit calendar.")
         json.dump(self.obsinfo, open('obsout.json', 'w'), indent=2)
