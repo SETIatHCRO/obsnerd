@@ -1,46 +1,15 @@
 from odsutils import ods_timetools as ttools
 import numpy as np
-from argparse import Namespace
 from param_track import Parameters
 from param_track.param_track_support import listify
-import json
-
-
-def read_obsinfo(filename):
-    """
-    Read an obsinfo file.
-
-    Parameters
-    ----------
-    filename : str
-        Filename of the obsinfo file to be read
-
-    """
-    if filename is None:
-        return Namespace(filename=None, sources={})
-    obsinfo = Namespace(filename=filename, sources={})
-    with open(filename, 'r') as fp:
-        data = json.load(fp)
-
-    for key, value in data.items():
-        if key != 'Sources':
-            setattr(obsinfo, key.lower(), value)
-    for key, value in data['Sources'].items():
-        obsinfo.sources[key] = Track(source=key)
-        obsinfo.sources[key].set_track(**value)
-        for extra in ['off_time', 'off_angle']:
-            try:
-                setattr(obsinfo.sources[key], extra, value[extra])
-            except KeyError:
-                pass
-    return obsinfo
 
 
 class Track(Parameters):
     fields = [
         'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
         'source', 'x', 'y', 'coord',
-        'start', 'end', 'obs_time_sec', 'time_per_int_sec'
+        'start', 'end', 'obs_time_sec', 'time_per_int_sec',
+        'ods', 'obsid', 'off_time', 'off_angle'
     ]
 
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
@@ -83,11 +52,13 @@ class Track(Parameters):
             kwargs['utc'] = ttools.interpret_date(kwargs['utc'])
         for key in set(kwargs.keys()).intersection(self.some_dtype_lists.keys()):
             kwargs[key] = listify(kwargs[key], dtype=self.some_dtype_lists[key])
-        timekeys = set(kwargs.keys()).intersection({'start', 'end', 'obs_time_sec'})
+        timekeys = set(kwargs.keys()).intersection({'start', 'end', 'stop', 'obs_time_sec'})
         for key in timekeys:
             if kwargs[key] is None or not kwargs[key]:
                 timekeys.remove(key)
-        if timekeys == {'start', 'end'}:
+            elif key == 'stop':
+                kwargs['end'] = kwargs.pop('stop')
+        if timekeys == {'start', 'end'} or timekeys == {'start', 'stop'}:
             kwargs['obs_time_sec'] = int((kwargs['end'] - kwargs['start']).to_value('sec'))
         elif timekeys == {'start', 'obs_time_sec'}:
             kwargs['end'] = ttools.t_delta(kwargs['start'], kwargs['obs_time_sec'], 's')

@@ -1,6 +1,6 @@
 import logging
 from aocalendar import aocalendar
-from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys, on_config, approx_equal
+from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys, on_obsinfo, approx_equal
 from odsutils import logger_setup, locations
 from odsutils import ods_timetools as ttools
 from astropy.coordinates import SkyCoord
@@ -46,7 +46,7 @@ class Plan:
         self.minimum_duration = TimeDelta(0.0, format='sec')
         self.el_limit = None
         self.tracks = {}
-        self.config = on_config.Config(config_file=config_file)
+        self.config_file = config_file
 
     def setupcal(self):
         self.this_cal = aocalendar.Calendar(calfile='now', path=self.log_settings.path, conlog=self.log_settings.conlog,
@@ -267,41 +267,6 @@ class Plan:
             if self.start_mjd is None or mjd < self.start_mjd:
                 self.start_mjd = copy(mjd)
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
-        self.write_obsinfo(obsinfofn)
+        self.obsinfo = on_obsinfo.Obsinfo()
+        self.obsinfo.write_track_plan_to_obsinfo(obsinfofn, self.config_file, self.tracks)
         print(f"Copy the obsinfo file:  scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.json")
-
-    def write_obsinfo(self, obsinfofn):
-        from astropy.coordinates import angular_separation
-        obsinfo = {'filename': obsinfofn, 'dir_data': 'data', "Sources": {}}
-        for k, v in self.config.items().items():
-            obsinfo[k] = v
-        for satname in self.tracks:
-            for track in self.tracks[satname]:
-                if track.iobs is None:
-                    continue
-                obsinfo['Sources'][track.source] = {'obsid': on_sys.make_obsid(track.source, track.utc[track.istart].mjd)}
-                obsinfo['Sources'][track.source]['ra'] = track.ra[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['dec'] = track.dec[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
-                obsinfo['Sources'][track.source]['az'] = track.az[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['el'] = track.el[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['start'] = track.tstart.datetime.isoformat(timespec='seconds')
-                obsinfo['Sources'][track.source]['stop'] = track.tstop.datetime.isoformat(timespec='seconds')
-                obsinfo['Sources'][track.source]['off_time'] = []
-                obsinfo['Sources'][track.source]['off_angle'] = []
-                obsinfo['Sources'][track.source]['ods'] = True if track.use == 'y' else False
-                for i in range(track.istart, track.istop+1):
-                    toff = (track.utc[i] - track.tobs).to_value('sec')
-                    aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
-                    obsinfo['Sources'][track.source]['off_time'].append(np.round(toff, 1))
-                    obsinfo['Sources'][track.source]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
-        try:
-            with open(obsinfofn, 'r') as fp:
-                self.obsinfo = json.load(fp)
-            print(f"Updating {obsinfofn}")
-        except FileNotFoundError:
-            self.obsinfo = {}
-            print(f"Writing {obsinfofn}")
-        self.obsinfo.update(obsinfo)
-        with open(obsinfofn, 'w') as fp:
-            json.dump(self.obsinfo, fp, indent=4)
