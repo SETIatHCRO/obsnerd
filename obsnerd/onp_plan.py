@@ -89,7 +89,7 @@ class Plan:
         self.this_cal.ods.view_ods()
         self.this_cal.ods.post_ods('test_ods.json')
 
-    def get_tracks(self, satname, start, duration, el_limit=15.0, DTC_only=True, time_resolution=10, source='sopp'):
+    def get_tracks(self, satname, start, duration, auto=False, el_limit=15.0, DTC_only=True, time_resolution=10, source='sopp'):
         """
         Get satellite tracks for satellites regex-found from 'satname'.
 
@@ -135,7 +135,10 @@ class Plan:
         else:
             logger.error(f"Unknown source: {source}")
             return
-        print("Now run `plan.choose_tracks(auto=True)` to select tracks for observation.")
+        if auto:
+            self.choose_tracks(auto=auto)
+        else:
+            print("Now run `plan.choose_tracks(auto=True)` to select tracks for observation.")
 
     def plot_track_summary(self, satname='all', show_az_transit_track=False):
         line_styles = ['-', '--', '-.', ':']
@@ -233,7 +236,10 @@ class Plan:
                 track.ptadd(iobs=ind, use=self.track_list[key]['use'])
                 plt.plot(track.utc[ind].datetime, track.el[ind].value, 'ro')
                 print(f"\t{track.use_def[track.use]} {track.source} at {track.utc[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
-        print("Now run plan.proc_tracks() to write the obsinfo.json file.")
+        if auto:
+            self.proc_tracks()
+        else:
+            print("Now run plan.proc_tracks() to write the obsinfo.json file.")
 
     def proc_tracks(self, decimal_places=1):
         """

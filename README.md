@@ -4,7 +4,8 @@
 - **obsidt** - an obsid plus tuning: `<OBSID>_<A/B/C/D>`
 - **obsrec** - a unique observation/hardware identifier:  `<OBSIDT>_<CNODE>`
 - **obsrec file** - the filename holding the obsrec information (generally `<OBSREC>.npz`, see note below)
-- **obsinfo** - a file containing information on obsids for a given experiment:  `obsinfo_<MJD>.json`
+- **tracks** - an `on_tracks.py` class that contain all info to generate a track along with metadata etc.
+- **obsinfo** - a file containing information on obsids for a given experiment:  `obsinfo_<MJD>.json`. Among other fields, it has the key "Sources" that contain a list of `tracks`
 - **ods** - operational data sharing
 - **tba** - telescope boresight avoidance
 
@@ -17,9 +18,9 @@ The focus right now is to observe the Starlink Direct-to-Cell (DTC) satellites.
 ##Find satellites##
 Need to find and set up the satellites.  This is currently clumsily interactive.  The main problem is that THERE ARE SO MANY!
 
-Be sure to update the tle files with `on_updatetle.py`.
+Be sure to update the tle files with `on_updatetle.py`.  The default is that there is a subdirectory called `tle` where it puts and reads the information.
 
-Make sure that you have an appropriate `config.yaml` file.  Note that the default is included in the package under `data/config.yaml`.  This gets copied into the obsinfo file for later processing.
+Make sure that you have an appropriate `config.yaml` file.  Note that an example is included in the package under `data/config.yaml`.  This gets copied into the obsinfo file for later processing.
 
 Use the planning tool from within ipython and get 'tracks'
 

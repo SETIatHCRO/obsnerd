@@ -53,18 +53,19 @@ class Track(Parameters):
         for key in set(kwargs.keys()).intersection(self.some_dtype_lists.keys()):
             kwargs[key] = listify(kwargs[key], dtype=self.some_dtype_lists[key])
         timekeys = set(kwargs.keys()).intersection({'start', 'end', 'stop', 'obs_time_sec'})
+        checked_timekeys = timekeys.copy()
         for key in timekeys:
             if kwargs[key] is None or not kwargs[key]:
-                timekeys.remove(key)
+                checked_timekeys.remove(key)
             elif key == 'stop':
                 kwargs['end'] = kwargs.pop('stop')
-        if timekeys == {'start', 'end'} or timekeys == {'start', 'stop'}:
+        if checked_timekeys == {'start', 'end'} or checked_timekeys == {'start', 'stop'}:
             kwargs['obs_time_sec'] = int((kwargs['end'] - kwargs['start']).to_value('sec'))
-        elif timekeys == {'start', 'obs_time_sec'}:
+        elif checked_timekeys == {'start', 'obs_time_sec'}:
             kwargs['end'] = ttools.t_delta(kwargs['start'], kwargs['obs_time_sec'], 's')
-        elif timekeys == {'end', 'obs_time_sec'}:
+        elif checked_timekeys == {'end', 'obs_time_sec'}:
             kwargs['start'] = ttools.t_delta(kwargs['end'], -1.0 * kwargs['obs_time_sec'], 's')
-        elif len(timekeys) > 0:
+        elif len(checked_timekeys) > 0:
             raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'end', 'obs_time_sec' to keep them consistent.")
         
         self._pt_set(**kwargs)

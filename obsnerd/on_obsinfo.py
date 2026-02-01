@@ -98,26 +98,31 @@ class Obsinfo:
         obsinfo = {'filename': obsinfofn, 'dir_data': 'data', "Sources": {}}
         for k, v in self.contents.items():
             obsinfo[k] = v
+        timed_tracks = {}
         for satname in tracks:
-            for track in tracks[satname]:
-                if track.iobs is None:
-                    continue
-                obsinfo['Sources'][track.source] = {'obsid': on_sys.make_obsid(track.source, track.utc[track.istart].mjd)}
-                obsinfo['Sources'][track.source]['ra'] = track.ra[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['dec'] = track.dec[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
-                obsinfo['Sources'][track.source]['az'] = track.az[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['el'] = track.el[track.iobs].to_value('deg')
-                obsinfo['Sources'][track.source]['start'] = track.tstart.datetime.isoformat(timespec='seconds')
-                obsinfo['Sources'][track.source]['stop'] = track.tstop.datetime.isoformat(timespec='seconds')
-                obsinfo['Sources'][track.source]['off_time'] = []
-                obsinfo['Sources'][track.source]['off_angle'] = []
-                obsinfo['Sources'][track.source]['ods'] = True if track.use == 'y' else False
-                for i in range(track.istart, track.istop+1):
-                    toff = (track.utc[i] - track.tobs).to_value('sec')
-                    aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
-                    obsinfo['Sources'][track.source]['off_time'].append(np.round(toff, 1))
-                    obsinfo['Sources'][track.source]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
+            for i, track in enumerate(tracks[satname]):
+                if track.iobs is not None:
+                    timed_tracks[track.tstart.datetime] = {'satname': satname, 'index': i}
+        for track_info in sorted(timed_tracks.keys()):
+            satname = timed_tracks[track_info]['satname']
+            ind = timed_tracks[track_info]['index']
+            track = tracks[satname][ind]
+            obsinfo['Sources'][track.source] = {'obsid': on_sys.make_obsid(track.source, track.utc[track.istart].mjd)}
+            obsinfo['Sources'][track.source]['ra'] = track.ra[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source]['dec'] = track.dec[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
+            obsinfo['Sources'][track.source]['az'] = track.az[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source]['el'] = track.el[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source]['start'] = track.tstart.datetime.isoformat(timespec='seconds')
+            obsinfo['Sources'][track.source]['stop'] = track.tstop.datetime.isoformat(timespec='seconds')
+            obsinfo['Sources'][track.source]['off_time'] = []
+            obsinfo['Sources'][track.source]['off_angle'] = []
+            obsinfo['Sources'][track.source]['ods'] = True if track.use == 'y' else False
+            for i in range(track.istart, track.istop+1):
+                toff = (track.utc[i] - track.tobs).to_value('sec')
+                aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
+                obsinfo['Sources'][track.source]['off_time'].append(np.round(toff, 1))
+                obsinfo['Sources'][track.source]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
         try:
             with open(obsinfofn, 'r') as fp:
                 existing_obsinfo = json.load(fp)
