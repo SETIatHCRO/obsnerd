@@ -2,33 +2,23 @@ from odsutils import ods_timetools as ttools
 import numpy as np
 from param_track import Parameters
 from param_track.param_track_support import listify
+from . import DATA_PATH
+from os.path import join
+import yaml
 
 
 class Track(Parameters):
-    fields = [
-        'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
-        'source', 'x', 'y', 'coord',
-        'start', 'end', 'obs_time_sec', 'time_per_int_sec',
-        'ods', 'obsid', 'off_time', 'off_angle'
-    ]
-
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
     short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time_sec']
     some_dtype_lists = {'freq': float, 'lo': str, 'attenuation': int}
     use_def = {'y': "use with ods",
                'n': "use without ods",
                's': "skip (don't use)"}
-    ods_mapping = {
-        'source': 'src_id',
-        'x': 'src_ra_j2000_deg',
-        'y': 'src_dec_j2000_deg',
-        'start': 'src_start_utc',
-        'end': 'src_end_utc',
-        'time_per_int_sec': 'corr_integ_time_sec',
-        'freq0': 'obs_freq_lo_mhz',
-        'freq1': 'obs_freq_hi_mhz'}
 
     def __init__(self, **kwargs):
+        self.track_field_structure = yaml.safe_load(open(join(DATA_PATH, 'track_parameters.yaml')))
+        self.fields = list(self.track_field_structure['fields'].keys())
+        self.ods_mapping = self.track_field_structure['ods_mapping']
         super().__init__(ptnote='Track parameters', ptinit=self.fields, pttype=False, ptverbose=False)
         self.ptinit(['iobs', 'iref', 'istart', 'istop'])
         self.ptinit(['ra', 'dec', 'az', 'el', 'dist', 'utc'])

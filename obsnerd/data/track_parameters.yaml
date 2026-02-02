@@ -1,0 +1,108 @@
+fields:
+  ants:
+    description: Antenna numbers or defined list of antennas to be used
+    files: []
+    type:
+    - ""
+    - []
+  attenuation:
+    description: ''
+    files: []
+    type:
+    - []
+  backend:
+    description: ''
+    files: []
+    type: []
+  coord:
+    description: ''
+    files: []
+    type: []
+  end:
+    description: ''
+    files: []
+    type: []
+  focus:
+    description: ''
+    files: []
+    type: []
+  freq:
+    description: ''
+    files: []
+    type:
+    - 1.0
+  lo:
+    description: ''
+    files: []
+    type:
+    - ''
+  obs_time_sec:
+    description: ''
+    files: []
+    type: []
+  observer:
+    description: Name of the observer
+    files:
+    - ono_observer.py
+    - ono_engine.py
+    type:
+    - str
+  obsid:
+    description: ''
+    files: []
+    type: []
+  ods:
+    description: ''
+    files: []
+    type: []
+  off_angle:
+    description: ''
+    files: []
+    type: []
+  off_time:
+    description: ''
+    files: []
+    type: []
+  project_id:
+    description: Project ID - generally p###
+    files:
+    - ono_observer.py
+    - ono_engine.py
+    type:
+    - str
+  project_name:
+    description: Name of the project - descriptive
+    files:
+    - ono_observer.py
+    - ono_engine.py
+    type:
+    - str
+  source:
+    description: ''
+    files: []
+    type: []
+  start:
+    description: ''
+    files: []
+    type: []
+  time_per_int_sec:
+    description: ''
+    files: []
+    type: []
+  x:
+    description: ''
+    files: []
+    type: []
+  y:
+    description: ''
+    files: []
+    type: []
+ods:
+  source: src_id
+  x: src_ra_j2000_deg
+  y: src_dec_j2000_deg
+  start: src_start_utc
+  end: src_end_utc
+  time_per_int_sec: corr_integ_time_sec
+  freq0: obs_freq_lo_mhz
+  freq1: obs_freq_hi_mhz

@@ -281,5 +281,6 @@ class Plan:
         if write_to_clipboard:
             from param_track.param_track_support import write_to_clipboard
             write_to_clipboard(clipcmd)
+            print(f"Written to clipboard:  {clipcmd}")
         else:
             print(f"Copy the obsinfo file:  {clipcmd}")
