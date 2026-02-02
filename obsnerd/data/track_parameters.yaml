@@ -26,6 +26,11 @@ fields:
     files: []
     type:
     - Time
+  stop:
+    description: 'Same as end (need to get rid of one)'
+    files: []
+    type:
+    - Time
   focus:
     description: ''
     files: []
@@ -76,6 +81,7 @@ fields:
     files: []
     type:
     - float
+    - list
   project_id:
     description: Project ID - generally p###
     files:
@@ -91,7 +97,7 @@ fields:
     type:
     - str
   source:
-    description: ''
+    description: 'Name of source'
     files: []
     type:
     - str

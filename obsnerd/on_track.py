@@ -1,7 +1,7 @@
-from odsutils import ods_timetools as ttools
 import numpy as np
 from param_track import Parameters
 from param_track.param_track_support import listify
+from param_track import param_track_timetools as ttools
 from . import DATA_PATH
 from os.path import join
 import yaml
@@ -10,7 +10,6 @@ import yaml
 class Track(Parameters):
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
     short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time_sec']
-    some_dtype_lists = {'freq': float, 'lo': str, 'attenuation': int}
     use_def = {'y': "use with ods",
                'n': "use without ods",
                's': "skip (don't use)"}
@@ -41,16 +40,17 @@ class Track(Parameters):
         """
         newargs = {}
         for key, value in kwargs.items():
-            dtype_info = self.track_field_structure[key]['type']
+            print(key, value)
+            dtype_info = self.track_field_structure['fields'][key]['type']
             if key in self.field_types['list']:
                 if len(dtype_info) == 2:
-                    ind = 0 if self.track_field_structure[key]['type'][1] == 'list' else 1
+                    ind = 0 if dtype_info[1] == 'list' else 1
                     newargs[key] = listify(value, dtype=dtype_info[ind])
                 else:
                     newargs[key] = listify(value)
             elif len(dtype_info) == 1:
                 if dtype_info[0] in ['Time', 'TimeDelta']:
-                    newargs[key] = ttools.interpret_date(value)
+                    newargs[key] = ttools.interpret_date(value, fmt=dtype_info[0])
                 else:
                     newargs[key] = eval(dtype_info[0])(value)
             else:
@@ -64,7 +64,7 @@ class Track(Parameters):
             elif key == 'stop':
                 newargs['end'] = newargs.pop('stop')
         if checked_timekeys == {'start', 'end'} or checked_timekeys == {'start', 'stop'}:
-            newargs['obs_time_sec'] = int((newargs['end'] - newargs['start']))
+            newargs['obs_time_sec'] = newargs['end'] - newargs['start']
         elif checked_timekeys == {'start', 'obs_time_sec'}:
             newargs['end'] = ttools.t_delta(newargs['start'], newargs['obs_time_sec'], 's')
         elif checked_timekeys == {'end', 'obs_time_sec'}:
