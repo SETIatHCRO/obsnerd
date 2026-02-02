@@ -9,7 +9,7 @@ import yaml
 
 class Track(Parameters):
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
-    short = ['freq', 'source', 'x', 'y', 'start', 'end', 'obs_time_sec']
+    short = ['freq', 'source', 'x', 'y', 'start', 'stop', 'obs_time_sec']
     use_def = {'y': "use with ods",
                'n': "use without ods",
                's': "skip (don't use)"}
@@ -35,7 +35,7 @@ class Track(Parameters):
     def update(self, **kwargs):
         """
         Update parameters, applying listify to some known dtypes.
-        If changing time, must include 2 of 3 (and only 2) of [start, end, obs_time_sec] to keep them consistent.
+        If changing time, must include 2 of 3 (and only 2) of [start, stop, obs_time_sec] to keep them consistent.
 
         """
         newargs = {}
@@ -57,21 +57,19 @@ class Track(Parameters):
             else:
                 newargs[key] = value
 
-        timekeys = set(newargs.keys()).intersection({'start', 'end', 'stop', 'obs_time_sec'})
+        timekeys = set(newargs.keys()).intersection({'start', 'stop', 'obs_time_sec'})
         checked_timekeys = timekeys.copy()
         for key in timekeys:
             if newargs[key] is None or not newargs[key]:
                 checked_timekeys.remove(key)
-            elif key == 'stop':
-                newargs['end'] = newargs.pop('stop')
-        if checked_timekeys == {'start', 'end'} or checked_timekeys == {'start', 'stop'}:
-            newargs['obs_time_sec'] = newargs['end'] - newargs['start']
+        if checked_timekeys == {'start', 'stop'}:
+            newargs['obs_time_sec'] = newargs['stop'] - newargs['start']
         elif checked_timekeys == {'start', 'obs_time_sec'}:
-            newargs['end'] = ttools.t_delta(newargs['start'], newargs['obs_time_sec'], 's')
-        elif checked_timekeys == {'end', 'obs_time_sec'}:
-            newargs['start'] = ttools.t_delta(newargs['end'], -1.0 * newargs['obs_time_sec'], 's')
+            newargs['stop'] = ttools.t_delta(newargs['start'], newargs['obs_time_sec'], 's')
+        elif checked_timekeys == {'stop', 'obs_time_sec'}:
+            newargs['start'] = ttools.t_delta(newargs['stop'], -1.0 * newargs['obs_time_sec'], 's')
         elif len(checked_timekeys) > 0:
-            raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'end', 'obs_time_sec' to keep them consistent.")
+            raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'stop', 'obs_time_sec' to keep them consistent.")
         
         self._pt_set(**newargs)
 

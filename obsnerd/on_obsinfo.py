@@ -59,7 +59,7 @@ class Obsinfo:
             return
         for key, value in self.contents['Sources'].items():
             self.sources[key] = Track(source=key)
-            value = {k: ttools.interpret_date(v) if k in ['start', 'end', 'stop'] else v for k, v in value.items()}
+            value = {k: ttools.interpret_date(v) if k in ['start', 'stop'] else v for k, v in value.items()}
             self.sources[key].update(**value)
             for extra in ['off_time', 'off_angle']:
                 try:

@@ -17,7 +17,7 @@ fields:
     type:
     - str
   coord:
-    description: ''
+    description: 'Trajectory coordinate type.'
     files: []
     type:
     - str
@@ -112,15 +112,15 @@ fields:
     type:
     - float
   x:
-    description: ''
+    description: 'General abscissa value'
     files: []
     type:
-    - float
+    - '*'
   y:
-    description: ''
+    description: 'Generic ordinate value'
     files: []
     type:
-    - float
+    - '*'
   iobs:
     description: 'Index of peak of pass'
     files: []
@@ -207,7 +207,7 @@ ods_mapping:
   x: src_ra_j2000_deg
   y: src_dec_j2000_deg
   start: src_start_utc
-  end: src_end_utc
+  stop: src_end_utc
   time_per_int_sec: corr_integ_time_sec
   freq0: obs_freq_lo_mhz
   freq1: obs_freq_hi_mhz

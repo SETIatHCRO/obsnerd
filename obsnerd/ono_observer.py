@@ -1,7 +1,7 @@
 import json
 import logging
 from copy import copy
-from odsutils import ods_timetools as ttools
+from param_track import param_track_timetools as ttools
 from odsutils import ods_tools as tools
 from odsutils import logger_setup
 from . import DATA_PATH, ono_engine, on_track
@@ -59,7 +59,7 @@ class Observer:
         Fields in on_track.Track:
         'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
         'source', 'x', 'y', 'coord',
-        'start', 'end', 'obs_time_sec', 'time_per_int_sec'
+        'start', 'stop', 'obs_time_sec', 'time_per_int_sec'
 
         Parmaeters
         ----------
@@ -73,7 +73,7 @@ class Observer:
             Whether to update the source database with new sources.
         'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
         'source', 'x', 'y', 'coord',
-        'start', 'end', 'obs_time_sec', 'time_per_int_sec'
+        'start', 'stop', 'obs_time_sec', 'time_per_int_sec'
             
         """
         self.records = []
@@ -81,7 +81,7 @@ class Observer:
         for source_name, info in self.obsinfo['Sources'].items():
             rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
                                  ants=self.ants, freq=self.freqs, lo=self.lo,
-                                 start=ttools.interpret_date(info['start'], 'Time'), end=ttools.interpret_date(info['stop'], 'Time'),
+                                 start=ttools.interpret_date(info['start'], 'Time'), stop=ttools.interpret_date(info['stop'], 'Time'),
                                  source=source_name, x=info['ra']*u.deg, y=info['dec']*u.deg,
                                  attenuation=self.attenuation, focus=self.focus, backend=self.backend,
                                  time_per_int_sec=self.time_per_int_sec, coord='name')
@@ -89,7 +89,7 @@ class Observer:
                 ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             self.records.append(rec)
             ctr += 1
-            print(f"Generated observer record {ctr}:  {rec.source} -- {rec.start} to {rec.end}")
+            print(f"Generated observer record {ctr}:  {rec.source} -- {rec.start} to {rec.stop}")
 
         self.get_overall()
         if add_to_calendar:
@@ -102,7 +102,7 @@ class Observer:
         kw = {}
         try:
             t0 = min([rec.start for rec in self.records])
-            t1 = max([rec.end for rec in self.records])
+            t1 = max([rec.stop for rec in self.records])
         except AttributeError:
             logger.error("Need to make observer records before you can get the overall.")
             return
@@ -112,13 +112,13 @@ class Observer:
                 kw[fld] = getattr(self.records[0], fld)
             except (AttributeError, IndexError):
                 continue
-        kw['start'], kw['end'] = t0, t1
+        kw['start'], kw['stop'] = t0, t1
         self.overall.ptset(**kw)
 
     def update_calendar(self):
         # Get times to 5minutes
         t0 = ttools.interpret_date(ttools.interpret_date(self.overall.start, '%Y-%m-%dT%H:%M'), 'datetime')
-        t1 = ttools.interpret_date(ttools.interpret_date(self.overall.end, '%Y-%m-%dT%H:%M'), 'datetime')
+        t1 = ttools.interpret_date(ttools.interpret_date(self.overall.stop, '%Y-%m-%dT%H:%M'), 'datetime')
         t0 = t0.replace(minute=(t0.minute // 5) * 5)
         t1 = ttools.t_delta(t1.replace(minute=(t1.minute // 5) * 5), 5, 'm')
         cal_day = ttools.interpret_date(self.overall.start, '%Y-%m-%d')
