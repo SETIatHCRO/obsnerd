@@ -107,20 +107,20 @@ class Obsinfo:
             satname = timed_tracks[track_info]['satname']
             ind = timed_tracks[track_info]['index']
             track = tracks[satname][ind]
-            obsinfo['Sources'][track.source] = {'obsid': on_sys.make_obsid(track.source, track.utc[track.istart].mjd)}
-            obsinfo['Sources'][track.source]['ra'] = track.ra[track.iobs].to_value('deg')
-            obsinfo['Sources'][track.source]['dec'] = track.dec[track.iobs].to_value('deg')
-            obsinfo['Sources'][track.source]['utc'] = track.tobs.datetime.isoformat(timespec='seconds')
-            obsinfo['Sources'][track.source]['az'] = track.az[track.iobs].to_value('deg')
-            obsinfo['Sources'][track.source]['el'] = track.el[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source] = {'obsid': on_sys.make_obsid(track.source, track.traj_time[track.istart].mjd)}
+            obsinfo['Sources'][track.source]['traj_ra'] = track.traj_ra[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source]['traj_dec'] = track.traj_dec[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source]['traj_time'] = track.traj_time[track.iobs].datetime.isoformat(timespec='seconds')
+            obsinfo['Sources'][track.source]['traj_az'] = track.traj_az[track.iobs].to_value('deg')
+            obsinfo['Sources'][track.source]['traj_el'] = track.traj_el[track.iobs].to_value('deg')
             obsinfo['Sources'][track.source]['start'] = track.tstart.datetime.isoformat(timespec='seconds')
             obsinfo['Sources'][track.source]['stop'] = track.tstop.datetime.isoformat(timespec='seconds')
             obsinfo['Sources'][track.source]['off_time'] = []
             obsinfo['Sources'][track.source]['off_angle'] = []
             obsinfo['Sources'][track.source]['ods'] = True if track.use == 'y' else False
             for i in range(track.istart, track.istop+1):
-                toff = (track.utc[i] - track.tobs).to_value('sec')
-                aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
+                toff = (track.traj_time[i] - track.tobs).to_value('sec')
+                aoff = angular_separation(track.traj_ra[i], track.traj_dec[i], track.traj_ra[track.iobs], track.traj_dec[track.iobs]) * np.sign(toff)
                 obsinfo['Sources'][track.source]['off_time'].append(np.round(toff, 1))
                 obsinfo['Sources'][track.source]['off_angle'].append(np.round(aoff.to_value('deg'), 2))
         try:

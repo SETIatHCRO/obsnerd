@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 from odsutils import ods_timetools as timetools
 from obsnerd.on_track import Track
-from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation
 import astropy.units as u
 from numpy import array
@@ -133,26 +132,27 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             continue
 
         # max_alt = max(window.positions, key=lambda pt: pt.position.altitude)
-        az, el, tae, dist = [], [], [], []
+        traj_az, traj_el, traj_time, traj_dist = [], [], [], []
         table_data = []
         for j, pos in enumerate(window.positions):
             if pos.position.azimuth < az_limit[0] or pos.position.azimuth > az_limit[1]:
                 continue
-            az.append(pos.position.azimuth)
-            el.append(pos.position.altitude)
-            tae.append(pos.time)
-            dist.append(1000.0 * pos.position.distance_km)
+            traj_az.append(pos.position.azimuth)
+            traj_el.append(pos.position.altitude)
+            traj_time.append(pos.time)
+            traj_dist.append(1000.0 * pos.position.distance_km)
             if len(table_data) < number_of_rows_to_show and not (j % jcadence):
                 table_row = [pos.time.strftime('%Y-%m-%dT%H:%M:%S.%f'), f"{pos.position.azimuth:0.3f}", f"{pos.position.altitude:0.3f}"]
                 table_data.append(table_row)
-        if len(az) < 3:
+        if len(traj_az) < 3:
             continue
         srcname = window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')
         eventid = f"{srcname}{i}"
         this_track = Track(source=eventid)
-        this_track.update(az=array(az)*u.deg, el=array(el)*u.deg, utc=Time(tae), dist=array(dist)*u.m)
-        sky = SkyCoord(alt=this_track.el, az=this_track.az, obstime=this_track.utc, frame='altaz', location=location)
-        this_track.update(ra=sky.gcrs.ra, dec=sky.gcrs.dec)
+        traj_time = timetools.Time(traj_time)
+        this_track.update(traj_az=array(traj_az)*u.deg, traj_el=array(traj_el)*u.deg, traj_time=traj_time, traj_dist=array(traj_dist)*u.m)
+        sky = SkyCoord(alt=this_track.traj_el, az=this_track.traj_az, obstime=this_track.traj_time, frame='altaz', location=location)
+        this_track.update(traj_ra=sky.gcrs.ra, traj_dec=sky.gcrs.dec)
         this_track.calc_properties()
         tracks.setdefault(srcname, [])
         tracks[srcname].append(this_track)
@@ -161,18 +161,18 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             fnout = f"{this_track.source.strip()}.txt"
             print(f"Writing {fnout}")
             with open(fnout, 'w') as fpof:
-                for _t, _a, _e, _d in zip(tae, az, el, dist):
+                for _t, _a, _e, _d in zip(traj_time, traj_az, traj_el, traj_dist):
                     print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))
         if show_plots:
             plt.figure('AzEl Trajectory')
-            plt.plot(az, el)
-            plt.arrow(az[-2], el[-2], az[-1]-az[-2], el[-1]-el[-2], head_width=2)
+            plt.plot(traj_az, traj_el)
+            plt.arrow(traj_az[-2], traj_el[-2], traj_az[-1]-traj_az[-2], traj_el[-1]-traj_el[-2], head_width=2)
             plt.figure('Time Trajectory')
-            plt.plot(tae, az)
-            plt.plot(tae, el, '--')
+            plt.plot(traj_time, traj_az)
+            plt.plot(traj_time, traj_el, '--')
     if verbose and frequency:
         print('Frequency information:  ', window.satellite.frequency, frequency)
     if show_plots:

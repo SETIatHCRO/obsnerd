@@ -40,7 +40,6 @@ class Track(Parameters):
         """
         newargs = {}
         for key, value in kwargs.items():
-            print(key, value)
             dtype_info = self.track_field_structure['fields'][key]['type']
             if key in self.field_types['list']:
                 if len(dtype_info) == 2:
@@ -51,6 +50,8 @@ class Track(Parameters):
             elif len(dtype_info) == 1:
                 if dtype_info[0] in ['Time', 'TimeDelta']:
                     newargs[key] = ttools.interpret_date(value, fmt=dtype_info[0])
+                elif key in self.field_types['*']:
+                    newargs[key] = value
                 else:
                     newargs[key] = eval(dtype_info[0])(value)
             else:
@@ -75,15 +76,15 @@ class Track(Parameters):
         self._pt_set(**newargs)
 
     def calc_properties(self):
-        self.duration = self.utc[-1] - self.utc[0]
-        self.imax = np.argmax(self.el)
-        dt = np.diff(self.utc.mjd) * 24 * 3600
-        self.daz = self.az.diff().to_value('deg')
+        self.duration = self.traj_time[-1] - self.traj_time[0]
+        self.imax = np.argmax(self.traj_el)
+        dt = np.diff(self.traj_time.mjd) * 24 * 3600
+        self.daz = self.traj_az.diff().to_value('deg')
         wrap = np.where(abs(self.daz) > 180.0)
         dwrap = wrap[0] - 1
         self.daz[wrap] = self.daz[dwrap]
         self.azdot = self.daz / dt
         self.azdot = np.insert(self.azdot, 0, self.azdot[0])
         self.azdot = abs(self.azdot)
-        self.eldot = self.el.diff().to_value('deg') / dt
+        self.eldot = self.traj_el.diff().to_value('deg') / dt
         self.eldot = np.insert(self.eldot, 0, self.eldot[0])

@@ -151,26 +151,36 @@ fields:
     files: []
     type:
     - float
-  az:
-    description: 'Azimuth of source/something'
+  traj_ra:
+    description: 'RA of trajectory points'
     files: []
     type:
-    - float
-  el:
-    description: 'Elevation of source/something'
+    - '*'
+  traj_dec:
+    description: 'Declination of trajectory points'
     files: []
     type:
-    - float
-  dist:
-    description: 'Distance to source'
+    - '*'
+  traj_az:
+    description: 'Azimuth of trajectory points'
     files: []
     type:
-    - float
-  utc:
-    description: 'UTC of reference time'
+    - '*'
+  traj_el:
+    description: 'Elevation of trajectory points'
     files: []
     type:
-    - Time
+    - '*'
+  traj_dist:
+    description: 'Distance to source of trajectory points'
+    files: []
+    type:
+    - '*'
+  traj_time:
+    description: 'UTC of trajectory points'
+    files: []
+    type:
+    - '*'
   l:
     description: 'Galactic longitude'
     files: []
