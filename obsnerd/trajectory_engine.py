@@ -17,6 +17,7 @@ AZ_TRACK_LIMIT = 2.0
 REARTH = 6378.0
 RGEO = 42164.0
 
+# CONVERT THIS OVER TO THE "REAL" TRACK CLASS
 class Track:
     """
     Parameters that are tracked:

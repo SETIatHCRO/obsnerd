@@ -3,43 +3,51 @@ fields:
     description: Antenna numbers or defined list of antennas to be used
     files: []
     type:
-    - ""
-    - []
+    - str
+    - list
   attenuation:
     description: ''
     files: []
     type:
-    - []
+    - int
+    - list
   backend:
     description: ''
     files: []
-    type: []
+    type:
+    - str
   coord:
     description: ''
     files: []
-    type: []
+    type:
+    - str
   end:
     description: ''
     files: []
-    type: []
+    type:
+    - Time
   focus:
     description: ''
     files: []
-    type: []
+    type:
+    - float
   freq:
     description: ''
     files: []
     type:
-    - 1.0
+    - float
+    - list
   lo:
     description: ''
     files: []
     type:
-    - ''
+    - str
+    - list
   obs_time_sec:
     description: ''
     files: []
-    type: []
+    type:
+    - TimeDelta
   observer:
     description: Name of the observer
     files:
@@ -50,19 +58,24 @@ fields:
   obsid:
     description: ''
     files: []
-    type: []
+    type:
+    - str
   ods:
     description: ''
     files: []
-    type: []
+    type:
+    - bool
   off_angle:
     description: ''
     files: []
-    type: []
+    type:
+    - float
+    - list
   off_time:
     description: ''
     files: []
-    type: []
+    type:
+    - float
   project_id:
     description: Project ID - generally p###
     files:
@@ -80,24 +93,100 @@ fields:
   source:
     description: ''
     files: []
-    type: []
+    type:
+    - str
   start:
     description: ''
     files: []
-    type: []
+    type:
+    - Time
   time_per_int_sec:
     description: ''
     files: []
-    type: []
+    type:
+    - float
   x:
     description: ''
     files: []
-    type: []
+    type:
+    - float
   y:
     description: ''
     files: []
-    type: []
-ods:
+    type:
+    - float
+  iobs:
+    description: 'Index of peak of pass'
+    files: []
+    type:
+    - int
+  iref:
+    description: 'Index of reference (?)'
+    files: []
+    type:
+    - int
+  istart:
+    description: 'Index of start (?)'
+    files: []
+    type:
+    - int
+  istop:
+    description: 'Index of stop (?)'
+    files: []
+    type:
+    - int
+  ra:
+    description: 'Right Ascension of source'
+    files: []
+    type:
+    - float
+  dec:
+    description: 'Declination of source'
+    files: []
+    type:
+    - float
+  az:
+    description: 'Azimuth of source/something'
+    files: []
+    type:
+    - float
+  el:
+    description: 'Elevation of source/something'
+    files: []
+    type:
+    - float
+  dist:
+    description: 'Distance to source'
+    files: []
+    type:
+    - float
+  utc:
+    description: 'UTC of reference time'
+    files: []
+    type:
+    - Time
+  l:
+    description: 'Galactic longitude'
+    files: []
+    type:
+    - float
+  b:
+    description: 'Galactic latitude'
+    files: []
+    type:
+    - float
+  ir:
+    description: 'Inverse distance'
+    files: []
+    type:
+    - float
+  timestamp:
+    description: 'Time stamp of entry'
+    files:
+    - trajectory_engine.py
+    type:
+    - Time
+ods_mapping:
   source: src_id
   x: src_ra_j2000_deg
   y: src_dec_j2000_deg

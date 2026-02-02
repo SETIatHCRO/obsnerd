@@ -16,13 +16,19 @@ class Track(Parameters):
                's': "skip (don't use)"}
 
     def __init__(self, **kwargs):
+        self._parse_track_field_structure()
+        super().__init__(ptnote='Track parameters', ptinit=self.fields, pttype=False, ptverbose=False)
+        self.update(**kwargs)
+
+    def _parse_track_field_structure(self):
         self.track_field_structure = yaml.safe_load(open(join(DATA_PATH, 'track_parameters.yaml')))
         self.fields = list(self.track_field_structure['fields'].keys())
         self.ods_mapping = self.track_field_structure['ods_mapping']
-        super().__init__(ptnote='Track parameters', ptinit=self.fields, pttype=False, ptverbose=False)
-        self.ptinit(['iobs', 'iref', 'istart', 'istop'])
-        self.ptinit(['ra', 'dec', 'az', 'el', 'dist', 'utc'])
-        self.update(**kwargs)
+        self.field_types = {}
+        for key, value in self.track_field_structure['fields'].items():
+            for tval in value.get('type', []):
+                self.field_types.setdefault(tval, set())
+                self.field_types[tval].add(key)
 
     def view(self, fields_to_show=None):
         self.ptshow(vals_only=True, include_par=fields_to_show)
@@ -33,32 +39,40 @@ class Track(Parameters):
         If changing time, must include 2 of 3 (and only 2) of [start, end, obs_time_sec] to keep them consistent.
 
         """
-        for key in set(kwargs.keys()).intersection({'ra', 'dec', 'az', 'el', 'dist'}):
-            if isinstance(kwargs[key], str):
-                kwargs[key] = float(kwargs[key])
+        newargs = {}
+        for key, value in kwargs.items():
+            dtype_info = self.track_field_structure[key]['type']
+            if key in self.field_types['list']:
+                if len(dtype_info) == 2:
+                    ind = 0 if self.track_field_structure[key]['type'][1] == 'list' else 1
+                    newargs[key] = listify(value, dtype=dtype_info[ind])
+                else:
+                    newargs[key] = listify(value)
+            elif len(dtype_info) == 1:
+                if dtype_info[0] in ['Time', 'TimeDelta']:
+                    newargs[key] = ttools.interpret_date(value)
+                else:
+                    newargs[key] = eval(dtype_info[0])(value)
             else:
-                kwargs[key] = kwargs[key]
-        if 'utc' in kwargs:
-            kwargs['utc'] = ttools.interpret_date(kwargs['utc'])
-        for key in set(kwargs.keys()).intersection(self.some_dtype_lists.keys()):
-            kwargs[key] = listify(kwargs[key], dtype=self.some_dtype_lists[key])
-        timekeys = set(kwargs.keys()).intersection({'start', 'end', 'stop', 'obs_time_sec'})
+                newargs[key] = value
+
+        timekeys = set(newargs.keys()).intersection({'start', 'end', 'stop', 'obs_time_sec'})
         checked_timekeys = timekeys.copy()
         for key in timekeys:
-            if kwargs[key] is None or not kwargs[key]:
+            if newargs[key] is None or not newargs[key]:
                 checked_timekeys.remove(key)
             elif key == 'stop':
-                kwargs['end'] = kwargs.pop('stop')
+                newargs['end'] = newargs.pop('stop')
         if checked_timekeys == {'start', 'end'} or checked_timekeys == {'start', 'stop'}:
-            kwargs['obs_time_sec'] = int((kwargs['end'] - kwargs['start']).to_value('sec'))
+            newargs['obs_time_sec'] = int((newargs['end'] - newargs['start']))
         elif checked_timekeys == {'start', 'obs_time_sec'}:
-            kwargs['end'] = ttools.t_delta(kwargs['start'], kwargs['obs_time_sec'], 's')
+            newargs['end'] = ttools.t_delta(newargs['start'], newargs['obs_time_sec'], 's')
         elif checked_timekeys == {'end', 'obs_time_sec'}:
-            kwargs['start'] = ttools.t_delta(kwargs['end'], -1.0 * kwargs['obs_time_sec'], 's')
+            newargs['start'] = ttools.t_delta(newargs['end'], -1.0 * newargs['obs_time_sec'], 's')
         elif len(checked_timekeys) > 0:
             raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'end', 'obs_time_sec' to keep them consistent.")
         
-        self._pt_set(**kwargs)
+        self._pt_set(**newargs)
 
     def calc_properties(self):
         self.duration = self.utc[-1] - self.utc[0]
