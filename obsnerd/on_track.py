@@ -74,15 +74,15 @@ class Track(Parameters):
         self._pt_set(**newargs)
 
     def calc_properties(self):
-        self.duration = self.traj_time[-1] - self.traj_time[0]
-        self.imax = np.argmax(self.traj_el)
-        dt = np.diff(self.traj_time.mjd) * 24 * 3600
-        self.daz = self.traj_az.diff().to_value('deg')
+        self.duration = self.time[-1] - self.time[0]
+        self.imax = np.argmax(self.el)
+        dt = np.diff(self.time.mjd) * 24 * 3600
+        self.daz = self.az.diff().to_value('deg')
         wrap = np.where(abs(self.daz) > 180.0)
         dwrap = wrap[0] - 1
         self.daz[wrap] = self.daz[dwrap]
         self.azdot = self.daz / dt
         self.azdot = np.insert(self.azdot, 0, self.azdot[0])
         self.azdot = abs(self.azdot)
-        self.eldot = self.traj_el.diff().to_value('deg') / dt
+        self.eldot = self.el.diff().to_value('deg') / dt
         self.eldot = np.insert(self.eldot, 0, self.eldot[0])

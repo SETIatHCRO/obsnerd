@@ -21,13 +21,8 @@ fields:
     files: []
     type:
     - str
-  end:
-    description: ''
-    files: []
-    type:
-    - Time
   stop:
-    description: 'Same as end (need to get rid of one)'
+    description: 'Stopping time'
     files: []
     type:
     - Time
@@ -48,7 +43,7 @@ fields:
     type:
     - str
     - list
-  obs_time_sec:
+  obs_time:
     description: ''
     files: []
     type:
@@ -74,14 +69,12 @@ fields:
     description: ''
     files: []
     type:
-    - float
-    - list
+    - '*'
   off_time:
     description: ''
     files: []
     type:
-    - float
-    - list
+    - '*''
   project_id:
     description: Project ID - generally p###
     files:
@@ -102,15 +95,15 @@ fields:
     type:
     - str
   start:
-    description: ''
+    description: 'Starting time'
     files: []
     type:
     - Time
-  time_per_int_sec:
+  time_per_int:
     description: ''
     files: []
     type:
-    - float
+    - '*'
   x:
     description: 'General abscissa value'
     files: []
@@ -142,42 +135,32 @@ fields:
     type:
     - int
   ra:
-    description: 'Right Ascension of source'
+    description: 'Right Ascension'
     files: []
     type:
-    - float
+    - '*'
   dec:
-    description: 'Declination of source'
-    files: []
-    type:
-    - float
-  traj_ra:
-    description: 'RA of trajectory points'
+    description: 'Declination'
     files: []
     type:
     - '*'
-  traj_dec:
-    description: 'Declination of trajectory points'
+  az:
+    description: 'Azimuth'
     files: []
     type:
     - '*'
-  traj_az:
-    description: 'Azimuth of trajectory points'
+  el:
+    description: 'Elevation'
     files: []
     type:
     - '*'
-  traj_el:
-    description: 'Elevation of trajectory points'
+  dist:
+    description: 'Distance to source'
     files: []
     type:
     - '*'
-  traj_dist:
-    description: 'Distance to source of trajectory points'
-    files: []
-    type:
-    - '*'
-  traj_time:
-    description: 'UTC of trajectory points'
+  time:
+    description: 'time corresponding to points'
     files: []
     type:
     - '*'
@@ -185,17 +168,17 @@ fields:
     description: 'Galactic longitude'
     files: []
     type:
-    - float
+    - '*'
   b:
     description: 'Galactic latitude'
     files: []
     type:
-    - float
+    - '*'
   ir:
     description: 'Inverse distance'
     files: []
     type:
-    - float
+    - '*'
   timestamp:
     description: 'Time stamp of entry'
     files:

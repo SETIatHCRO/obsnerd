@@ -155,18 +155,18 @@ class Plan:
                 if track.duration < self.minimum_duration:
                     continue
                 if not labelled:
-                    plt.plot(track.traj_time.datetime, track.traj_el, color=this_color, ls=this_ls, label=sat)
+                    plt.plot(track.time.datetime, track.el, color=this_color, ls=this_ls, label=sat)
                     labelled = True
                 else:
-                    plt.plot(track.traj_time.datetime, track.traj_el, color=this_color, ls=this_ls)
-                plt.plot(track.traj_time[track.imax].datetime, track.traj_el[track.imax].value, 'c.')
-                plt.text(track.traj_time[track.imax].datetime, track.traj_el[track.imax].value, f"{i}")
+                    plt.plot(track.time.datetime, track.el, color=this_color, ls=this_ls)
+                plt.plot(track.time[track.imax].datetime, track.el[track.imax].value, 'c.')
+                plt.text(track.time[track.imax].datetime, track.el[track.imax].value, f"{i}")
                 if show_az_transit_track:
-                    plt.plot(track.traj_time.datetime, track.traj_az, color=this_color, ls='--')
-                    plt.plot(track.traj_time[track.imax].datetime, track.traj_az[track.imax].value, 'c.')
-                    plt.text(track.traj_time[track.imax].datetime, track.traj_az[track.imax].value, f"{i}")
+                    plt.plot(track.time.datetime, track.az, color=this_color, ls='--')
+                    plt.plot(track.time[track.imax].datetime, track.az[track.imax].value, 'c.')
+                    plt.text(track.time[track.imax].datetime, track.az[track.imax].value, f"{i}")
                 else:
-                    plt.text(track.traj_time[track.imax].datetime, self.el_limit.value, f"{track.traj_az[track.imax].value:.0f}")
+                    plt.text(track.time[track.imax].datetime, self.el_limit.value, f"{track.az[track.imax].value:.0f}")
             axlim = plt.axis()
             now = ttools.interpret_date('now')
         plt.plot([now.datetime, now.datetime], [axlim[2], axlim[3]], 'g--')
@@ -201,11 +201,11 @@ class Plan:
         now = ttools.interpret_date('now')
         for sat in self.tracks:
             for i, track in enumerate(self.tracks[sat]):
-                left = (track.traj_time[track.imax] - track.traj_time[0]).to_value('sec')
-                right = (track.traj_time[-1] - track.traj_time[track.imax]).to_value('sec')
+                left = (track.time[track.imax] - track.time[0]).to_value('sec')
+                right = (track.time[-1] - track.time[track.imax]).to_value('sec')
                 if not approx_equal(left, right, rel_tol=0.1):
                     continue
-                dt = track.traj_time[track.imax] - now
+                dt = track.time[track.imax] - now
                 key = int(dt.to_value('sec'))
                 self.track_list[key] = {"sat": sat, "track": i, "use": 's'}
                 track.ptadd(iobs=None, use='s')
@@ -218,23 +218,23 @@ class Plan:
         last_one = ttools.interpret_date('yesterday')
         for key in sorted(self.track_list.keys()):
             track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
-            if track.traj_el[track.imax].to_value('deg') < obsel_deg or track.traj_el[track.imax].to_value('deg') > keyhole_deg:
+            if track.el[track.imax].to_value('deg') < obsel_deg or track.el[track.imax].to_value('deg') > keyhole_deg:
                 continue
             ind = track.imax
             if auto:
-                if track.traj_time[ind] - last_one > track_separation:
-                    self.track_list[key]['use'] = input(f"ODS for {track.source} at {track.traj_time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.traj_el[ind].to_value('deg'):.0f}\u00b0 (y/n)? ")
+                if track.time[ind] - last_one > track_separation:
+                    self.track_list[key]['use'] = input(f"ODS for {track.source} at {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0 (y/n)? ")
             else:
-                self.track_list[key]['use'] = input(f"{sat}/{i} -- {track.traj_el[ind].to_value('deg'):.0f}\u00b0 @ {track.traj_time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) (y/n/s/e):  ")
+                self.track_list[key]['use'] = input(f"{sat}/{i} -- {track.el[ind].to_value('deg'):.0f}\u00b0 @ {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) (y/n/s/e):  ")
             if self.track_list[key]['use'] == 'e':
                 print("Ending track selection.")
                 self.track_list[key]['use'] = 's'
                 break
             elif self.track_list[key]['use'] in ['y', 'n']:
-                last_one = copy(track.traj_time[ind])
+                last_one = copy(track.time[ind])
                 track.ptadd(iobs=ind, use=self.track_list[key]['use'])
-                plt.plot(track.traj_time[ind].datetime, track.traj_el[ind].value, 'ro')
-                print(f"\t{track.use_def[track.use]} {track.source} at {track.traj_time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.traj_el[ind].to_value('deg'):.0f}\u00b0")
+                plt.plot(track.time[ind].datetime, track.el[ind].value, 'ro')
+                print(f"\t{track.use_def[track.use]} {track.source} at {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
         if auto:
             self.proc_tracks(write_to_clipboard=True)
         else:
@@ -258,19 +258,19 @@ class Plan:
             track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
             if self.track_list[key]['use'] == 's':
                 continue
-            tobs =  track.traj_time[track.iobs]
+            tobs =  track.time[track.iobs]
             tstart = tobs - obslen_TD2
-            if tstart < track.traj_time[0]:
+            if tstart < track.time[0]:
                 istart = 0
             else:
-                istart = np.where(track.traj_time > tstart)[0][0] - 1
+                istart = np.where(track.time > tstart)[0][0] - 1
             tstop = tobs + obslen_TD2
-            if tstop > track.traj_time[-1]:
-                istop = len(track.traj_time) - 1
+            if tstop > track.time[-1]:
+                istop = len(track.time) - 1
             else:
-                istop = np.where(track.traj_time < tstop)[0][-1] + 1
+                istop = np.where(track.time < tstop)[0][-1] + 1
             track.ptadd(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
-            mjd = track.traj_time[track.istart].mjd
+            mjd = track.time[track.istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
                 self.start_mjd = copy(mjd)
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
