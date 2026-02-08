@@ -57,8 +57,9 @@ class Obsinfo:
         """ Process sources from configuration. """
         if 'Sources' not in self.contents:
             return
+        units = getattr(self, 'units', None)
         for key, value in self.contents['Sources'].items():
-            self.sources[key] = Track(source=key)
+            self.sources[key] = Track(source=key, units=units)
             value = {k: ttools.interpret_date(v) if k in ['start', 'stop'] else v for k, v in value.items()}
             self.sources[key].update(**value)
             for extra in ['off_time', 'off_angle']:
