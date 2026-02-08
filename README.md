@@ -26,13 +26,15 @@ Use the planning tool from within ipython and get 'tracks'
 
     from obsnerd import onp_plan
     plan = onp_plan.Plan()
-    plan.get_tracks(satname='some-search-string', start='now+20m', duration=number_of_minutes)
+    plan.get_tracks(satname='some-search-string', start='now+20m', duration=number_of_minutes, auto=True)
 
-For example `plan.get_tracks(satname='*', start='now+20m', duration=60)`
+If `auto=True` you can't chose more and it will automatically go through all of the steps below.
 
-You can get more tracks using `get_tracks` again
+For example `plan.get_tracks(satname='*', start='now+20m', duration=60, auto=True)`
 
-If this looks like a good set, choose the ones you want (there is an auto-choose mode by default):
+If `auto=False` above, you can get more tracks using `get_tracks` again.
+
+Also, if `auto=False` and if this looks like a good set, choose the ones you want (there is an auto-choose mode by default):
 
     plan.choose_tracks(auto=True)
 
