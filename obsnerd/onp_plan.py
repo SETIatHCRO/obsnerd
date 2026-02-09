@@ -296,6 +296,7 @@ class Plan:
         """
         from astropy.coordinates import angular_separation
         import numpy as np
+        import json
         timed_tracks = {}
         for satname in self.tracks:
             for i, track in enumerate(self.tracks[satname]):
@@ -324,7 +325,8 @@ class Plan:
         print(f"Writing obsinfo to {self.obsinfo.filename} and {npzfile}")
         npz = self.obsinfo.pt_to_dict()
         np.savez(npzfile, data=npz)
-        outj = self.obsinfo.pt_to_dict(serialize='json')
+        outj = json.loads(self.obsinfo.pt_to_dict(serialize='json'))
+        for obs, track in self.obsinfo.observations.items():
+            outj['observations'][obs] = json.loads(track.pt_to_dict(serialize='json'))
         with open(self.obsinfo.filename, 'w') as f:
-            import json
             json.dump(outj, f, indent=4)
