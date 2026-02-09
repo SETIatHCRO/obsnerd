@@ -37,7 +37,7 @@ def generate_colors(n):
     return colors
 
 class Plan:
-    def __init__(self, conlog='INFO', filelog=False, config_file='config.yaml', loc='ata'):
+    def __init__(self, conlog='INFO', filelog=False, config_file='parameters.yaml:obsinfo', loc='ata'):
         self.location = locations.Location(name=loc)
         self.log_settings = logger_setup.Logger(logger, conlog=conlog, filelog=filelog, log_filename=LOG_FILENAME,
                                                 conlog_format=LOG_FORMATS['conlog_format'], filelog_format=LOG_FORMATS['filelog_format'])
@@ -121,7 +121,8 @@ class Plan:
             freqs = False
             from . import sopp_engine
             these_tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, el_limit=el_limit,
-                                            DTC_only=DTC_only, time_resolution=time_resolution, verbose=False, show_plots=False)
+                                            DTC_only=DTC_only, time_resolution=time_resolution, verbose=False, show_plots=False,
+                                            init_file='parameters.yaml:observations')
             logger.info(f"Found the following {len(these_tracks)} satellites above {self.el_limit}: {', '.join(these_tracks.keys())}")
             if not(len(these_tracks)):
                 logger.warning(f"No satellites found above {self.el_limit}")
@@ -236,13 +237,13 @@ class Plan:
                 plt.plot(track.time[ind].datetime, track.el[ind].value, 'ro')
                 print(f"\t{track.use_def[track.use]} {track.source} at {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
         if auto:
-            self.proc_tracks(write_to_clipboard=True)
+            self.make_obsinfo(write_to_clipboard=True)
         else:
-            print("Now run plan.proc_tracks() to write the obsinfo.json file.")
+            print("Now run plan.make_obsinfo() to write the obsinfo file.")
 
-    def proc_tracks(self, decimal_places=1, write_to_clipboard=False):
+    def make_obsinfo(self, decimal_places=1, write_to_clipboard=False):
         """
-        After choosing tracks, write the obsinfo.json file.
+        After choosing tracks, write the obsinfo.npz file, also include obsinfo.json for human readability.
 
         Parameters
         ---------
@@ -269,13 +270,14 @@ class Plan:
                 istop = len(track.time) - 1
             else:
                 istop = np.where(track.time < tstop)[0][-1] + 1
-            track.ptadd(istart=istart, istop=istop, tobs=tobs, tstart=tstart, tstop=tstop)
+            track.ptadd(istart=istart, istop=istop, tobs=tobs, start=tstart, stop=tstop)
             mjd = track.time[track.istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
                 self.start_mjd = copy(mjd)
+            track.set_obsid(source=track.source, time=mjd)
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
-        self.obsinfo = on_obsinfo.Obsinfo()
-        self.obsinfo.write_track_plan_to_obsinfo(obsinfofn, self.config_file, self.tracks)
+        self.obsinfo = on_obsinfo.Obsinfo(filename=obsinfofn, ptinit='parameters.yaml:obsinfo')
+        self.write_observations_to_obsinfo()
         clipcmd = f"scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.json"
         if write_to_clipboard:
             from param_track.param_track_support import write_to_clipboard
@@ -283,3 +285,46 @@ class Plan:
             print(f"Written to clipboard:  {clipcmd}")
         else:
             print(f"Copy the obsinfo file:  {clipcmd}")
+
+
+    def write_observations_to_obsinfo(self):
+        """
+        This updates the individual observation information for the obsinfo file based on the tracks that were chosen.
+        It also writes the obsinfo.npz and obsinfo.json files.
+        
+        :param self: Description
+        """
+        from astropy.coordinates import angular_separation
+        import numpy as np
+        timed_tracks = {}
+        for satname in self.tracks:
+            for i, track in enumerate(self.tracks[satname]):
+                if track.iobs is not None:
+                    timed_tracks[track.start.datetime] = {'satname': satname, 'index': i}
+        self.obsinfo.observations = {}
+        for track_info in sorted(timed_tracks.keys()):
+            satname = timed_tracks[track_info]['satname']
+            ind = timed_tracks[track_info]['index']
+            track = self.tracks[satname][ind]
+            track.ods = True if track.use == 'y' else False
+            track.off_time = []
+            track.off_angle = []
+            for i in range(track.istart, track.istop+1):
+                toff = (track.time[i] - track.tobs).to_value('sec')
+                aoff = angular_separation(track.ra[i], track.dec[i], track.ra[track.iobs], track.dec[track.iobs]) * np.sign(toff)
+                track.off_time.append(np.round(toff, 1))
+                track.off_angle.append(np.round(aoff.to_value('deg'), 2))
+            track.ra = track.ra[track.iobs]
+            track.dec = track.dec[track.iobs]
+            track.az = track.az[track.iobs]
+            track.el = track.el[track.iobs]
+            track.time = track.time[track.iobs]
+            self.obsinfo.observations[track.source] = track
+        npzfile = self.obsinfo.filename.replace('.json', '.npz')
+        print(f"Writing obsinfo to {self.obsinfo.filename} and {npzfile}")
+        npz = self.obsinfo.pt_to_dict()
+        np.savez(npzfile, data=npz)
+        outj = self.obsinfo.pt_to_dict(serialize='json')
+        with open(self.obsinfo.filename, 'w') as f:
+            import json
+            json.dump(outj, f, indent=4)

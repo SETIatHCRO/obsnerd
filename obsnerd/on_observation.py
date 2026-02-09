@@ -1,10 +1,10 @@
 import numpy as np
 from param_track import Parameters
-from param_track.param_track_support import listify
 from param_track import param_track_timetools as ttools
+from .on_sys import make_obsid
 
 
-class Track(Parameters):
+class Observation(Parameters):
     header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
     short = ['freq', 'source', 'x', 'y', 'start', 'stop', 'obs_time']
     use_def = {'y': "use with ods",
@@ -12,11 +12,9 @@ class Track(Parameters):
                's': "skip (don't use)"}
 
     def __init__(self, **kwargs):
-        super().__init__(ptnote='Track parameters', ptinit='track_parameters.yaml', pttype=False, ptverbose=False)
+        ptinit = kwargs.pop('ptinit', None)
+        super().__init__(ptnote='Observation parameters', ptinit=ptinit, pttype=False, ptverbose=False)
         self.update(**kwargs)
-
-    def view(self, fields_to_show=None):
-        self.ptshow(vals_only=True, include_par=fields_to_show)
 
     def update(self, **kwargs):
         """
@@ -37,8 +35,18 @@ class Track(Parameters):
             kwargs['start'] = ttools.t_delta(kwargs['stop'], -1.0 * kwargs['obs_time'], 's')
         elif len(checked_timekeys) > 0:
             raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'stop', 'obs_time' to keep them consistent.")
-        
         self._pt_set(**kwargs)
+
+    def set_obsid(self, **kwargs):
+        source = kwargs.get('source', None)
+        source = source if source is not None else getattr(self, 'source', None)
+        time = kwargs.get('time', None)
+        if time is None:
+            try:
+                time = self.time[self.istart].mjd
+            except (AttributeError, IndexError, KeyError):
+                time = None
+        self._pt_set(obsid=make_obsid(source, time))
 
     def calc_properties(self):
         self.duration = self.time[-1] - self.time[0]

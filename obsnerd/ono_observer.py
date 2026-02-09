@@ -2,9 +2,10 @@ import json
 import logging
 from copy import copy
 from param_track import param_track_timetools as ttools
+from param_track import Parameters
 from odsutils import ods_tools as tools
 from odsutils import logger_setup
-from . import DATA_PATH, ono_engine, on_track
+from . import DATA_PATH, ono_engine, on_obsinfo, on_track
 import astropy.units as u
 import os.path as op
 
@@ -21,7 +22,7 @@ SPACEX_HI = 1995 * u.MHz
 
 ODS_URL = 'https://ods.hcro.org/ods.json'
 
-class Observer:
+class Observer(Parameters):
     def __init__(self, obsfile='obsinfo_rados.json', **kwargs):
         """
         Parameters
@@ -31,26 +32,18 @@ class Observer:
         **kwargs: conlog, filelog, log_filename, path
 
         """
-        kw = copy(DEFAULTS)
-        kw.update(kwargs)
-        self.log_settings = logger_setup.Logger(logger, conlog=kw['conlog'], filelog=kw['filelog'],
-                                                log_filename=kw['log_filename'], path=kw['path'],
+        super().__init__(ptnote='Observer parameters', ptinit='track_parameters.yaml', pttype=False, ptverbose=False)
+        self.ptadd(**DEFAULTS)
+        self.ptset(**kwargs)
+        self.log_settings = logger_setup.Logger(logger, conlog=self.conlog, filelog=self.filelog,
+                                                log_filename=self.log_filename, path=self.path,
                                                 filelog_format=LOG_FORMATS['filelog_format'],
                                                 conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
-        self.records = []  # on_track to be made out of ODS
-        track = on_track.Track()
-        self.embargo = tools.listify(kw['embargo'])
+        self.records = []  # on_track to be made out of obsinfo
         self.default_ods_default_file = op.join(DATA_PATH, 'ods_defaults_B.json')
         self.obsfile = obsfile
-        self.obsinfo = json.load(open(self.obsfile, 'r'))
-        self.freqs = [x * u.Unit(self.obsinfo['Freq_unit']) for x in self.obsinfo['Tunings'].values()]
-        self.lo = list(self.obsinfo['Tunings'].keys())
-        self.ants = self.obsinfo['Ants']
-
-        for key, val in kw.items():
-            if key in track.fields:
-                setattr(self, key, val)
+        self.obsinfo = on_obsinfo.Obsinfo(filename=obsfile)
 
     def get_obs(self, add_to_calendar=False, update_source_database=False):
         """
@@ -77,14 +70,13 @@ class Observer:
             
         """
         self.records = []
-        ctr = 0
-        for source_name, info in self.obsinfo['Sources'].items():
+        for source_name, info in self.obsinfo.sources.items():
             rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
-                                 ants=self.ants, freq=self.freqs, lo=self.lo,
-                                 start=ttools.interpret_date(info['start'], 'Time'), stop=ttools.interpret_date(info['stop'], 'Time'),
-                                 source=source_name, x=info['ra']*u.deg, y=info['dec']*u.deg,
-                                 attenuation=self.attenuation, focus=self.focus, backend=self.backend,
-                                 time_per_int_sec=self.time_per_int_sec, coord='name')
+                                 ants=self.obsinfo.ants, freq=self.obsinfo.freqs, lo=self.obsinfo.lo,
+                                 start=info.start, stop=info.stop,
+                                 source=source_name, x=info.ra, y=info.dec,
+                                 attenuation=self.obsinfo.attenuation, focus=self.obsinfo.focus, backend=self.obsinfo.backend,
+                                 time_per_int_sec=self.obsinfo.time_per_int_sec, coord='name')
             if update_source_database:
                 ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
             self.records.append(rec)

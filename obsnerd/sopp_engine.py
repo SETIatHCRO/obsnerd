@@ -8,7 +8,7 @@ import datetime
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 from odsutils import ods_timetools as timetools
-from obsnerd.on_track import Track
+from obsnerd.on_observation import Observation
 from astropy.coordinates import SkyCoord, EarthLocation
 import astropy.units as u
 from numpy import array
@@ -17,6 +17,7 @@ from numpy import array
 def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-180, 360],
          el_limit=0.0, DTC_only=True, ftype='horizon', orbit_type=None, exclude=False, time_resolution=10,
          ra='58h48m54s', dec='23d23m24s', number_of_rows_to_show=10, row_cadence = 60.0,
+         init_file='parameters.yaml:observations',
          tle_file='tle/active.tle', verbose=True, show_plots=True):
     """
     Parameters
@@ -148,17 +149,17 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             continue
         srcname = window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')
         eventid = f"{srcname}{i}"
-        this_track = Track(source=eventid)
+        this_obs = Observation(source=eventid, ptinit=init_file)
         time = timetools.Time(time)
-        this_track.update(az=array(az)*u.deg, el=array(el)*u.deg, time=time, dist=array(dist)*u.m)
-        sky = SkyCoord(alt=this_track.el, az=this_track.az, obstime=this_track.time, frame='altaz', location=location)
-        this_track.update(ra=sky.gcrs.ra, dec=sky.gcrs.dec)
-        this_track.calc_properties()
+        this_obs.update(az=array(az)*u.deg, el=array(el)*u.deg, time=time, dist=array(dist)*u.m)
+        sky = SkyCoord(alt=this_obs.el, az=this_obs.az, obstime=this_obs.time, frame='altaz', location=location)
+        this_obs.update(ra=sky.gcrs.ra, dec=sky.gcrs.dec)
+        this_obs.calc_properties()
         tracks.setdefault(srcname, [])
-        tracks[srcname].append(this_track)
+        tracks[srcname].append(this_obs)
         if verbose:
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
-            fnout = f"{this_track.source.strip()}.txt"
+            fnout = f"{this_obs.source.strip()}.txt"
             print(f"Writing {fnout}")
             with open(fnout, 'w') as fpof:
                 for _t, _a, _e, _d in zip(time, az, el, dist):
