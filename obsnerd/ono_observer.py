@@ -29,7 +29,7 @@ class Observer(Parameters):
         **kwargs: conlog, filelog, log_filename, path
 
         """
-        super().__init__(ptnote='Observer parameters -- I think this is now essentially not needed.', pttype=False, ptverbose=False)
+        super().__init__(ptnote='Observer parameters.', pttype=False, ptverbose=False)
         self.ptadd(**DEFAULTS)
         self.ptset(**kwargs)
         self.log_settings = logger_setup.Logger(logger, conlog=self.conlog, filelog=self.filelog,
@@ -45,24 +45,12 @@ class Observer(Parameters):
         """
         Generate the obsnerd records from the obsinfo in obsfile.
 
-        Fields in on_track.Track:
-        'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
-        'source', 'x', 'y', 'coord',
-        'start', 'stop', 'obs_time_sec', 'time_per_int_sec'
-
-        Parmaeters
+        Parameters
         ----------
         add_to_calendar : bool
             Whether to add the observation to the calendar
-        lo_offset : float
-            LO offset to use for frequency.
-        lo_unit : str
-            Unit of LO offset
         update_source_database : bool
             Whether to update the source database with new sources.
-        'observer', 'project_name', 'project_id', 'ants', 'freq', 'lo', 'attenuation', 'focus', 'backend',
-        'source', 'x', 'y', 'coord',
-        'start', 'stop', 'obs_time_sec', 'time_per_int_sec'
             
         """
         self.obsinfo = Parameters(ptnote='Obsinfo file', ptinit=self.obsfile, pttype=False, ptverbose=False)

@@ -278,7 +278,7 @@ class Plan:
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
         self.obsinfo = on_obsinfo.Obsinfo(filename=obsinfofn, ptinit='parameters.yaml:obsinfo')
         self.write_observations_to_obsinfo()
-        clipcmd = f"scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.json"
+        clipcmd = f"scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.npz"
         if write_to_clipboard:
             from param_track.param_track_support import write_to_clipboard
             write_to_clipboard(clipcmd)
@@ -292,7 +292,6 @@ class Plan:
         This updates the individual observation information for the obsinfo file based on the tracks that were chosen.
         It also writes the obsinfo.npz and obsinfo.json files.
         
-        :param self: Description
         """
         from astropy.coordinates import angular_separation
         import numpy as np
@@ -302,10 +301,12 @@ class Plan:
             for i, track in enumerate(self.tracks[satname]):
                 if track.iobs is not None:
                     timed_tracks[track.start.datetime] = {'satname': satname, 'index': i}
+        self.obsinfo.ptadd(time_sorted_sources=[])
         self.obsinfo.observations = {}
         for track_info in sorted(timed_tracks.keys()):
             satname = timed_tracks[track_info]['satname']
             ind = timed_tracks[track_info]['index']
+            self.obsinfo.time_sorted_sources.append(satname)
             track = self.tracks[satname][ind]
             track.ods = True if track.use == 'y' else False
             track.off_time = []
@@ -320,13 +321,15 @@ class Plan:
             track.az = track.az[track.iobs]
             track.el = track.el[track.iobs]
             track.time = track.time[track.iobs]
+            track.dist = track.dist[track.iobs]
             self.obsinfo.observations[track.source] = track
-        npzfile = self.obsinfo.filename.replace('.json', '.npz')
-        print(f"Writing obsinfo to {self.obsinfo.filename} and {npzfile}")
-        npz = self.obsinfo.pt_to_dict()
-        np.savez(npzfile, data=npz)
+        print(f"Writing obsinfo to {self.obsinfo.filename}", end='')
+        np.savez(self.obsinfo.filename, data=self.obsinfo.pt_to_dict())
+        # Now dump to json for human readability
+        jsonfile = self.obsinfo.filename.replace('.npz', '.json')
+        print(f" and {jsonfile}")
         outj = json.loads(self.obsinfo.pt_to_dict(serialize='json'))
         for obs, track in self.obsinfo.observations.items():
             outj['observations'][obs] = json.loads(track.pt_to_dict(serialize='json'))
-        with open(self.obsinfo.filename, 'w') as f:
+        with open(jsonfile, 'w') as f:
             json.dump(outj, f, indent=4)

@@ -200,9 +200,9 @@ def make_obsid(source, mjd, decimal_places=5):
     return f"{source}_{smjd}"
 
 
-def make_obsinfo_filename(mjd, decimal_places=1):
+def make_obsinfo_filename(mjd, tag='npz',decimal_places=1):
     smjd = make_mjd_for_filename(mjd, decimal_places=decimal_places)
-    return f"obsinfo_{smjd}.json"
+    return f"obsinfo_{smjd}.{tag}"
 
 
 def make_mjd_for_filename(mjd, decimal_places=5):
