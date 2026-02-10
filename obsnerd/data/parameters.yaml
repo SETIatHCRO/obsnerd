@@ -1,0 +1,172 @@
+obsinfo:
+  filename:
+    description: name of the obsinfo file for posterity
+    unit: str
+  dir_data:
+    description: subdirectory where data is kept -- not robust solution here
+    unit: str
+    value: data
+  observations:
+    description:  dict of observations (on_track)
+    unit: '*'
+  ants:
+    - 2a
+    - 4e
+    - 2d
+    - 2l
+    - 3d
+  tuning_bandwidth:
+    unit: MHz
+    value: 690.0
+  LOA:
+    value: 1420.0
+    unit: MHz
+  LOB:
+    value: 1980.0
+    unit: MHz
+  LOC:
+    value: 2400.0
+    unit: MHz
+  LOD:
+    value: 5000.0
+    unit: MHz
+  lo:
+  - A
+  - B
+  - C
+  - D
+  filters:
+    - color: b
+      band: [1939.0, 1945.0]
+    - color: c
+      band: [1960.0, 1963.0]
+    - color: g
+      band: [1990.0, 1995.0]
+    - color: m
+      band: [1975.0, 1985.0]
+    - color: r
+      band: [1690.0, 1710.0]
+    - color: r
+      band: [3740.0, 3760.0]
+    - color: b
+      band: [3975.0, 3990.0]
+    - color: g
+      band: [5550.0, 5560.0]
+  backend:
+    description: backend to use
+    unit: str
+    value: xgpu
+  observer:
+    unit: str
+  project_id:
+    description: Project ID - generally p###
+    unit: str
+    value: p054
+  project_name:
+    description: Name of the project - descriptive
+    unit: str
+    value: SatSpot
+  ods_mapping:
+    source: src_id
+    ra: src_ra_j2000_deg
+    dec: src_dec_j2000_deg
+    start: src_start_utc
+    stop: src_end_utc
+    time_per_int_sec: corr_integ_time_sec
+    freq0: obs_freq_lo_mhz
+    freq1: obs_freq_hi_mhz
+observations:
+  source:
+    unit: str
+  obsid:
+    unit: str
+  attenuation:
+    description: ''
+    unit: [int]
+    value:
+    - 8
+    - 8
+  coord:
+    description: 'Trajectory coordinate unit.'
+    unit: str
+    value: name
+  stop:
+    description: 'Stopping time'
+    unit: Time
+  focus:
+    description: 'If true, set focus to highest frequency'
+    unit: bool
+    value: false
+  freq:
+    description: ''
+    unit: MHz
+  lo:
+    description: ''
+    unit: [str]
+  obs_time:
+    description: ''
+    unit: sec
+  obsid:
+    description: ''
+    unit: str
+  ods:
+    description: 'flag to generate ods record'
+    unit: bool
+  off_angle:
+    description: ''
+    unit: [deg]
+  off_time:
+    description: ''
+    unit: [sec]
+  source:
+    description: 'Name of source'
+    unit: str
+  start:
+    description: 'Starting time'
+    unit: Time
+  time_per_int:
+    description: 0.5
+    unit: sec
+  iobs:
+    description: 'Index of peak of pass'
+    unit: int
+  iref:
+    description: 'Index of reference (?)'
+    unit: int
+  istart:
+    description: 'Index of start (?)'
+    unit: int
+  istop:
+    description: 'Index of stop (?)'
+    unit: int
+  ra:
+    description: 'Right Ascension'
+    unit: '*'
+  dec:
+    description: 'Declination'
+    unit: '*'
+  az:
+    description: 'Azimuth'
+    unit: '*'
+  el:
+    description: 'Elevation'
+    unit: '*'
+  dist:
+    description: 'Distance to source'
+    unit: '*'
+  time:
+    description: 'time corresponding to points'
+    unit: '*'
+  l:
+    description: 'Galactic longitude'
+    unit: '*'
+  b:
+    description: 'Galactic latitude'
+    unit: '*'
+  ir:
+    description: 'Inverse distance'
+    unit: '*'
+  timestamp:
+    description: 'Time stamp of entry'
+    unit: Time
+
