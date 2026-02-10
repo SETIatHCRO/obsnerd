@@ -46,7 +46,7 @@ This will write `obsinfo_<MJD>.json`
 
 ##Observe##
 1. on the VNC open a terminal
-2. put the file `obsinfo_<MJD>.json` onto *obs-node1* as `~/rfsoc_obs_scripts/p054/obsinfo_rados.json`
+2. put the file `obsinfo_<MJD>.npz` onto *obs-node1* as `~/rfsoc_obs_scripts/p054/obsinfo_rados.npz`
 3. type `on_obs_prep.py --add-to-calendar`
 4. type `aoctkuser.py --enable-rados`
 5. hit the *Observe* button and if you are confident select **yes** twice.

@@ -1,11 +1,10 @@
 import json
 import logging
-from copy import copy
 from param_track import param_track_timetools as ttools
 from param_track import Parameters
-from odsutils import ods_tools as tools
 from odsutils import logger_setup
-from . import DATA_PATH, ono_engine, on_obsinfo, on_track
+from . import DATA_PATH, ono_engine
+from .on_observation import Observation
 import astropy.units as u
 import os.path as op
 
@@ -13,9 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
 from . import LOG_FILENAME, LOG_FORMATS, __version__
 
-DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME,
-            'observer': 'me', 'project_name': 'Project', 'project_id': 'p054', 'embargo': [],
-            'attenuation': '8,8', 'focus': '', 'backend': 'xgpu', 'time_per_int_sec': 0.5}
+DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME, 'embargo': []}
 
 SPACEX_LO = 1990 * u.MHz
 SPACEX_HI = 1995 * u.MHz
@@ -23,7 +20,7 @@ SPACEX_HI = 1995 * u.MHz
 ODS_URL = 'https://ods.hcro.org/ods.json'
 
 class Observer(Parameters):
-    def __init__(self, obsfile='obsinfo_rados.json', **kwargs):
+    def __init__(self, obsfile='obsinfo_rados.npz:data', **kwargs):
         """
         Parameters
         ----------
@@ -32,7 +29,7 @@ class Observer(Parameters):
         **kwargs: conlog, filelog, log_filename, path
 
         """
-        super().__init__(ptnote='Observer parameters', ptinit='track_parameters.yaml', pttype=False, ptverbose=False)
+        super().__init__(ptnote='Observer parameters -- I think this is now essentially not needed.', pttype=False, ptverbose=False)
         self.ptadd(**DEFAULTS)
         self.ptset(**kwargs)
         self.log_settings = logger_setup.Logger(logger, conlog=self.conlog, filelog=self.filelog,
@@ -40,10 +37,9 @@ class Observer(Parameters):
                                                 filelog_format=LOG_FORMATS['filelog_format'],
                                                 conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
-        self.records = []  # on_track to be made out of obsinfo
         self.default_ods_default_file = op.join(DATA_PATH, 'ods_defaults_B.json')
         self.obsfile = obsfile
-        self.obsinfo = on_obsinfo.Obsinfo(filename=obsfile)
+        
 
     def get_obs(self, add_to_calendar=False, update_source_database=False):
         """
@@ -69,62 +65,44 @@ class Observer(Parameters):
         'start', 'stop', 'obs_time_sec', 'time_per_int_sec'
             
         """
-        self.records = []
-        for source_name, info in self.obsinfo.sources.items():
-            rec = on_track.Track(observer=self.observer, project_name=self.project_name, project_id=self.project_id,
-                                 ants=self.obsinfo.ants, freq=self.obsinfo.freqs, lo=self.obsinfo.lo,
-                                 start=info.start, stop=info.stop,
-                                 source=source_name, x=info.ra, y=info.dec,
-                                 attenuation=self.obsinfo.attenuation, focus=self.obsinfo.focus, backend=self.obsinfo.backend,
-                                 time_per_int_sec=self.obsinfo.time_per_int_sec, coord='name')
+        self.obsinfo = Parameters(ptnote='Obsinfo file', ptinit=self.obsfile, pttype=False, ptverbose=False)
+        if not len(self.obsinfo.observations):
+            logger.error("Need to make observer records before you can get the overall.")
+            return
+        ctr = 0
+        for source_name, info in self.obsinfo.observations.items():
             if update_source_database:
-                ono_engine.update_source(src_id=rec.source, ra_hr=rec.x.to_value('hourangle'), dec_deg=rec.y.to_value('deg'))
-            self.records.append(rec)
+                ono_engine.update_source(src_id=info.source, ra_hr=info.ra.to_value('hourangle'), dec_deg=info.dec.to_value('deg'))
             ctr += 1
-            print(f"Generated observer record {ctr}:  {rec.source} -- {rec.start} to {rec.stop}")
-
-        self.get_overall()
+            print(f"Generated observer record {ctr}:  {info.source} -- {info.start} to {info.stop}")
+            if source_name != info.source:
+                print(f"{source_name} and {info.source} are not the same.")
+        self.session = Parameters(ptnote="Overall session", ptstrict=False, ptverbose=False)
+        self.session.ptset(sources=list(self.obsinfo.observations.keys()),
+                           start=min([rec.start for rec in self.obsinfo.observations.values()]),
+                           stop=max([rec.stop for rec in self.obsinfo.observations.values()]))
+        self.session.ptset(observer=self.obsinfo.observer, project_name=self.obsinfo.project_name, project_id=self.obsinfo.project_id)
         if add_to_calendar:
             self.update_calendar()
 
-    def get_overall(self):
-        if not len(self.records):
-            logger.error("Need to make observer records before you can get the overall.")
-            return
-        kw = {}
-        try:
-            t0 = min([rec.start for rec in self.records])
-            t1 = max([rec.stop for rec in self.records])
-        except AttributeError:
-            logger.error("Need to make observer records before you can get the overall.")
-            return
-        self.overall = on_track.Track()
-        for fld in self.overall.fields:
-            try:  # Tragically assume that the first record has most of the same stuff as the rest...
-                kw[fld] = getattr(self.records[0], fld)
-            except (AttributeError, IndexError):
-                continue
-        kw['start'], kw['stop'] = t0, t1
-        self.overall.ptset(**kw)
-
     def update_calendar(self):
         # Get times to 5minutes
-        t0 = ttools.interpret_date(ttools.interpret_date(self.overall.start, '%Y-%m-%dT%H:%M'), 'datetime')
-        t1 = ttools.interpret_date(ttools.interpret_date(self.overall.stop, '%Y-%m-%dT%H:%M'), 'datetime')
+        t0 = ttools.interpret_date(ttools.interpret_date(self.session_start, '%Y-%m-%dT%H:%M'), 'datetime')
+        t1 = ttools.interpret_date(ttools.interpret_date(self.session_stop, '%Y-%m-%dT%H:%M'), 'datetime')
         t0 = t0.replace(minute=(t0.minute // 5) * 5)
         t1 = ttools.t_delta(t1.replace(minute=(t1.minute // 5) * 5), 5, 'm')
-        cal_day = ttools.interpret_date(self.overall.start, '%Y-%m-%d')
+        cal_day = ttools.interpret_date(self.session.start, '%Y-%m-%d')
         from aocalendar import google_calendar_sync
         self.google_calendar = google_calendar_sync.SyncCal()
         self.google_calendar.get_aocal(calfile=cal_day, path=self.log_settings.path, conlog=self.log_settings.conlog,
                                        filelog=self.log_settings.filelog, start_new=True)
-        self.google_calendar.aocal.add(program=self.overall.project_name, pid=self.overall.project_id, observer=self.overall.observer,
+        self.google_calendar.aocal.add(program=self.session.project_name, pid=self.session.project_id, observer=self.session.observer,
                                        utc_start=t0, utc_stop=t1)
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
     def rec2ods(self, record, ignore_freq=True):
         """
-        Convert an on_track.Track record to an ODS dictionary.
+        Convert an observation to an ODS dictionary.
 
         Parameters
         ----------

@@ -17,7 +17,7 @@ except ImportError:
 
 import atexit, os
 import astropy.units as u
-from . import __version__, LOG_FILENAME, on_track, on_sys
+from . import __version__, LOG_FILENAME, on_sys, on_observation
 from odsutils import logger_setup
 from odsutils import ods_tools as tools
 from time import sleep
@@ -87,7 +87,7 @@ class CommandHandler:
         for this_attr in ['observer', 'project_id', 'project_name', 'obs_start_delay', 'obs_dawdle']:
             setattr(self, this_attr, kw[this_attr])
         logger.info(f"session start: {self.observer} -- {self.project_id}")
-        self.rec = on_track.Track(observer=self.observer, project_id=self.project_id)
+        self.rec = on_observation.Observation(observer=self.observer, project_id=self.project_id)
 
     def setants(self, ant_list='rfsoc_active', remove_ants=[], park_when_done=True):
         if ant_list.startswith('rfsoc_active'):
