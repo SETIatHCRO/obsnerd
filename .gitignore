@@ -2,3 +2,4 @@
 build/
 obsnerd.egg-info/
 obsnerd/.DS_Store
+.vscode/
