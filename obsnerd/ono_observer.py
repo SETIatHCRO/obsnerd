@@ -28,7 +28,7 @@ class Observer(Parameters):
         **kwargs: conlog, filelog, log_filename, path
 
         """
-        super().__init__(ptnote='Observer parameters.', pttype=False, ptverbose=False)
+        super().__init__(ptnote='Observer parameters.', ptstrict=False, pttype=False, ptverbose=False)
         self.ptadd(**DEFAULTS)
         self.ptset(**kwargs)
         self.log_settings = logger_setup.Logger(logger, conlog=self.conlog, filelog=self.filelog,

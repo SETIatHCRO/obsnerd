@@ -42,7 +42,7 @@ If you want to continue with that set,
 
     plan.proc_tracks()
 
-This will write `obsinfo_<MJD>.json`
+This will write `obsinfo_<MJD>.json/.npz`
 
 ##Observe##
 1. on the VNC open a terminal
