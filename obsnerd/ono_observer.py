@@ -4,7 +4,6 @@ from param_track import param_track_timetools as ttools
 from param_track import Parameters
 from odsutils import logger_setup
 from . import DATA_PATH, ono_engine
-from .on_observation import Observation
 import astropy.units as u
 import os.path as op
 

@@ -1,7 +1,5 @@
 from .on_observation import Observation
-from . import on_sys
 from param_track import Parameters
-import json
 
 
 class Obsinfo(Parameters):
