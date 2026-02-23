@@ -103,7 +103,7 @@ class Observer(Parameters):
 
         """
         ods_rec = {'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')}
-        for a, b in record.ods_mapping.items():
+        for a, b in self.obsinfo.ods_mapping.items():
             val = getattr(record, a, None)
             if a.startswith('freq'):
                 if ignore_freq:
@@ -133,13 +133,14 @@ class Observer(Parameters):
         defaults = defaults if defaults is not None else self.default_ods_default_file
         ods = ods_engine.ODS(defaults = defaults)
         ods_update = []
-        for rec in self.records:
+        for rec in self.obsinfo.observations:
             ods_rec = self.rec2ods(rec)
             ods_update.append(ods_rec)
         ods.add(ods_update)
-        ods.post_ods(ods_rados)
-        if ods_assembly:
-            ods.assemble_ods(ods_rados, post_to=ods_upload)
+        print("ono_observer:140 commented out next three lines")
+        #ods.post_ods(ods_rados)
+        #if ods_assembly:
+        #    ods.assemble_ods(ods_rados, post_to=ods_upload)
 
     def observe(self, is_actual=True):
         if not is_actual:
