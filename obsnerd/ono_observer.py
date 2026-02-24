@@ -97,13 +97,13 @@ class Observer(Parameters):
             ODS dictionary
 
         """
-        ods_rec = {'freq_lower_hz': SPACEX_LO.to_value('Hz').item(), 'freq_upper_hz': SPACEX_HI.to_value('Hz').item()}
+        ods_rec = {}
         for a, b in self.obsinfo.ods_mapping.items():
-            if b.startswith('freq'):  # Hard-coded above
-                continue
             val = getattr(record, a)
             if b == 'src_id':
                 ods_rec[b] = val
+            elif b.startswith('freq'):
+                ods_rec[b] = val.to_value('Hz').item()
             elif b == 'src_ra_j2000_deg' or b == 'src_dec_j2000_deg':
                 ods_rec[b] = val.to_value('deg').item()
             elif b == 'src_start_utc' or b == 'src_end_utc':
@@ -139,24 +139,28 @@ class Observer(Parameters):
         if not is_actual:
             self.backend = 'test'
         self.get_obs(add_to_calendar=False)
-        if not len(self.records):
+        if not len(self.obsinfo.observations):
             logger.error("Need to make observer records before you can observe.")
             return
-        self.obs = ono_engine.CommandHandler(observer=self.observer, project_id=self.project_id, conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
-        self.obsinfo['Ants'] = self.obs.setants(self.ants)  # Assume that all antennas are the same so setants once...
-        self.obs.setbackend(self.backend)  # ...and same backend...
-        these_freq = [x.to_value('MHz') for x in self.records[0].freq]
-        self.obs.setrf(freq=these_freq, lo=self.records[0].lo, attenuation=self.records[0].attenuation)  # ...and same rf setup
+        self.obs = ono_engine.CommandHandler(observer=self.obsinfo.observer, project_id=self.obsinfo.project_id,
+                                             conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
+        self.obsinfo.ants = self.obs.setants(self.obsinfo.ants)  # Assume that all antennas are the same so setants once...
+        self.obs.setbackend(self.obsinfo.backend)  # ...and same backend...etc...
+        these_lo = self.obsinfo.observations[0].lo
+        these_freq = [getattr(self.obsinfo.observations[0], f'LO{x.upper()}').to_value('MHz') for x in these_lo]
+        these_attenuation = self.obsinfo.observations[0].attenutation
+        self.obs.setrf(freq=these_freq, lo=these_lo, attenuation=these_attenuation)  # ...and same rf setup
+        num_obs = len(self.obsinfo.observations)
         obsrec = []
-        for i, source in enumerate(self.records):
+        for i, source in enumerate(self.obsinfo.observations):
             if source.coord != 'name':
                 logger.error(f"Currently only support 'name' coord type, not '{source.coord}'")
                 continue
             obsrec.append(source.pt_to_dict())
             if not i: print(source.ptshow(vals_only=True))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
-            print(f"{ts} -- {i+1}/{len(self.records)}: {source.ptshow(vals_only=True)}")
-            print(source.source, source.coord, source.x, source.y)
+            print(f"{ts} -- {i+1}/{num_obs}: {source.ptshow(vals_only=True)}")
+            print(source.source, source.coord, source.ra, source.dec)
             self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:

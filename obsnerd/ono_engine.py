@@ -90,17 +90,18 @@ class CommandHandler:
         self.rec = on_observation.Observation(observer=self.observer, project_id=self.project_id)
 
     def setants(self, ant_list='rfsoc_active', remove_ants=[], park_when_done=True):
-        if ant_list.startswith('rfsoc_active'):
-            self.ant_list = snap_config.get_rfsoc_active_antlist()
-            xxx = ant_list.split('-')
-            if len(xxx) == 2:
-                remove_ants += tools.listify(xxx[1])
-        elif ant_list in on_sys.ANT_LISTS:
-            self.ant_list = copy(on_sys.ANT_LIST[ant_list])
-        elif isinstance(ant_list, str):
-            self.ant_list = tools.listify(ant_list)
-        elif isinstance(ant_list, list):
+        if isinstance(ant_list, list):
             self.ant_list = ant_list
+        elif isinstance(ant_list, str):
+            if ant_list.startswith('rfsoc_active'):
+                self.ant_list = snap_config.get_rfsoc_active_antlist()
+                xxx = ant_list.split('-')
+                if len(xxx) == 2:
+                    remove_ants += tools.listify(xxx[1])
+            elif ant_list in on_sys.ANT_LISTS:
+                self.ant_list = copy(on_sys.ANT_LIST[ant_list])
+            else:
+                self.ant_list = tools.listify(ant_list)
         else:
             raise ValueError("Invalid ant_list specification.")
         for badun in remove_ants:
