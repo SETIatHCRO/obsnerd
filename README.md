@@ -20,7 +20,7 @@ Need to find and set up the satellites.  This is currently clumsily interactive.
 
 Be sure to update the tle files with `on_updatetle.py`.  The default is that there is a subdirectory called `tle` where it puts and reads the information.
 
-Make sure that you have an appropriate `config.yaml` file.  Note that an example is included in the package under `data/config.yaml`.  This gets copied into the obsinfo file for later processing.
+Make sure that you have an appropriate `parameters.yaml` file.
 
 Use the planning tool from within ipython and get 'tracks'
 
@@ -31,8 +31,6 @@ Use the planning tool from within ipython and get 'tracks'
 If `auto=True` you can't chose more and it will automatically go through all of the steps below.
 
 For example `plan.get_tracks(satname='*', start='now+20m', duration=60, auto=True)`
-
-If `auto=False` above, you can get more tracks using `get_tracks` again.
 
 Also, if `auto=False` and if this looks like a good set, choose the ones you want (there is an auto-choose mode by default):
 
