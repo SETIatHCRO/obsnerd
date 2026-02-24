@@ -12,7 +12,7 @@ setup_args = {
     'license': "BSD",
     'author': "David DeBoer",
     'author_email': "david.r.deboer@gmail.edu",
-    'version': '0.5.0',
+    'version': '0.6.0',
     'scripts': glob.glob('scripts/*'),
     'packages': ['obsnerd'],
     'include_package_data': True,

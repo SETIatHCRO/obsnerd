@@ -1,6 +1,6 @@
 import logging
 from aocalendar import aocalendar
-from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys, on_obsinfo, approx_equal
+from . import LOG_FILENAME, LOG_FORMATS, __version__, on_sys, approx_equal
 from odsutils import logger_setup, locations
 from param_track import param_track_timetools as ttools
 from astropy.coordinates import SkyCoord

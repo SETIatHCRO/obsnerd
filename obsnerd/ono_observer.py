@@ -3,9 +3,8 @@ import logging
 from param_track import param_track_timetools as ttools
 from param_track import Parameters
 from odsutils import logger_setup
-from . import DATA_PATH, ono_engine
+from . import ono_engine
 import astropy.units as u
-import os.path as op
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
@@ -36,9 +35,7 @@ class Observer(Parameters):
                                                 filelog_format=LOG_FORMATS['filelog_format'],
                                                 conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
-        self.default_ods_default_file = op.join(DATA_PATH, 'ods_defaults_B.json')
-        self.obsfile = obsfile
-        
+        self.obsinfo = Parameters(ptnote='Obsinfo', pttype=False, ptverbose=True, filename=obsfile)
 
     def get_obs(self, add_to_calendar=False, update_source_database=False):
         """
@@ -52,22 +49,20 @@ class Observer(Parameters):
             Whether to update the source database with new sources.
             
         """
-        self.obsinfo = Parameters(ptnote='Obsinfo file', ptinit=self.obsfile, pttype=False, ptverbose=False)
+        self.obsinfo.ptinit(self.obsinfo.filename)  # actually get the records.
         if not len(self.obsinfo.observations):
-            logger.error("Need to make observer records before you can get the overall.")
+            logger.error("Need to make observer records before you can get the overall.  'See onp_plan.py'")
             return
         ctr = 0
-        for source_name, info in self.obsinfo.observations.items():
+        for track in self.obsinfo.observations:
             if update_source_database:
-                ono_engine.update_source(src_id=info.source, ra_hr=info.ra.to_value('hourangle'), dec_deg=info.dec.to_value('deg'))
+                ono_engine.update_source(src_id=track.source, ra_hr=track.ra.to_value('hourangle'), dec_deg=track.dec.to_value('deg'))
             ctr += 1
-            print(f"Generated observer record {ctr}:  {info.source} -- {info.start} to {info.stop}")
-            if source_name != info.source:
-                print(f"{source_name} and {info.source} are not the same.")
+            print(f"Generated observer record {ctr}:  {track.source} -- {track.start} to {track.stop}")
         self.session = Parameters(ptnote="Overall session", ptstrict=False, ptverbose=False)
-        self.session.ptset(sources=list(self.obsinfo.observations.keys()),
-                           start=min([rec.start for rec in self.obsinfo.observations.values()]),
-                           stop=max([rec.stop for rec in self.obsinfo.observations.values()]))
+        self.session.ptset(sources=[track.source for track in self.obsinfo.observations],
+                           start=min([rec.start for rec in self.obsinfo.observations]),
+                           stop=max([rec.stop for rec in self.obsinfo.observations]))
         self.session.ptset(observer=self.obsinfo.observer, project_name=self.obsinfo.project_name, project_id=self.obsinfo.project_id)
         if add_to_calendar:
             self.update_calendar()
@@ -102,21 +97,19 @@ class Observer(Parameters):
             ODS dictionary
 
         """
-        ods_rec = {'freq_lower_hz': SPACEX_LO.to_value('Hz'), 'freq_upper_hz': SPACEX_HI.to_value('Hz')}
+        ods_rec = {'freq_lower_hz': SPACEX_LO.to_value('Hz').item(), 'freq_upper_hz': SPACEX_HI.to_value('Hz').item()}
         for a, b in self.obsinfo.ods_mapping.items():
-            val = getattr(record, a, None)
-            if a.startswith('freq'):
-                if ignore_freq:
-                    continue
-                else:
-                    print("FREQUENCY NOTE YET IMPLEMENTED IN rec2ods")
-                    continue
-            if val is None:
+            if b.startswith('freq'):  # Hard-coded above
                 continue
-            if a in ['x', 'y']:
-                ods_rec[b] = val.to_value('deg')
-            else:
+            val = getattr(record, a)
+            if b == 'src_id':
                 ods_rec[b] = val
+            elif b == 'src_ra_j2000_deg' or b == 'src_dec_j2000_deg':
+                ods_rec[b] = val.to_value('deg').item()
+            elif b == 'src_start_utc' or b == 'src_end_utc':
+                ods_rec[b] = val.isot
+            elif b == 'corr_integ_time_sec':
+                ods_rec[b] = val.to_value('sec')
         return ods_rec
 
     def observe_prep(self, add_to_calendar=False, defaults=None,
@@ -128,19 +121,19 @@ class Observer(Parameters):
         Prepare for an observation by making and posting the ODS online and adding the source to the source database.
 
         """ 
-        from odsutils import ods_engine
+        from odsutils import ods_engine, DATA_PATH
+        import os.path as op
         self.get_obs(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
-        defaults = defaults if defaults is not None else self.default_ods_default_file
+        defaults = defaults if defaults is not None else op.join(DATA_PATH, 'ods_defaults_ata_B.json')
         ods = ods_engine.ODS(defaults = defaults)
         ods_update = []
         for rec in self.obsinfo.observations:
             ods_rec = self.rec2ods(rec)
             ods_update.append(ods_rec)
         ods.add(ods_update)
-        print("ono_observer:140 commented out next three lines")
-        #ods.post_ods(ods_rados)
-        #if ods_assembly:
-        #    ods.assemble_ods(ods_rados, post_to=ods_upload)
+        ods.post_ods(ods_rados)
+        if ods_assembly:
+            ods.assemble_ods(ods_rados, post_to=ods_upload)
 
     def observe(self, is_actual=True):
         if not is_actual:
