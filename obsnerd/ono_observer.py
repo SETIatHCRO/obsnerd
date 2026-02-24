@@ -148,7 +148,7 @@ class Observer(Parameters):
         self.obs.setbackend(self.obsinfo.backend)  # ...and same backend...etc...
         these_lo = self.obsinfo.observations[0].lo
         these_freq = [getattr(self.obsinfo.observations[0], f'LO{x.upper()}').to_value('MHz') for x in these_lo]
-        these_attenuation = self.obsinfo.observations[0].attenutation
+        these_attenuation = self.obsinfo.observations[0].attenuation
         self.obs.setrf(freq=these_freq, lo=these_lo, attenuation=these_attenuation)  # ...and same rf setup
         num_obs = len(self.obsinfo.observations)
         obsrec = []
