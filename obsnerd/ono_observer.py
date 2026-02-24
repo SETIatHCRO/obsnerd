@@ -148,8 +148,6 @@ class Observer(Parameters):
         self.obs.setbackend(self.obsinfo.backend)  # ...and same backend...etc...
         these_freq = [getattr(self.obsinfo, f'LO{x.upper()}').to_value('MHz').item() for x in self.obsinfo.lo]
         these_attenuation = self.obsinfo.observations[0].attenuation
-        print(these_freq)
-        print(these_attenuation)
         self.obs.setrf(freq=these_freq, lo=self.obsinfo.lo, attenuation=these_attenuation)  # ...and same rf setup
         num_obs = len(self.obsinfo.observations)
         obsrec = []
@@ -158,9 +156,8 @@ class Observer(Parameters):
                 logger.error(f"Currently only support 'name' coord type, not '{source.coord}'")
                 continue
             obsrec.append(source.pt_to_dict())
-            if not i: print(source.ptshow(vals_only=True))
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
-            print(f"{ts} -- {i+1}/{num_obs}: {source.ptshow(vals_only=True)}")
+            print(f"{ts} -- {i+1}/{num_obs}: {source.source}")
             print(source.source, source.coord, source.ra, source.dec)
             self.obs.move(source=source.source, coord_type=source.coord)
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
@@ -169,4 +166,5 @@ class Observer(Parameters):
             self.obs.take_data(source.start, source.obs_time_sec, source.time_per_int_sec)
         self.obs.release_ants()
         print("Observation complete -- exit calendar.")
-        json.dump(self.obsinfo, open('obsout.json', 'w'), indent=2)
+        self.obsinfo.ptto('obsout.json')
+        self.obsinfo.ptto('obsout.npz')

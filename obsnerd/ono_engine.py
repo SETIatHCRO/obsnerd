@@ -88,6 +88,7 @@ class CommandHandler:
             setattr(self, this_attr, kw[this_attr])
         logger.info(f"session start: {self.observer} -- {self.project_id}")
         self.rec = on_observation.Observation(observer=self.observer, project_id=self.project_id)
+        self.rec.ptinit(['freq', 'lo', 'attenuation', 'focus', 'source', 'x', 'y', 'coord'])
 
     def setants(self, ant_list='rfsoc_active', remove_ants=[], park_when_done=True):
         if isinstance(ant_list, list):
