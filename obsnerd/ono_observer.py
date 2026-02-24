@@ -69,8 +69,8 @@ class Observer(Parameters):
 
     def update_calendar(self):
         # Get times to 5minutes
-        t0 = ttools.interpret_date(ttools.interpret_date(self.session_start, '%Y-%m-%dT%H:%M'), 'datetime')
-        t1 = ttools.interpret_date(ttools.interpret_date(self.session_stop, '%Y-%m-%dT%H:%M'), 'datetime')
+        t0 = ttools.interpret_date(ttools.interpret_date(self.session.start, '%Y-%m-%dT%H:%M'), 'datetime')
+        t1 = ttools.interpret_date(ttools.interpret_date(self.session.stop, '%Y-%m-%dT%H:%M'), 'datetime')
         t0 = t0.replace(minute=(t0.minute // 5) * 5)
         t1 = ttools.t_delta(t1.replace(minute=(t1.minute // 5) * 5), 5, 'm')
         cal_day = ttools.interpret_date(self.session.start, '%Y-%m-%d')
