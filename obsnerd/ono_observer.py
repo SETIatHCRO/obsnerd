@@ -35,7 +35,7 @@ class Observer(Parameters):
                                                 filelog_format=LOG_FORMATS['filelog_format'],
                                                 conlog_format=LOG_FORMATS['conlog_format'])
         logger.debug(f"{__name__} ver. {__version__}")
-        self.obsinfo = Parameters(ptnote='Obsinfo', pttype=False, ptverbose=True, filename=obsfile)
+        self.obsinfo = Parameters(ptnote='Obsinfo', pttype=False, ptverbose=False, filename=obsfile)
 
     def get_obs(self, add_to_calendar=False, update_source_database=False):
         """
