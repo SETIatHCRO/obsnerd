@@ -1,9 +1,9 @@
-from .on_observation import Observation
+# from .on_observation import Observation
 from param_track import Parameters
 
-
+print("I THINK on_obsinfo.py IS DEPRECATABLE")
 class Obsinfo(Parameters):
-    def __init__(self, filename=None, **kwargs):  # obsinfo filename or ptinit='parameters.yaml:obsinfo' to initialize
+    def __init__(self, filename=None, **kwargs):
         ptinit = kwargs.pop('ptinit', None)
         super().__init__(ptnote="Obsinfo parameters", ptstrict=True, pterr=False, ptverbose=False, ptinit=ptinit,
                          pttype=False, pttypeerr=False, ptsetunits=False, **kwargs)
@@ -18,9 +18,8 @@ class Obsinfo(Parameters):
         if sources is not None:
             self.observations = {key: {} for key in sources}
         observations = {}
-        
         for key, val in self.observations.items():
-            observations[key] = Observation(source=key, ptinit='parameters.yaml:observations')
+            #observations[key] = Observation(source=key, ptinit='parameters.yaml:observations')
             if val:
                 observations[key].update(**val)
         self.observations = observations

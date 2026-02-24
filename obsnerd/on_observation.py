@@ -4,16 +4,15 @@ from param_track import param_track_timetools as ttools
 from .on_sys import make_obsid
 
 
-class Observation(Parameters):
-    header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
-    short = ['freq', 'source', 'x', 'y', 'start', 'stop', 'obs_time']
-    use_def = {'y': "use with ods",
-               'n': "use without ods",
-               's': "skip (don't use)"}
+header = ['observer', 'project_name', 'project_id', 'ants', 'focus', 'time_per_int_sec', 'backend', 'focus', 'attenuation', 'coord']
+short = ['freq', 'source', 'x', 'y', 'start', 'stop', 'obs_time']
 
+
+class Observation(Parameters):
     def __init__(self, **kwargs):
         ptinit = kwargs.pop('ptinit', None)
-        super().__init__(ptnote='Observation parameters', ptinit=ptinit, pttype=False, ptverbose=False)
+        ptnote = kwargs.pop('ptnote', 'Observational parameters')
+        super().__init__(ptnote=ptnote, ptinit=ptinit, pttype=False, ptverbose=False)
         self.update(**kwargs)
 
     def update(self, **kwargs):
@@ -38,15 +37,13 @@ class Observation(Parameters):
         self._pt_set(**kwargs)
 
     def set_obsid(self, **kwargs):
-        source = kwargs.get('source', None)
-        source = source if source is not None else getattr(self, 'source', None)
         time = kwargs.get('time', None)
         if time is None:
             try:
                 time = self.time[self.istart].mjd
             except (AttributeError, IndexError, KeyError):
                 time = None
-        self._pt_set(obsid=make_obsid(source, time))
+        self._pt_set(obsid=make_obsid(self.source, time))
 
     def calc_properties(self):
         self.duration = self.time[-1] - self.time[0]

@@ -149,7 +149,7 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             continue
         srcname = window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')
         eventid = f"{srcname}{i}"
-        this_obs = Observation(source=eventid, ptinit=init_file)
+        this_obs = Observation(ptnote=eventid, ptinit=init_file, source=eventid)
         time = timetools.Time(time)
         this_obs.update(az=array(az)*u.deg, el=array(el)*u.deg, time=time, dist=array(dist)*u.m)
         sky = SkyCoord(alt=this_obs.el, az=this_obs.az, obstime=this_obs.time, frame='altaz', location=location)

@@ -7,12 +7,17 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.time import TimeDelta
 import matplotlib.pyplot as plt
-from copy import copy
+from copy import copy, deepcopy
 import numpy as np
+from param_track import Parameters
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
+
+ODS_USE_DEF = {'y': "use with ods",
+               'n': "use without ods",
+               's': "skip (don't use)"}
 
 
 import colorsys
@@ -88,9 +93,13 @@ class Plan:
         self.this_cal.ods.view_ods()
         self.this_cal.ods.post_ods('test_ods.json')
 
-    def get_tracks(self, satname, start, duration, auto=False, el_limit=15.0, DTC_only=True, time_resolution=10, source='sopp'):
+    def get_tracks(self, satname, start, duration, auto=False, el_limit=15.0, DTC_only=True, time_resolution=10, generate_from='sopp'):
         """
         Get satellite tracks for satellites regex-found from 'satname'.
+
+        This reads into self.tracks satellites found in SOPP, it is keyed on the satellite name.
+        self.tracks = {'satname': [ObservationClass1, ObservationClass2, ...]}
+            each ObservationClass# above has Parameters as a Parent Class.
 
         Parameters
         ----------
@@ -108,32 +117,32 @@ class Plan:
             If True, only DTC tracks are returned, by default True
         time_resolution : int, optional
             Time resolution in seconds, by default 10
-        source : str, optional
-            Source of satellite data, by default 'sopp'
+        generate_from : str, optional
+            How to get satellite data, by default 'sopp'
 
         """
         if self.el_limit is None:
             self.el_limit = el_limit * u.deg
         else:
             logger.warning(f"Using el_limit: {self.el_limit}")
-        if source == 'sopp':
+        if generate_from == 'sopp':
             logger.info(f"SOPP not using frequency.")
             freqs = False
             from . import sopp_engine
-            these_tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, el_limit=el_limit,
-                                            DTC_only=DTC_only, time_resolution=time_resolution, verbose=False, show_plots=False,
-                                            init_file='parameters.yaml:observations')
-            logger.info(f"Found the following {len(these_tracks)} satellites above {self.el_limit}: {', '.join(these_tracks.keys())}")
-            if not(len(these_tracks)):
+            self.tracks = sopp_engine.main(satname=satname, start=start, duration=duration, frequency=freqs, el_limit=el_limit,
+                                           DTC_only=DTC_only, time_resolution=time_resolution, verbose=False, show_plots=False,
+                                           init_file='parameters.yaml:observations')
+            if not(len(self.tracks)):
                 logger.warning(f"No satellites found above {self.el_limit}")
                 return
-            self.tracks.update(these_tracks)
+            logger.info(f"Found the following {len(self.tracks)} satellites above {self.el_limit}")  #: {', '.join(self.tracks.keys())}")
+            # self.tracks.update(these_tracks)
             self.plot_track_summary(satname='all')
-        elif source == 'spacex':
+        elif generate_from == 'spacex':
             from . import spacex_api
             print("WORKING ON IT")
         else:
-            logger.error(f"Unknown source: {source}")
+            logger.error(f"Unknown generator: {generate_from}")
             return
         if auto:
             self.choose_tracks(auto=auto)
@@ -178,6 +187,8 @@ class Plan:
         """
         Interactive chooser of tracks to use -- edits the Track instances.
 
+        This generates self.track_list, which is a dictionary keyed on (time-to-transit in sec, satname) tuple
+
         Parameters
         ----------
         auto : bool
@@ -207,7 +218,7 @@ class Plan:
                 if not approx_equal(left, right, rel_tol=0.1):
                     continue
                 dt = track.time[track.imax] - now
-                key = int(dt.to_value('sec'))
+                key = (int(dt.to_value('sec')), sat)
                 self.track_list[key] = {"sat": sat, "track": i, "use": 's'}
                 track.ptadd(iobs=None, use='s')
         if not auto:
@@ -217,25 +228,30 @@ class Plan:
             print("\ts - skip track")
             print("\te - end choosing tracks\n")
         last_one = ttools.interpret_date('yesterday')
+        keep = {}
         for key in sorted(self.track_list.keys()):
-            track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
+            entry = self.track_list[key]
+            track = self.tracks[entry['sat']][entry['track']]
             if track.el[track.imax].to_value('deg') < obsel_deg or track.el[track.imax].to_value('deg') > keyhole_deg:
                 continue
             ind = track.imax
+            t_m = key[0] / 60.0
             if auto:
                 if track.time[ind] - last_one > track_separation:
-                    self.track_list[key]['use'] = input(f"ODS for {track.source} at {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0 (y/n)? ")
+                    entry['use'] = input(f"ODS for {track.source} at {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({t_m:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0 (y/n)? ")
             else:
-                self.track_list[key]['use'] = input(f"{sat}/{i} -- {track.el[ind].to_value('deg'):.0f}\u00b0 @ {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) (y/n/s/e):  ")
-            if self.track_list[key]['use'] == 'e':
+                entry['use'] = input(f"{sat}/{i} -- {track.el[ind].to_value('deg'):.0f}\u00b0 @ {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({t_m:.0f}m) (y/n/s/e):  ")
+            if entry['use'] == 'e':
                 print("Ending track selection.")
-                self.track_list[key]['use'] = 's'
+                entry['use'] = 's'
                 break
-            elif self.track_list[key]['use'] in ['y', 'n']:
+            elif entry['use'] in ['y', 'n']:
                 last_one = copy(track.time[ind])
-                track.ptadd(iobs=ind, use=self.track_list[key]['use'])
+                track.ptset(iobs=ind, use=entry['use'])
                 plt.plot(track.time[ind].datetime, track.el[ind].value, 'ro')
-                print(f"\t{track.use_def[track.use]} {track.source} at {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({key / 60.0:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
+                print(f"\t{ODS_USE_DEF[track.use]} {track.source} at {track.time[ind].datetime.strftime('%m-%d %H:%M')} ({t_m:.0f}m) -- {track.el[ind].to_value('deg'):.0f}\u00b0")
+                keep[key] = deepcopy(track)
+        self.tracks = keep
         if auto:
             self.make_obsinfo(write_to_clipboard=True)
         else:
@@ -255,10 +271,7 @@ class Plan:
         """
         obslen_TD2 = self.obslen / 2.0
         self.start_mjd = None
-        for key in self.track_list:
-            track = self.tracks[self.track_list[key]['sat']][self.track_list[key]['track']]
-            if self.track_list[key]['use'] == 's':
-                continue
+        for key, track in self.tracks.items():
             tobs =  track.time[track.iobs]
             tstart = tobs - obslen_TD2
             if tstart < track.time[0]:
@@ -271,12 +284,13 @@ class Plan:
             else:
                 istop = np.where(track.time < tstop)[0][-1] + 1
             track.ptadd(istart=istart, istop=istop, tobs=tobs, start=tstart, stop=tstop)
-            mjd = track.time[track.istart].mjd
+            mjd = track.time[istart].mjd
             if self.start_mjd is None or mjd < self.start_mjd:
                 self.start_mjd = copy(mjd)
-            track.set_obsid(source=track.source, time=mjd)
+            # track.set_obsid(time=mjd)
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
-        self.obsinfo = on_obsinfo.Obsinfo(filename=obsinfofn, ptinit='parameters.yaml:obsinfo')
+        #self.obsinfo = on_obsinfo.Obsinfo(filename=obsinfofn)#, ptinit='parameters.yaml:obsinfo')
+        self.obsinfo = Parameters(filename=obsinfofn, ptverbose=False, ptstrict=True, ptinit='parameters.yaml:obsinfo')
         self.write_observations_to_obsinfo()
         clipcmd = f"scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.npz"
         if write_to_clipboard:
@@ -296,18 +310,10 @@ class Plan:
         from astropy.coordinates import angular_separation
         import numpy as np
         import json
-        timed_tracks = {}
-        for satname in self.tracks:
-            for i, track in enumerate(self.tracks[satname]):
-                if track.iobs is not None:
-                    timed_tracks[track.start.datetime] = {'satname': satname, 'index': i}
-        self.obsinfo.ptadd(time_sorted_sources=[])
-        self.obsinfo.observations = {}
-        for track_info in sorted(timed_tracks.keys()):
-            satname = timed_tracks[track_info]['satname']
-            ind = timed_tracks[track_info]['index']
-            self.obsinfo.time_sorted_sources.append(satname)
-            track = self.tracks[satname][ind]
+        self.obsinfo.observations = []
+        serobsj = []
+        for track_info in sorted(self.tracks.keys()):
+            track = self.tracks[track_info]
             track.ods = True if track.use == 'y' else False
             track.off_time = []
             track.off_angle = []
@@ -322,14 +328,15 @@ class Plan:
             track.el = track.el[track.iobs]
             track.time = track.time[track.iobs]
             track.dist = track.dist[track.iobs]
-            self.obsinfo.observations[track.source] = track
+            self.obsinfo.observations.append(track)
+            serobsj.append(json.loads(track.pt_to_dict(serialize='json')))
         print(f"Writing obsinfo to {self.obsinfo.filename}", end='')
-        np.savez(self.obsinfo.filename, data=self.obsinfo.pt_to_dict())
+        data=self.obsinfo.pt_to_dict()
+        np.savez(self.obsinfo.filename, data=data)
         # Now dump to json for human readability
         jsonfile = self.obsinfo.filename.replace('.npz', '.json')
         print(f" and {jsonfile}")
         outj = json.loads(self.obsinfo.pt_to_dict(serialize='json'))
-        for obs, track in self.obsinfo.observations.items():
-            outj['observations'][obs] = json.loads(track.pt_to_dict(serialize='json'))
+        outj['observations'] = serobsj  # put in reserialized observations
         with open(jsonfile, 'w') as f:
             json.dump(outj, f, indent=4)
