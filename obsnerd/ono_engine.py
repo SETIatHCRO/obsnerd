@@ -258,18 +258,16 @@ class CommandHandler:
                 pass
         print(f"Moving to source: {source}")
 
-    def take_data(self, start, obs_time_sec, time_per_int_sec):
-        self.rec.update(start=start, obs_time_sec=obs_time_sec, time_per_int_sec=time_per_int_sec)
+    def take_data(self, start, obs_time, time_per_int):
+        self.rec.update(start=start, obs_time=obs_time, time_per_int=time_per_int)
         d = get_LO_hpguppi(self.lo)
-        keyval_dict = {'XTIMEINT': time_per_int_sec}
-        print(self.lo)
-        print(d)
+        keyval_dict = {'XTIMEINT': time_per_int}
         hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=False)
-        hpguppi_record_in.record_in(self.obs_start_delay, obs_time_sec, hashpipe_targets = d)
-        sleepy = float(self.obs_start_delay + obs_time_sec + self.obs_dawdle)
+        hpguppi_record_in.record_in(self.obs_start_delay, obs_time, hashpipe_targets = d)
+        sleepy = float(self.obs_start_delay + obs_time + self.obs_dawdle)
         if sleepy > 0.0:
             sleep(sleepy)
-        print(f"Taking data for {obs_time_sec} seconds with {time_per_int_sec} s integrations.")
+        print(f"Taking data for {obs_time} seconds with {time_per_int} s integrations.")
 
     def note(self, note):
         """
