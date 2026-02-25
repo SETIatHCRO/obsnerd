@@ -289,7 +289,6 @@ class Plan:
                 self.start_mjd = copy(mjd)
             # track.set_obsid(time=mjd)
         obsinfofn = on_sys.make_obsinfo_filename(self.start_mjd, decimal_places=decimal_places)
-        #self.obsinfo = on_obsinfo.Obsinfo(filename=obsinfofn)#, ptinit='parameters.yaml:obsinfo')
         self.obsinfo = Parameters(filename=obsinfofn, ptverbose=False, ptstrict=True, ptinit='parameters.yaml:obsinfo')
         self.write_observations_to_obsinfo()
         clipcmd = f"scp {obsinfofn} sonata@obs-node1.hcro.org:rfsoc_obs_scripts/p054/obsinfo_rados.npz"

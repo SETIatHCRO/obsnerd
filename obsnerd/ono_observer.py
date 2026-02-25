@@ -1,19 +1,14 @@
-import json
 import logging
 from param_track import param_track_timetools as ttools
 from param_track import Parameters
 from odsutils import logger_setup
 from . import ono_engine
-import astropy.units as u
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')  # Set to lowest
 from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME, 'embargo': []}
-
-SPACEX_LO = 1990 * u.MHz
-SPACEX_HI = 1995 * u.MHz
 
 ODS_URL = 'https://ods.hcro.org/ods.json'
 
