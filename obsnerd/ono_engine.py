@@ -258,8 +258,17 @@ class CommandHandler:
                 pass
         print(f"Moving to source: {source}")
 
-    def take_data(self, start, obs_time, time_per_int):
-        self.rec.update(start=start, obs_time=obs_time, time_per_int=time_per_int)
+    def take_data(self, start=None, stop=None, obs_time=None, time_per_int=None):
+        kwargs = {}
+        if start is not None:
+            kwargs['start'] = start
+        if stop is not None:
+            kwargs['stop'] = stop
+        if obs_time is not None:
+            kwargs['obs_time'] = obs_time
+        if time_per_int is not None:
+            kwargs['time_per_int'] = time_per_int
+        self.rec.update(**kwargs)
         d = get_LO_hpguppi(self.lo)
         keyval_dict = {'XTIMEINT': time_per_int}
         hpguppi_auxillary.publish_keyval_dict_to_redis(keyval_dict, d, postproc=False)

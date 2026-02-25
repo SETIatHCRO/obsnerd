@@ -160,6 +160,6 @@ class Observer(Parameters):
             tlength = ttools.wait(ttools.t_delta(source.start, -1.0*self.obs.obs_start_delay, 's'))
             if tlength is None:
                 continue
-            self.obs.take_data(source.start, source.stop, source.time_per_int)
+            self.obs.take_data(start=source.start, stop=source.stop, time_per_int=source.time_per_int)
         self.obs.release_ants()
         print("Observation complete -- exit calendar.")
