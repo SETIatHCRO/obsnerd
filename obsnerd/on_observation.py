@@ -13,7 +13,6 @@ class Observation(Parameters):
         ptinit = kwargs.pop('ptinit', None)
         ptnote = kwargs.pop('ptnote', 'Observational parameters')
         super().__init__(ptnote=ptnote, ptinit=ptinit, pttype=False, ptverbose=False)
-        # Do it again, to check for the 2 outta 3 thing
         self.update(**kwargs)
 
     def update(self, **kwargs):
@@ -27,6 +26,8 @@ class Observation(Parameters):
         for key in timekeys:
             if kwargs[key] is None or not kwargs[key]:
                 checked_timekeys.remove(key)
+        if timekeys != checked_timekeys:
+            print(f"not all timekeys valid:  {kwargs}")
         if checked_timekeys == {'start', 'stop'}:
             kwargs['obs_time'] = kwargs['stop'] - kwargs['start']
         elif checked_timekeys == {'start', 'obs_time'}:
