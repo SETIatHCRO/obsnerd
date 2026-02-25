@@ -13,6 +13,7 @@ class Observation(Parameters):
         ptinit = kwargs.pop('ptinit', None)
         ptnote = kwargs.pop('ptnote', 'Observational parameters')
         super().__init__(ptnote=ptnote, ptinit=ptinit, pttype=False, ptverbose=False)
+        # Do it again, to check for the 2 outta 3 thing
         self.update(**kwargs)
 
     def update(self, **kwargs):
@@ -34,7 +35,7 @@ class Observation(Parameters):
             kwargs['start'] = ttools.t_delta(kwargs['stop'], -1.0 * kwargs['obs_time'], 's')
         elif len(checked_timekeys) > 0:
             raise ValueError("When updating time parameters, must include 2 of 3 (and only 2) of 'start', 'stop', 'obs_time' to keep them consistent.")
-        self._pt_set(**kwargs)
+        self.ptadd(**kwargs)
 
     def set_obsid(self, **kwargs):
         time = kwargs.get('time', None)
