@@ -82,7 +82,7 @@ class Observer(Parameters):
                                        utc_start=t0, utc_stop=t1)
         self.google_calendar.add_event_to_google_calendar(self.google_calendar.aocal.events[cal_day][-1])
 
-    def rec2ods(self, record, ignore_freq=True):
+    def rec2ods(self, record):
         """
         Convert an observation to an ODS dictionary.
 
@@ -144,18 +144,17 @@ class Observer(Parameters):
             return
         self.obs = ono_engine.CommandHandler(observer=self.obsinfo.observer, project_id=self.obsinfo.project_id,
                                              conlog=self.log_settings.conlog, filelog=self.log_settings.filelog)
-        self.obsinfo.ants = self.obs.setants(self.obsinfo.ants)  # Assume that all antennas are the same so setants once...
-        self.obs.setbackend(self.obsinfo.backend)  # ...and same backend...etc...
+        self.obsinfo.ants = self.obs.setants(self.obsinfo.ants)
+        print(f"Using antennas {self.obsinfo.ants}")
+        self.obs.setbackend(self.obsinfo.backend)
         these_freq = [getattr(self.obsinfo, f'LO{x.upper()}').to_value('MHz').item() for x in self.obsinfo.lo]
         these_attenuation = self.obsinfo.observations[0].attenuation
-        self.obs.setrf(freq=these_freq, lo=self.obsinfo.lo, attenuation=these_attenuation)  # ...and same rf setup
+        self.obs.setrf(freq=these_freq, lo=self.obsinfo.lo, attenuation=these_attenuation)
         num_obs = len(self.obsinfo.observations)
-        obsrec = []
         for i, source in enumerate(self.obsinfo.observations):
             if source.coord != 'name':
                 logger.error(f"Currently only support 'name' coord type, not '{source.coord}'")
                 continue
-            obsrec.append(source.pt_to_dict())
             ts = ttools.interpret_date('now', fmt='%H:%M:%S')
             print(f"{ts} -- {i+1}/{num_obs}: {source.source}")
             print(source.source, source.coord, source.ra, source.dec)
@@ -166,5 +165,3 @@ class Observer(Parameters):
             self.obs.take_data(source.start, source.obs_time_sec, source.time_per_int_sec)
         self.obs.release_ants()
         print("Observation complete -- exit calendar.")
-        self.obsinfo.ptto('obsout.json')
-        self.obsinfo.ptto('obsout.npz')
