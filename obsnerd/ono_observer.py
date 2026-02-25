@@ -98,6 +98,7 @@ class Observer(Parameters):
             if b == 'src_id':
                 ods_rec[b] = val
             elif b.startswith('freq'):
+                val = getattr(self.obsinfo, a)
                 ods_rec[b] = val.to_value('Hz').item()
             elif b == 'src_ra_j2000_deg' or b == 'src_dec_j2000_deg':
                 ods_rec[b] = val.to_value('deg').item()
