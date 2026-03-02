@@ -1,7 +1,7 @@
 import logging
 from param_track import param_track_timetools as ttools
 from param_track import Parameters
-from odsutils import logger_setup
+from odsutils import logger_setup, SITES
 from . import ono_engine
 
 logger = logging.getLogger(__name__)
@@ -10,7 +10,6 @@ from . import LOG_FILENAME, LOG_FORMATS, __version__
 
 DEFAULTS = {'conlog': 'INFO', 'filelog': 'INFO', 'path': '.', 'log_filename': LOG_FILENAME, 'embargo': []}
 
-ODS_URL = 'https://ods.hcro.org/ods.json'
 
 class Observer(Parameters):
     def __init__(self, obsfile='obsinfo_rados.npz:data', **kwargs):
@@ -110,9 +109,9 @@ class Observer(Parameters):
                 ods_rec[b] = val.to_value('sec')
         return ods_rec
 
-    def observe_prep(self, add_to_calendar=False, defaults=None,
-                     ods_rados = "/opt/mnt/share/ods_project/ods_rados.json",
-                     ods_upload = "/opt/mnt/share/ods_upload/ods.json",
+    def observe_prep(self, add_to_calendar=False,
+                     defaults='ata',
+                     ods_site='ata',
                      update_source_database=True,
                      ods_assembly=True):
         """
@@ -122,16 +121,17 @@ class Observer(Parameters):
         from odsutils import ods_engine, DATA_PATH
         import os.path as op
         self.get_obs(add_to_calendar=add_to_calendar, update_source_database=update_source_database)
-        defaults = defaults if defaults is not None else op.join(DATA_PATH, 'ods_defaults_ata_B.json')
+        if defaults in SITES:
+            defaults = SITES['defaults'][defaults]
         ods = ods_engine.ODS(defaults = defaults)
         ods_update = []
         for rec in self.obsinfo.observations:
             ods_rec = self.rec2ods(rec)
             ods_update.append(ods_rec)
         ods.add(ods_update)
-        ods.post_ods(ods_rados)
+        ods.post_ods(SITES[ods_site]['project'])
         if ods_assembly:
-            ods.assemble_ods(ods_rados, post_to=ods_upload)
+            ods.assemble_ods(SITES[ods_site]['project'], post_to=SITES[ods_site]['upload'])
 
     def observe(self, is_actual=True):
         if not is_actual:

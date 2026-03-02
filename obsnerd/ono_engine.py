@@ -19,7 +19,7 @@ import atexit, os
 import astropy.units as u
 from . import __version__, LOG_FILENAME, on_sys, on_observation
 from odsutils import logger_setup
-from odsutils import ods_tools as tools
+from param_track.param_track_support import listify
 from time import sleep
 from copy import copy
 import logging
@@ -98,11 +98,11 @@ class CommandHandler:
                 self.ant_list = snap_config.get_rfsoc_active_antlist()
                 xxx = ant_list.split('-')
                 if len(xxx) == 2:
-                    remove_ants += tools.listify(xxx[1])
+                    remove_ants += listify(xxx[1])
             elif ant_list in on_sys.ANT_LISTS:
                 self.ant_list = copy(on_sys.ANT_LIST[ant_list])
             else:
-                self.ant_list = tools.listify(ant_list)
+                self.ant_list = listify(ant_list)
         else:
             raise ValueError("Invalid ant_list specification.")
         for badun in remove_ants:
@@ -141,13 +141,13 @@ class CommandHandler:
             if not isinstance(freq, u.Quantity):
                 freq = freq * u.Unit(freq_unit)
         else:
-            freq = tools.listify(freq) * u.Unit(freq_unit)
+            freq = listify(freq) * u.Unit(freq_unit)
         self.freq = freq
         freq_MHz = [x.to_value('MHz') for x in self.freq]
-        self.lo = tools.listify(lo)
+        self.lo = listify(lo)
         if len(self.lo) != len(freq_MHz):
             raise ValueError("Length of lo must match length of freq")
-        self.attenuation = tools.listify(attenuation)
+        self.attenuation = listify(attenuation)
         # antlo_list = [ant+lo.upper() for lo in lo for ant in self.ant_list]
         # snap_if.tune_if_antslo(antlo_list)
         ffoc = 1E9 if not focus else max(freq_MHz)
@@ -220,7 +220,7 @@ class CommandHandler:
         if coord_type not in ['azel', 'radec', 'name', 'traj']:
             logger.error(f"Invalid coord_type: {coord_type}")
             return
-        use_ants = self.ant_list if use_ants is None else tools.listify(use_ants)
+        use_ants = self.ant_list if use_ants is None else listify(use_ants)
         if not len(use_ants):
             logger.error("Need antennas to move")
             return
