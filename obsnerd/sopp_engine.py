@@ -106,6 +106,7 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
                              height=configuration.reservation.facility.elevation*u.m)
     # Determine Satellite Interference
     sopp = Sopp(configuration=configuration)
+    # return sopp
     events = sopp.get_satellites_above_horizon() if ftype == 'horizon' else sopp.get_satellites_crossing_main_beam()
 
     # Display configuration
@@ -128,7 +129,10 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
     jcadence = int(row_cadence / time_resolution)
 
     ### Frequency info incorporated
+    starlinks = {'checked': 0, 'found': 0}
     for i, window in enumerate(events, start=1):
+        if 'starlink' in window.satellite.name.lower():
+            starlinks['checked'] += 1
         if DTC_only and 'DTC' not in window.satellite.name:
             continue
 
@@ -147,6 +151,8 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
                 table_data.append(table_row)
         if len(az) < 3:
             continue
+        if 'starlink' in window.satellite.name.lower():
+            starlinks['found'] += 1
         srcname = window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')
         eventid = f"{srcname}{i}"
         this_obs = Observation(ptnote=eventid, ptinit=init_file, source=eventid)
@@ -159,11 +165,11 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
         tracks[srcname].append(this_obs)
         if verbose:
             print('Orbits/day:  ', window.satellite.tle_information.mean_motion.value * 240.0)
-            fnout = f"{this_obs.source.strip()}.txt"
-            print(f"Writing {fnout}")
-            with open(fnout, 'w') as fpof:
-                for _t, _a, _e, _d in zip(time, az, el, dist):
-                    print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
+            #fnout = f"{this_obs.source.strip()}.txt"
+            #print(f"Writing {fnout}")
+            #with open(fnout, 'w') as fpof:
+            #    for _t, _a, _e, _d in zip(time, az, el, dist):
+            #        print(f"{_t.strftime('%Y-%m-%dT%H:%M:%S.%f')},{_a},{_e},{_d}", file=fpof)
             print(f'Satellite interference event #{i}:')
             print(f'Satellite: {window.satellite.name}')
             print(tabulate(table_data))

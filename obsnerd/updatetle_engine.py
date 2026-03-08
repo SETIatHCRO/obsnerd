@@ -4,6 +4,7 @@ from os import path
 import logging
 from odsutils import logger_setup
 from . import LOG_FILENAME
+from . import tle_parser
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ def make_tle_filename(tle_name):
 
 
 def updatetle(group='*', base_path='./tle', base_url='https://celestrak.org/NORAD/elements/'):
+    series_rec = {}
     if group == '*':
         group = ''
     master_file = requests.get(base_url)
@@ -51,6 +53,9 @@ def updatetle(group='*', base_path='./tle', base_url='https://celestrak.org/NORA
                 continue
             with open(tlefilename, 'w') as f:
                 f.write(tle_file.text)
+            data = tle_parser.remap(tle_parser.parse_tles_from_file(tlefilename))
+            series_rec.update(data)
+    return series_rec
 
  
 def update_log():

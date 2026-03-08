@@ -1,7 +1,7 @@
 from importlib.metadata import version
 __version__ = version('obsnerd')
 from os.path import join
-import math
+from math import isnan, isinf
 
 
 DATA_PATH = join(__path__[0], 'data')
@@ -22,9 +22,9 @@ def approx_equal(a, b, rel_tol=1e-9, abs_tol=0.0):
         return True
 
     # Treat NaNs as never close; infinities only close if they are exactly equal (handled above)
-    if math.isnan(a) or math.isnan(b):
+    if isnan(a) or isnan(b):
         return False
-    if math.isinf(a) or math.isinf(b):
+    if isinf(a) or isinf(b):
         return False
 
     diff = abs(a - b)
