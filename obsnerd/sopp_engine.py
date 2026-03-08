@@ -131,7 +131,9 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
     ### Frequency info incorporated
     starlinks = {'checked': 0, 'found': 0}
     for i, window in enumerate(events, start=1):
+        is_starlink = False
         if 'starlink' in window.satellite.name.lower():
+            is_starlink = True
             starlinks['checked'] += 1
         if DTC_only and 'DTC' not in window.satellite.name:
             continue
@@ -151,7 +153,7 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
                 table_data.append(table_row)
         if len(az) < 3:
             continue
-        if 'starlink' in window.satellite.name.lower():
+        if is_starlink:
             starlinks['found'] += 1
         srcname = window.satellite.name.replace(' ','').replace('[', '').replace(']', '').replace('-', '')
         eventid = f"{srcname}{i}"
@@ -182,6 +184,8 @@ def main(satname, start, duration, frequency=None, bandwidth=20.0, az_limit=[-18
             plt.plot(time, el, '--')
     if verbose and frequency:
         print('Frequency information:  ', window.satellite.frequency, frequency)
+    if starlinks['checked']:
+        print(f"Starlink events: {starlinks['found']} out of {starlinks['checked']} ({100.0*starlinks['found']/starlinks['checked']:.1f}%)")
     if show_plots:
         plt.figure('AzEl Trajectory')
         plt.xlabel('Az [deg]')
